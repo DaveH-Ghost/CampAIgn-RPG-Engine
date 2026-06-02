@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from src.agent import Agent
+from src.memory import Memory
 from src.object import Object
 
 
@@ -114,7 +115,7 @@ def create_initial_world() -> World:
             "observation and deliberate action."
         ),
         position=(1, 1),
-        memory=[],
+        memory=Memory(),
         last_action=None,
     )
     world.add_agent(agent)

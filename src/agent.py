@@ -1,37 +1,7 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
-
-@dataclass
-class TurnRecord:
-    """
-    A record of one turn in the agent's history.
-
-    This stores everything the agent needs to remember about what happened
-    on a single turn, including both its private reasoning and the result
-    returned by the simulation.
-
-    In V0, the agent keeps the last 10 TurnRecords in full detail
-    (no summarization or compression).
-    """
-
-    turn_number: int
-    """The turn number this record belongs to (starting from 1)."""
-
-    action: str
-    """The action the agent chose ('move', 'look', or 'speak')."""
-
-    target: Optional[str]
-    """What the action was directed at. Meaning depends on the action type."""
-
-    content: Optional[str]
-    """Additional content for the action (mainly used for 'speak')."""
-
-    reasoning: str
-    """The agent's private internal reasoning at the time of the decision."""
-
-    result: str
-    """The feedback string returned to the agent after the action was executed."""
+from .memory import Memory, TurnRecord
 
 
 @dataclass
@@ -40,7 +10,7 @@ class Agent:
     Represents the single agent in the V0 simulation.
 
     The agent maintains its own position, personality description,
-    and short-term memory of recent turns.
+    and short-term memory.
     """
 
     id: str
@@ -60,12 +30,16 @@ class Agent:
     position: tuple[int, int]
     """Current grid position of the agent as (x, y)."""
 
-    memory: list[TurnRecord]
+    memory: Memory = field(default_factory=Memory)
     """
-    The agent's short-term memory.
+    The agent's memory.
 
-    In V0 this contains the last 10 turns in full detail.
-    Older turns are discarded (no summarization in V0).
+    This is a Memory instance that holds:
+    - The last 10 turns (as TurnRecord objects)
+    - The set of objects the agent has looked at
+
+    Each agent gets its own Memory instance so that in future versions
+    with multiple agents, one agent's observations do not affect another's.
     """
 
     last_action: Optional[str] = None

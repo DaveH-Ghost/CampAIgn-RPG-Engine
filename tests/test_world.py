@@ -33,7 +33,7 @@ def test_initial_world_has_correct_agent():
     assert agent.id == "agent_01"
     assert agent.name == "Explorer"
     assert agent.position == (1, 1)
-    assert len(agent.memory) == 0
+    assert len(agent.memory.turns) == 0
     assert agent.last_action is None
     assert "curious explorer" in agent.description.lower()
 
