@@ -21,6 +21,7 @@ Run with:
 
 import pytest
 
+from src.perception import build_passive_vision, perform_look
 from src.world import create_initial_world
 
 
@@ -121,3 +122,32 @@ def test_room_description_is_present():
     assert isinstance(desc, str)
     assert len(desc) > 0
     assert "hardwood floor" in desc.lower() or "wooden walls" in desc.lower()
+
+
+def test_passive_vision_matches_initial_state():
+    """build_passive_vision should produce the expected text for the starting world."""
+    world = create_initial_world()
+    agent = world.get_agent()
+
+    vision = build_passive_vision(agent, world)
+
+    assert "You are at (1, 1)." in vision
+    # Ball starts unknown
+    assert "Ceramic Ball (obj_ball_01), (2, 2) - [?]" in vision
+    # Sign was pre-marked as looked at in initial world
+    assert 'Wooden Sign (obj_sign_01), (2, 4) - A simple wooden sign.' in vision
+
+
+def test_perform_look_updates_memory_and_returns_description():
+    """Looking at an object should mark it looked-at and return the description."""
+    world = create_initial_world()
+    agent = world.get_agent()
+
+    # Ball starts unknown
+    assert not agent.memory.has_looked_at("obj_ball_01")
+
+    result = perform_look(agent, world, "obj_ball_01")
+
+    assert "You looked at the ceramic ball" in result
+    assert "scuffs and feels light" in result
+    assert agent.memory.has_looked_at("obj_ball_01")

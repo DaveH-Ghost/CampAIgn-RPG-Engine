@@ -63,6 +63,13 @@ class World:
                 return obj
         return None
 
+    def get_object_by_id(self, object_id: str) -> Optional[Object]:
+        """Return the object with the given ID, if it exists in the world."""
+        for obj in self.objects:
+            if obj.id == object_id:
+                return obj
+        return None
+
     def get_objects(self) -> list[Object]:
         """Return all objects currently in the world."""
         return self.objects
@@ -141,5 +148,11 @@ def create_initial_world() -> World:
         position=(2, 4),
     )
     world.add_object(sign)
+
+    # Pre-mark the sign as "looked at" in initial state so it shows its
+    # description in passive vision (ball starts as [?]). This matches
+    # several examples in the readiness checklist. When the sign is later
+    # updated via debug command, we will invalidate it.
+    agent.memory.mark_looked_at(sign.id)
 
     return world
