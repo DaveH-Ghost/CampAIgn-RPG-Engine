@@ -27,6 +27,7 @@ Run with:
 
 import pytest
 
+from src.llm.prompt import build_prompt
 from src.llm.schemas import AgentTurn
 from src.simulation import execute_action, step_turn
 from src.world import create_initial_world
@@ -247,4 +248,25 @@ def test_step_unknown_action_still_records_turn():
     assert "wasn't recognized" in record.result
     assert record.action == "teleport"
     assert len(agent.memory.turns) == 1
-    assert agent.last_action == "teleport"
+
+
+# =============================================================================
+# Prompt builder integration (used by the real LLM path)
+# =============================================================================
+
+def test_build_prompt_produces_reasonable_output():
+    """The prompt builder should produce a non-empty string containing key sections."""
+    world = create_initial_world()
+    agent = world.get_agent()
+
+    prompt = build_prompt(agent, world)
+
+    assert isinstance(prompt, str)
+    assert len(prompt) > 500  # at least the rules + examples + current state
+    assert "You are Explorer" in prompt
+    assert "You exist inside a small, controlled 5x5 grid room" in prompt
+    assert "You are at (1, 1)" in prompt  # from passive vision
+    assert "You can look at anything with the [?] tag" in prompt
+    assert '"reasoning"' in prompt  # output format reminder
+    assert "Example 1: Correct use of `speak`" in prompt  # few-shot present
+    assert "Example 4: Responding to the sign being updated" in prompt

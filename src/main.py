@@ -19,14 +19,20 @@ llm/ package.
 
 Run with:
     uv run python -m src.main
-    # or from project root:
-    uv run python src/main.py
+    # or from project root (with PYTHONPATH):
+    uv run python -c "
+import sys
+sys.path.insert(0, '.')
+from src.main import ManualStepper
+ManualStepper().cmdloop()
+"
 """
 
 import cmd
 from src.world import create_initial_world
 from src.simulation import step_turn
 from src.llm.schemas import AgentTurn
+from src.llm.prompt import build_prompt
 from src.perception import build_passive_vision
 
 
@@ -35,6 +41,7 @@ class ManualStepper(cmd.Cmd):
         "Realm-Fabric V0 Manual Stepper\n"
         "Type 'help' or '?' for commands.\n"
         "Use 'step <action> [target] [content]' to simulate an agent turn.\n"
+        "Use 'prompt' to see the exact text that would be sent to the LLM.\n"
         "Example: step look obj_ball_01\n"
         "Example: step move north\n"
         "Example: step speak Hello there.\n"
@@ -50,6 +57,12 @@ class ManualStepper(cmd.Cmd):
     def do_vision(self, arg):
         """Show current passive vision."""
         print(build_passive_vision(self.agent, self.world))
+
+    def do_prompt(self, arg):
+        """Show the full prompt that would be sent to the LLM right now."""
+        prompt = build_prompt(self.agent, self.world)
+        print(f"[Full prompt - {len(prompt)} characters]\n")
+        print(prompt)
 
     def do_state(self, arg):
         """Print basic agent and world state."""
@@ -102,9 +115,15 @@ class ManualStepper(cmd.Cmd):
             return
 
         self.turn_number += 1
+
+        # Build and show the prompt that would be sent to the model
+        full_prompt = build_prompt(self.agent, self.world)
+        print(f"\n[PROMPT that would be sent to LLM - {len(full_prompt)} chars]")
+        print(full_prompt[:800] + "\n... [truncated for display] ...\n")
+
         record = step_turn(self.agent, self.world, turn, self.turn_number)
 
-        print(f"\n--- Turn {self.turn_number} ---")
+        print(f"--- Turn {self.turn_number} ---")
         print(f"Action: {record.action} target={record.target} content={record.content}")
         print(f"Reasoning: {record.reasoning}")
         print(f"Result: {record.result}")
