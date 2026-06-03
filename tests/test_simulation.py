@@ -270,3 +270,17 @@ def test_build_prompt_produces_reasonable_output():
     assert '"reasoning"' in prompt  # output format reminder
     assert "Example 1: Correct use of `speak`" in prompt  # few-shot present
     assert "Example 4: Responding to the sign being updated" in prompt
+
+
+def test_build_prompt_without_fewshots_is_shorter_and_lacks_examples():
+    """With include_examples=False, prompt should be much shorter and omit the examples."""
+    world = create_initial_world()
+    agent = world.get_agent()
+
+    prompt_with = build_prompt(agent, world, include_examples=True)
+    prompt_without = build_prompt(agent, world, include_examples=False)
+
+    assert len(prompt_without) < len(prompt_with)
+    assert "Example 1: Correct use of `speak`" not in prompt_without
+    assert "You are Explorer" in prompt_without  # still has the core parts
+    assert "You can look at anything with the [?] tag" in prompt_without

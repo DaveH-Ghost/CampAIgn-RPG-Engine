@@ -25,14 +25,20 @@ Run with (from the project root):
     # Easiest way
     uv run python src/main.py
 
+    # With few-shots disabled for testing (e.g. to measure LLM success rate drop):
+    uv run python src/main.py --no-fewshots
+
     # After `uv sync`, you can also do:
     # uv run realm
     # (if the entry point was picked up)
 
     # To use real LLM calls, copy .env.example to .env and add your OPENROUTER_API_KEY
 
+    # Inside, use 'fewshots off' to toggle at runtime too.
+
 """
 
+import argparse
 import os
 import sys
 
@@ -43,6 +49,8 @@ if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
 import cmd
+
+from src.log_utils import close_file_logging, log_error, log_turn, setup_file_logging
 from src.world import create_initial_world
 from src.simulation import step_turn
 from src.llm.schemas import AgentTurn
@@ -68,13 +76,15 @@ class ManualStepper(cmd.Cmd):
         "- 'step <action> ...'   : manually simulate a turn (for testing)\n"
         "- Type an agent's name (e.g. 'Explorer') : let the LLM decide its action\n"
         "- 'prompt' : show the full prompt that would be sent to the LLM\n"
+        "- 'fewshots on/off' : toggle few-shot examples in prompts (for success rate tests)\n"
         "- 'sign \"new text\"' : debug command to update the sign\n"
+        "CLI flags: --log , --no-fewshots\n"
         "Example: Explorer\n"
         "Example: step look obj_ball_01\n"
     )
     prompt = "(realm) "
 
-    def __init__(self):
+    def __init__(self, include_examples: bool = True):
         super().__init__()
         self.world = create_initial_world()
         # Support multiple agents by name (case-insensitive lookup)
@@ -83,6 +93,7 @@ class ManualStepper(cmd.Cmd):
         }
         self.agent = self.world.get_agent()  # current active agent
         self.turn_number = 0
+        self.include_examples = include_examples  # for prompt builder, toggleable for experiments
 
     def do_vision(self, arg):
         """Show current passive vision."""
@@ -90,8 +101,8 @@ class ManualStepper(cmd.Cmd):
 
     def do_prompt(self, arg):
         """Show the full prompt that would be sent to the LLM right now."""
-        prompt = build_prompt(self.agent, self.world)
-        print(f"[Full prompt - {len(prompt)} characters]\n")
+        prompt = build_prompt(self.agent, self.world, include_examples=self.include_examples)
+        print(f"[Full prompt - {len(prompt)} characters] (fewshots={'on' if self.include_examples else 'off'})\n")
         print(prompt)
 
     def do_state(self, arg):
@@ -100,6 +111,7 @@ class ManualStepper(cmd.Cmd):
         print(f"Active agent: {self.agent.name} at {self.agent.position}")
         print(f"Memory turns: {self.agent.memory.turn_count}")
         print(f"Looked at: {sorted(self.agent.memory.looked_at)}")
+        print(f"Few-shots in prompts: {'on' if self.include_examples else 'off'}")
         objs = [(o.name, o.position) for o in self.world.get_objects()]
         print(f"Objects: {objs}")
 
@@ -109,6 +121,28 @@ class ManualStepper(cmd.Cmd):
         for name_lower, ag in self.agents.items():
             marker = " (active)" if ag is self.agent else ""
             print(f"  - {ag.name}{marker} at {ag.position}")
+
+    def do_fewshots(self, arg):
+        """
+        Toggle or show the few-shot examples setting for prompts.
+        Useful for A/B testing LLM success rate with/without examples.
+
+        Usage:
+            fewshots          # show current state
+            fewshots on       # enable
+            fewshots off      # disable
+        """
+        arg = arg.strip().lower()
+        if arg in ("on", "yes", "true", "1", "enable"):
+            self.include_examples = True
+            print("Few-shot examples: ENABLED (included in prompts)")
+        elif arg in ("off", "no", "false", "0", "disable"):
+            self.include_examples = False
+            print("Few-shot examples: DISABLED (removed from prompts to save tokens)")
+        else:
+            status = "ENABLED" if self.include_examples else "DISABLED"
+            print(f"Few-shot examples are currently {status}.")
+            print("Use 'fewshots on' or 'fewshots off' to change.")
 
     def do_step(self, arg):
         """
@@ -149,23 +183,24 @@ class ManualStepper(cmd.Cmd):
                 content=content,
             )
         except Exception as e:
+            log_error("Invalid manual turn data", e)
             print(f"Invalid turn data: {e}")
             return
 
         self.turn_number += 1
 
-        # Build and show the prompt that would be sent to the model
-        full_prompt = build_prompt(self.agent, self.world)
-        print(f"\n[PROMPT that would be sent to LLM - {len(full_prompt)} chars]")
-        print(full_prompt[:800] + "\n... [truncated for display] ...\n")
+        full_prompt = build_prompt(self.agent, self.world, include_examples=self.include_examples)
 
         record = step_turn(self.agent, self.world, turn, self.turn_number)
 
-        print(f"--- Turn {self.turn_number} ---")
-        print(f"Action: {record.action} target={record.target} content={record.content}")
-        print(f"Reasoning: {record.reasoning}")
-        print(f"Result: {record.result}")
-        print()
+        # Rich log for manual step (no raw LLM output since it was manual)
+        log_turn(
+            self.turn_number,
+            prompt=full_prompt,
+            result=f"Action: {record.action} target={record.target} content={record.content}\n"
+                   f"Reasoning: {record.reasoning}\nResult: {record.result}",
+            always_to_file=False,
+        )
 
     def do_sign(self, arg):
         """
@@ -233,32 +268,35 @@ class ManualStepper(cmd.Cmd):
         print(f"\n=== Running LLM for {agent.name} ===")
 
         try:
-            prompt = build_prompt(agent, self.world)
-            print(f"Prompt length: {len(prompt)} chars (type 'prompt' to view full)")
+            prompt = build_prompt(agent, self.world, include_examples=self.include_examples)
+            print(f"Prompt length: {len(prompt)} chars (fewshots={'on' if self.include_examples else 'off'}, type 'prompt' to view full)")
 
             print("Calling LLM...")
             get_next_action = _get_llm_function()
             llm_response = get_next_action(prompt)
             turn = llm_response.turn
 
-            # === Rich logging as per readiness checklist ===
-            print("\n" + "=" * 60)
-            print(f"FULL PROMPT (turn {self.turn_number + 1})")
-            print("=" * 60)
-            print(prompt)
-            print("=" * 60)
-
-            print(f"\nRAW LLM RESPONSE (model={llm_response.model}):\n{llm_response.raw_response}")
-            print("=" * 60)
-
-            print(f"\nPARSED TURN: action={turn.action} target={turn.target}")
-            print(f"Reasoning: {turn.reasoning}")
-
-            # Log token usage if available (standard OpenAI/OpenRouter usage fields)
-            if llm_response.total_tokens is not None:
-                print(f"\nTOKEN USAGE: input (prompt)={llm_response.prompt_tokens} + "
-                      f"output (completion)={llm_response.completion_tokens} = "
-                      f"total={llm_response.total_tokens}")
+            # === Rich logging using the logging module (per readiness checklist) ===
+            # This will go to console (rich) and to file if --log or error
+            log_turn(
+                self.turn_number + 1,
+                prompt=prompt,
+                raw_output=llm_response.raw_response,
+                parsed_turn={
+                    "action": turn.action,
+                    "target": turn.target,
+                    "content": turn.content,
+                    "reasoning": turn.reasoning,
+                    "confidence": turn.confidence,
+                    "emotion": turn.emotion,
+                },
+                tokens={
+                    "prompt": llm_response.prompt_tokens,
+                    "completion": llm_response.completion_tokens,
+                    "total": llm_response.total_tokens,
+                } if llm_response.total_tokens is not None else None,
+                always_to_file=False,
+            )
 
             self.turn_number += 1
             record = step_turn(agent, self.world, turn, self.turn_number)
@@ -272,14 +310,37 @@ class ManualStepper(cmd.Cmd):
             self.agent = agent
 
         except Exception as e:
-            print(f"LLM call failed: {e}")
+            log_error(f"LLM call failed for {agent.name}", e)
             import traceback
             traceback.print_exc()
 
 
 def main():
     """Entry point for the manual stepper (used by `uv run realm`)."""
-    ManualStepper().cmdloop()
+    parser = argparse.ArgumentParser(description="Realm-Fabric V0 Manual Stepper")
+    parser.add_argument(
+        "--log",
+        action="store_true",
+        help="Enable full logging of every turn to a timestamped file in logs/",
+    )
+    parser.add_argument(
+        "--no-fewshots",
+        action="store_true",
+        help="Start with few-shot examples disabled in the prompt builder (for testing LLM success rate impact)",
+    )
+    args = parser.parse_args()
+
+    log_path = None
+    if args.log:
+        log_path = setup_file_logging()
+
+    try:
+        stepper = ManualStepper(include_examples=not args.no_fewshots)
+        stepper.cmdloop()
+    finally:
+        if log_path:
+            close_file_logging()
+            print(f"\nFull log written to: {log_path}")
 
 
 if __name__ == "__main__":

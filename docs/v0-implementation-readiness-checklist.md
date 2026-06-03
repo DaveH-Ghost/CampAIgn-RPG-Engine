@@ -790,7 +790,7 @@ This checklist defines everything we must design, decide, and document *before* 
   │   │   ├── __init__.py
   │   │   ├── client.py              # LLMClient wrapper
   │   │   └── schemas.py             # AgentTurn Pydantic model
-  │   ├── logging/                   # Logging utilities
+  │   ├── log_utils/                 # Logging utilities (renamed from 'logging/' to avoid shadowing the stdlib 'logging' module)
   │   │   └── logger.py
   │   └── utils/
   │       └── ids.py
