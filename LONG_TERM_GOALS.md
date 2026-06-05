@@ -30,6 +30,8 @@ These are considered lower-complexity improvements that could be reasonable targ
 - [ ] Objects that have their own behaviors and actions (examples: food that can be eaten and gives a taste description, a puzzle box with interactive mechanisms, a door that can be locked/unlocked, etc.)
 - [ ] Rectangular / multi-tile objects (e.g. long walls, large furniture, 2x2 trees with 6x6 shadows) where objects occupy multiple grid tiles using size + bounding box definitions instead of single-tile objects
 - [ ] A visual interface similar to Roll20 — a grid with tokens representing agents and objects, plus chat bubbles when agents speak
+- [ ] **Roll20 plugin support**  
+  Integrate the agent with real Roll20 games (via Mod/API Scripts + chat bridge). Enable the agent to perceive live map state and control tokens representing D&D characters, NPCs, and enemies. The external agent handles reasoning/LLM calls; a companion Roll20 script executes token movement, sheet updates, etc. (Roll20 Pro required for the scripting side; communication constrained by the sandbox model.)
 - [ ] Agents that can create or modify objects in the world (with some form of validation or rules)
 - [ ] Richer memory systems (beliefs, relationships, long-term goals, emotional state)
 - [ ] The ability for agents to develop and pursue their own goals over many turns instead of only reacting to the current situation
