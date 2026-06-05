@@ -19,14 +19,16 @@ These are considered lower-complexity improvements that could be reasonable targ
 
 - [ ] **"Object has changed since last looked at" system**  
   When an object’s description (or other observable state) changes after an agent has previously looked at it, the agent should be notified in passive vision using neutral language, for example:  
-  *"The wooden sign has changed since you last looked at it."*  
+  *"[?] The Ceramic Ball has changed since you last looked at it."*  
   The agent would then need to use the `look` action again to see the current description.  
-  In V0 this behavior would only apply to the sign (as a special case for human-to-agent communication). The long-term goal is to make this a general system that applies to any object whose description or state changes.  
+  In V0 this behavior applies only to the sign (a special case). The long-term goal is a **general** system for any object whose description changes.  
+  **V0.1 design** (not yet implemented) specifies this in [v0.1-implementation-readiness-checklist.md](docs/v0.1-implementation-readiness-checklist.md) Section 1 — move to Achieved when implementation is complete and validated.  
   The purpose of this system is to encourage agents to intentionally use the `look` action to gather information, rather than having to constantly re-examine objects just in case something changed. It also keeps passive vision cleaner by avoiding constantly showing full updated descriptions for every changed object.
 
 ### More Complex Goals
 
-- [ ] Multiple agents that can observe each other, start conversations, form relationships, and influence one another over time
+- [ ] Multiple agents that can observe each other, start conversations, form relationships, and influence one another over time  
+  *(V0.1 will add multiple **non-interacting** agents sharing a world — same grid, private memory, no mutual perception. That is a stepping stone, not this goal.)*
 - [ ] Objects that have their own behaviors and actions (examples: food that can be eaten and gives a taste description, a puzzle box with interactive mechanisms, a door that can be locked/unlocked, etc.)
 - [ ] Rectangular / multi-tile objects (e.g. long walls, large furniture, 2x2 trees with 6x6 shadows) where objects occupy multiple grid tiles using size + bounding box definitions instead of single-tile objects
 - [ ] A visual interface similar to Roll20 — a grid with tokens representing agents and objects, plus chat bubbles when agents speak

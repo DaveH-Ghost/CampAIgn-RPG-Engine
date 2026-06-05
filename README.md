@@ -1,41 +1,49 @@
-﻿# Realm Fabric
+# Realm Fabric
 
 A grid-based agent simulation framework designed around structured output and narrative roleplay.
 
-**Current Status:** Early development (V0 phase)
+**Current Status:** V0 complete and validated (100+ LLM turns, reliable structured output). V0.1 design is complete; implementation has not started. The running code still reflects V0 behavior.
 
-This project is currently in the design and initial implementation phase, focused on building a reliable foundation for agent behavior using structured LLM output.
+**Documentation:**
 
-This project was made using the Grok Build CLI.
+- [V0.1 implementation checklist](docs/v0.1-implementation-readiness-checklist.md) — agreed design for the next version
+- [Roadmap](docs/ROADMAP.md) — version plans (V0.1, V0.2, V0.3)
+- [Long-term goals](LONG_TERM_GOALS.md) — aspirational features
+- [V0 implementation checklist](docs/v0-implementation-readiness-checklist.md) — V0 design reference
 
 ## Running / Testing (without LLM)
 
 1. Install [uv](https://docs.astral.sh/uv/) if you don't have it (Windows PowerShell):
-   ```powershell
+  ```powershell
    powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-   ```
-
+  ```
 2. In the project folder:
-   ```powershell
+  ```powershell
    cd C:\Users\david\desktop\Projects\Git_Projects\Realm-Fabric
    uv sync
-   ```
-
+  ```
 3. Run the interactive manual tester:
-   ```powershell
+  ```powershell
    uv run python src/main.py
-   ```
-
+  ```
    Few-shot examples are disabled by default for token efficiency (saves ~50% tokens). Use `--with-fewshots` if you want the 4 examples included.
-
    Inside the `(realm)` prompt you can:
-   - `state` — see current world/agent state
-   - `vision` — see what the agent currently perceives
-   - `prompt` — see the full prompt the LLM would receive
-   - `step look obj_ball_01` — manually drive the agent (great for testing)
-   - `Explorer` — (type the agent's name) to let the **LLM** decide the next action (requires OPENROUTER_API_KEY). Few-shot examples are OFF by default (saves ~50% tokens; current models perform well without them). Use `--with-fewshots` or `fewshots on` to enable.
-   - `sign "new text here"` — simulate the human updating the sign (triggers the special "has changed" behavior)
-   - `quit`
+  - `state` — see current world/agent state
+  - `vision` — see what the agent currently perceives
+  - `prompt` — see the full prompt the LLM would receive
+  - `step look obj_ball_01` — manually drive the agent (great for testing)
+  - `Explorer` — (type the agent's name) to let the **LLM** decide the next action (requires OPENROUTER_API_KEY). Few-shot examples are OFF by default (saves ~50% tokens; current models perform well without them). Use `--with-fewshots` or `fewshots on` to enable.
+  - `sign "new text here"` — *(V0 only)* update the wooden sign and trigger the "has changed" notification (removed in V0.1; replaced by `edit-object obj_sign_01 desc "..."`)
+  - `quit`
+
+### Planned for V0.1 (not in the running code yet)
+
+See the [V0.1 checklist](docs/v0.1-implementation-readiness-checklist.md) for full detail. Highlights:
+
+- **Listing:** `list` (everything), `objects` (all objects), `agents` (all agents)
+- **World editing:** `create-object`, `edit-object`, `delete-object`, `create-agent`, `edit-agent`, `delete-agent`
+- **Multi-agent:** `switch <name>` to change active agent without a turn; typing an agent's name still runs an LLM turn
+- **Perception:** generalized "has changed" for any object (not sign-specific)
 
 ## Environment Variables & .env Files (Beginner Guide)
 
@@ -61,12 +69,10 @@ Each line is `KEY=VALUE`. These become available to your program as if you had s
 ### How to set one up in this project
 
 1. Copy the template that is safe to commit:
-   ```powershell
+  ```powershell
    copy .env.example .env
-   ```
-
+  ```
 2. Open the new `.env` file in a text editor and fill in the values.
-
 3. Save it. The program will automatically pick it up.
 
 **Important**: The file `.env` is listed in `.gitignore`, so Git will never commit your real keys.
@@ -81,6 +87,7 @@ load_dotenv(".env.local", override=True)   # then loads .env.local (if it exists
 ```
 
 This means:
+
 - Values in `.env.local` will override values in `.env`
 - You only need a `.env` file for basic use
 
@@ -88,13 +95,15 @@ This means:
 
 **Yes.** This is very common. Here are typical patterns:
 
-| File                  | Purpose                              | Commit to Git? | Example use |
-|-----------------------|--------------------------------------|----------------|-------------|
-| `.env`                | Base settings for the project        | No (use .env.example instead) | Shared team defaults |
-| `.env.local`          | Your personal overrides              | **Never**      | Your own API keys, local database URL |
-| `.env.development`    | Development-specific settings        | Sometimes      | Debug flags, local services |
-| `.env.production`     | Production settings                  | Sometimes      | Real production keys (usually managed by the server instead) |
-| `.env.example`        | Template with placeholder values     | **Yes**        | Shows teammates what keys are needed |
+
+| File               | Purpose                          | Commit to Git?                | Example use                                                  |
+| ------------------ | -------------------------------- | ----------------------------- | ------------------------------------------------------------ |
+| `.env`             | Base settings for the project    | No (use .env.example instead) | Shared team defaults                                         |
+| `.env.local`       | Your personal overrides          | **Never**                     | Your own API keys, local database URL                        |
+| `.env.development` | Development-specific settings    | Sometimes                     | Debug flags, local services                                  |
+| `.env.production`  | Production settings              | Sometimes                     | Real production keys (usually managed by the server instead) |
+| `.env.example`     | Template with placeholder values | **Yes**                       | Shows teammates what keys are needed                         |
+
 
 You can load any of them explicitly like this (advanced):
 
@@ -118,7 +127,8 @@ uv run python src/main.py
 ### Without any .env file
 
 You can still use almost everything:
-- All the manual commands (`step ...`, `vision`, `state`, `sign`, etc.) work perfectly.
+
+- All the manual commands (`step ...`, `vision`, `state`, etc.) work perfectly.
 - The only thing that requires an `OPENROUTER_API_KEY` is when you type an agent's name (e.g. `Explorer`) to let the LLM actually decide what to do.
 
 This design is intentional so you can explore and test the system without needing any paid services.
@@ -141,6 +151,7 @@ model   = os.getenv("OPENROUTER_MODEL", "deepseek/deepseek-v4-flash")
 That's the whole magic.
 
 ## Running tests
+
 ```powershell
 uv run pytest
 ```
