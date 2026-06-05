@@ -6,13 +6,11 @@ class Object:
     """
     Represents a simple, single-tile object in the world.
 
-    In Version 0, objects are very basic:
-    - They occupy exactly one grid tile.
-    - They have a stable ID, a short display name, and a description.
-    - The description is only revealed when the agent uses the `look` action.
-    - Objects do not have behavior or interactions yet (those are out of scope for V0).
+    Objects occupy one grid tile and carry two optional description layers (V0.1):
+    - passive_description: visible at a glance (no look required)
+    - description: detailed text revealed by the `look` action
 
-    This class is intentionally kept minimal. It is just a data container.
+    Objects do not have behavior or interactions yet (out of scope for V0).
     """
 
     id: str
@@ -23,11 +21,20 @@ class Object:
 
     description: str
     """
-    The full description of the object.
+    Detailed description revealed when the agent uses `look`.
 
-    This is what the agent receives when they successfully use the `look` action
-    on this object. Before looking, the agent only sees '[?]' in passive vision.
+    When non-empty and not yet examined, passive vision shows [?] (optionally
+    with passive_description). Empty detailed description means no [?] tag.
     """
 
     position: tuple[int, int]
     """The grid coordinates of the object as (x, y)."""
+
+    passive_description: str = ""
+    """
+    Glance-level description visible without looking.
+
+    Shown in passive vision even when the agent has not used `look`. When both
+    passive and detailed descriptions exist, never-examined objects show
+    "[?] {passive_description}"; stale knowledge shows "[?] [changed] {passive}".
+    """

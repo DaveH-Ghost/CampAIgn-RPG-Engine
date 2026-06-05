@@ -1,17 +1,16 @@
 """
 main.py
 
-Entry point for manual stepping in V0 (per readiness checklist).
+Entry point for manual stepping in V0.1 (per readiness checklist).
 
 Supports:
 - step                  : advance one turn. For now you (the human) supply
                           the AgentTurn fields to simulate what the LLM would
                           have output. This lets us test the full loop
                           (action -> memory -> vision) without the LLM.
-- sign "new text"       : (V0 interim) update the wooden sign's description and
-                          invalidate look knowledge for all agents who examined
-                          it (generalized "has changed" notice; replaced by
-                          edit-object in Section 2).
+- list / objects / agents : list world entities (read-only, no turn)
+- create-object / edit-object / delete-object : edit objects at runtime
+- create-agent / edit-agent / delete-agent   : edit agents at runtime
 - quit / exit           : leave the simulation.
 - vision / state        : print current passive vision or agent/world state.
 
@@ -41,6 +40,7 @@ Run with (from the project root):
 
 import argparse
 import os
+import string
 import sys
 
 # Ensure 'src' package is importable no matter how this script is launched
@@ -57,6 +57,17 @@ from src.simulation import step_turn
 from src.llm.schemas import AgentTurn
 from src.llm.prompt import build_prompt
 from src.perception import build_passive_vision
+from src.world_edit import (
+    create_agent_from_args,
+    create_object_from_args,
+    delete_agent_by_id,
+    delete_object_by_id,
+    edit_agent_from_args,
+    edit_object_from_args,
+    format_agents_list,
+    format_full_list,
+    format_objects_list,
+)
 
 # Lazy import for the client so you can run the manual stepper
 # without an OPENROUTER_API_KEY
@@ -71,17 +82,25 @@ def _get_llm_function():
 
 
 class ManualStepper(cmd.Cmd):
+    # Allow hyphenated commands (create-object, edit-agent, etc.)
+    identchars = string.ascii_letters + string.digits + "_-"
+
     intro = (
-        "Realm-Fabric V0 Manual Stepper\n"
+        "Realm-Fabric V0.1 Manual Stepper\n"
         "Type 'help' or '?' for commands.\n"
         "- 'step <action> ...'   : manually simulate a turn (for testing)\n"
         "- Type an agent's name (e.g. 'Explorer') : let the LLM decide its action\n"
+        "- 'list' / 'objects' / 'agents' : list world entities (no turn)\n"
+        "- 'create-object' / 'edit-object' / 'delete-object' : edit objects\n"
+        "- 'create-agent' / 'edit-agent' / 'delete-agent' : edit agents\n"
         "- 'prompt' : show the full prompt that would be sent to the LLM\n"
         "- 'fewshots on/off' : toggle few-shot examples in prompts (off by default)\n"
-        "- 'sign \"new text\"' : debug command to update the sign\n"
+        "Sign updates: edit-object obj_sign_01 desc \"new text\" (pdesc for glance text)\n"
         "CLI flags: --log , --with-fewshots\n"
         "Example: Explorer\n"
         "Example: step look obj_ball_01\n"
+        "Example: list\n"
+        "Example: edit-object obj_sign_01 desc \"Updated sign text.\"\n"
     )
     prompt = "(realm) "
 
@@ -114,15 +133,92 @@ class ManualStepper(cmd.Cmd):
         print(f"Looked at (current): {sorted(self.agent.memory.looked_at)}")
         print(f"Ever looked at: {sorted(self.agent.memory.ever_looked)}")
         print(f"Few-shots in prompts: {'on' if self.include_examples else 'off'}")
-        objs = [(o.name, o.position) for o in self.world.get_objects()]
+        objs = [(o.name, o.id, o.position) for o in self.world.get_objects()]
         print(f"Objects: {objs}")
 
+    def do_objects(self, arg):
+        """List all objects in the world (id, name, position). Does not consume a turn."""
+        print(format_objects_list(self.world))
+
     def do_agents(self, arg):
-        """List all agents in the world and which one is active."""
-        print("Agents in world:")
-        for name_lower, ag in self.agents.items():
-            marker = " (active)" if ag is self.agent else ""
-            print(f"  - {ag.name}{marker} at {ag.position}")
+        """List all agents in the world (id, name, position, active marker). Does not consume a turn."""
+        print(format_agents_list(self.world, self.agent))
+
+    def do_list(self, arg):
+        """List all agents and objects (same as running agents then objects). Does not consume a turn."""
+        print(format_full_list(self.world, self.agent))
+
+    def do_create_object(self, arg):
+        """
+        Create a new object in the world.
+
+        Usage:
+            create-object name "Ceramic Ball" pdesc "A ball on the floor." desc "A worn ball." at 2,2
+        """
+        obj, message = create_object_from_args(self.world, arg)
+        print(message)
+
+    def do_edit_object(self, arg):
+        """
+        Edit an existing object by id.
+
+        Usage:
+            edit-object obj_ball_01 pdesc "A ball." desc "New description."
+            edit-object obj_ball_01 name "Old Ball" pos 3,3
+        """
+        print(edit_object_from_args(self.world, arg))
+
+    def do_delete_object(self, arg):
+        """
+        Delete an object by id.
+
+        Usage:
+            delete-object obj_ball_01
+        """
+        print(delete_object_by_id(self.world, arg))
+
+    def do_create_agent(self, arg):
+        """
+        Create a new agent in the world. Does not change the active agent.
+
+        Usage:
+            create-agent name "Goblin" desc "A grumpy goblin." at 0,3
+        """
+        agent, message = create_agent_from_args(self.world, arg)
+        if agent is not None:
+            self.agents[agent.name.lower()] = agent
+        print(message)
+
+    def do_edit_agent(self, arg):
+        """
+        Edit an existing agent by id.
+
+        Usage:
+            edit-agent agent_01 desc "Updated personality."
+            edit-agent agent_01 name "Scout" pos 2,1
+        """
+        result = edit_agent_from_args(self.world, arg)
+        if result.ok and result.agent is not None:
+            if result.old_name_lower and result.old_name_lower in self.agents:
+                del self.agents[result.old_name_lower]
+            self.agents[result.agent.name.lower()] = result.agent
+        print(result.message)
+
+    def do_delete_agent(self, arg):
+        """
+        Delete an agent by id. Cannot delete the last agent.
+
+        Usage:
+            delete-agent agent_goblin_01
+        """
+        result = delete_agent_by_id(self.world, arg.strip())
+        if result.ok and result.deleted_agent is not None:
+            name_lower = result.deleted_agent.name.lower()
+            if name_lower in self.agents:
+                del self.agents[name_lower]
+            if self.agent.id == result.deleted_agent.id:
+                self.agent = self.world.agents[0]
+        print(result.message)
 
     def do_fewshots(self, arg):
         """
@@ -204,33 +300,25 @@ class ManualStepper(cmd.Cmd):
             always_to_file=False,
         )
 
-    def do_sign(self, arg):
-        """
-        Interim debug command: update the wooden sign's description.
+    def onecmd(self, line):
+        """Support hyphenated commands like create-object and edit-agent."""
+        line = self.precmd(line)
+        cmd, arg, line = self.parseline(line)
+        if not line:
+            return self.postcmd(self.emptyline(), line)
+        if not cmd:
+            return self.postcmd(self.default(line), line)
+        self.lastcmd = line
+        func = getattr(self, "do_" + cmd.replace("-", "_"), None)
+        if func is None:
+            return self.postcmd(self.default(line), line)
+        return self.postcmd(func(arg), line)
 
-        Invalidates up-to-date look knowledge across all agents via
-        world.invalidate_object_knowledge (replaced by edit-object in Section 2).
-
-        Usage:
-            sign This is the new text on the sign.
-        """
-        if not arg:
-            print("Usage: sign <new description text>")
-            return
-
-        sign = self.world.get_object_by_id("obj_sign_01")
-        if sign is None:
-            print("Sign not found!")
-            return
-
-        old = sign.description
-        sign.description = arg
-        self.world.invalidate_object_knowledge("obj_sign_01")
-
-        print("Sign updated.")
-        print(f"Old: {old[:60]}...")
-        print(f"New: {arg[:60]}...")
-        print("Look knowledge invalidated for all agents who had examined the sign.")
+    def do_help(self, arg):
+        """Show help; supports hyphenated command names."""
+        if arg:
+            arg = arg.replace("-", "_")
+        return super().do_help(arg)
 
     def do_quit(self, arg):
         """Exit the simulator."""

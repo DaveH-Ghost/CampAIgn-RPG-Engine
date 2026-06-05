@@ -134,8 +134,11 @@ def test_passive_vision_matches_initial_state():
     assert "You are at (1, 1)." in vision
     # Ball starts unknown
     assert "Ceramic Ball (obj_ball_01), (2, 2) - [?]" in vision
-    # Sign was pre-marked as looked at in initial world
-    assert 'Wooden Sign (obj_sign_01), (2, 4) - A simple wooden sign.' in vision
+    # Sign shows passive glance + [?] until examined
+    assert (
+        "Wooden Sign (obj_sign_01), (2, 4) - [?] A simple wooden sign on the wall."
+        in vision
+    )
 
 
 def test_perform_look_updates_memory_and_returns_description():

@@ -8,22 +8,24 @@ These plans are subject to change as we learn and discuss.
 
 ## V0.1
 
-**Status:** Design complete — see [v0.1-implementation-readiness-checklist.md](v0.1-implementation-readiness-checklist.md). Implementation not started.
+**Status:** Sections 1–2 **implemented** (generalized perception, editing commands, passive/detailed descriptions). Section 3 (multi-agent polish: `switch`, per-agent turn numbers) — design complete, not yet implemented. See [v0.1-implementation-readiness-checklist.md](v0.1-implementation-readiness-checklist.md).
 
-**Focus:** Make the world dynamic with general editing tools and improved perception for changes, then add multi-agent support. Everything remains fully manual (human decides which agent acts when by typing its name, or uses `switch` to inspect another agent without a turn). The initial world state remains unchanged (still starts with a single "Explorer" agent).
+**Focus:** Make the world dynamic with general editing tools and improved perception for changes, then add multi-agent support. Everything remains fully manual (human decides which agent acts when by typing its name, or uses `switch` to inspect another agent without a turn). The initial world still starts with a single "Explorer" agent, ball, and sign.
 
-**Implementation order:** (1) generalized "has changed" → (2) editing commands → (3) multi-agent support.
+**Implementation order:** (1) generalized stale perception → (2) editing commands + perception extension → (3) multi-agent support.
 
-### 1. Generalize the "has changed" notification
-- Remove all sign-specific special cases in `perception.py`.
-- Add `ever_looked` tracking on `Memory` to distinguish **never seen** (`[?]`) from **stale** (`[?] The {Object Name} has changed since you last looked at it.`).
-- Any change to an object's **description** (via editing commands) calls `World.invalidate_object_knowledge(id)` on **all agents** that have `looked_at` that object.
-- Name or position edits do **not** invalidate look knowledge.
-- Generalize few-shot examples and system-rules wording in `prompt.py` (sign-specific text removed).
-- The special `sign "new text"` command will be removed (replaced by `edit-object obj_sign_01 desc "..."`).
+### 1. Generalize the "has changed" notification — ✅ Implemented
+- Removed all sign-specific special cases in `perception.py`.
+- Added `ever_looked` tracking on `Memory` to distinguish never examined from stale examined knowledge.
+- Stale vision: **`[?] [changed] {passive}`** (or `[?] [changed]` if no passive line). Never-examined with hidden detail: `[?]` or `[?] {passive}`.
+- Any change to an object's **detailed** description (`desc`) calls `World.invalidate_object_knowledge(id)` on all agents with current knowledge.
+- Name, position, or **passive** (`pdesc`) edits do **not** invalidate look knowledge.
+- Few-shot examples and system rules updated in `prompt.py`.
+- The `sign` command removed; use `edit-object obj_sign_01 desc "..."` (and optional `pdesc`).
 
-### 2. General editing commands (objects + agents)
-- Replace the special `sign` command with keyword-style stepper commands (`create-object`, `edit-object`, `delete-object`, `create-agent`, `edit-agent`, `delete-agent`), parsed with `shlex.split`.
+### 2. General editing commands (objects + agents) — ✅ Implemented
+- Keyword-style stepper commands (`create-object`, `edit-object`, `delete-object`, `create-agent`, `edit-agent`, `delete-agent`), parsed with `shlex.split`.
+- Objects support **`pdesc`** (passive glance) and **`desc`** (detailed, hidden behind `[?]` until examined).
 - **Listing commands** (read-only, no turn consumed): `list` (everything), `objects` (all objects), `agents` (all agents with ids and active marker). Primary way to look up ids for edit/delete without running a turn or viewing a prompt.
 - **ID rules:** auto-generated per category (`obj_{slug}_01`, `agent_{slug}_01`); immutable after creation. Object display names may duplicate; agent display names must be unique among agents (case-insensitive). Objects and agents may share a display name with each other.
 - **Edit/delete** commands take entity **id**, not display name.
@@ -33,7 +35,7 @@ These plans are subject to change as we learn and discuss.
 - The world starts identical to V0; all changes happen at runtime via these commands.
 - Keep the experience fully manual (no automatic sequencing of agent turns).
 
-### 3. Multi-agent support
+### 3. Multi-agent support — design complete, not yet implemented
 - Each agent has its own independent `Memory` (own turn history, own `looked_at` / `ever_looked`, own position).
 - Typing an agent's name (e.g. `Explorer` or `Goblin`) gives *that agent* an **LLM turn** — build prompt, execute action, update only that agent, set as active.
 - **`switch <name>`** changes the active agent without a turn or LLM call (for `vision`, `state`, `prompt`, manual `step`).

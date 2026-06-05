@@ -45,10 +45,10 @@ class Memory:
     2. `looked_at` — objects the agent has up-to-date knowledge of.
     3. `ever_looked` — objects the agent has looked at at least once (V0.1).
 
-    The looked-at set controls passive vision:
-    - If an object ID is in `looked_at` → the agent sees its full description.
-    - Else if in `ever_looked` → stale changed notification.
-    - Otherwise → plain "[?]".
+    Look knowledge controls passive vision (see `perception.format_object_vision_desc`):
+    - `looked_at` → detailed `desc` (or passive if no detailed).
+    - `ever_looked` without `looked_at` (and detailed exists) → stale `[?] [changed]` (+ passive if set).
+    - Otherwise → `[?]` or `[?] {passive}` / passive only, depending on object fields.
 
     By giving each Agent its own Memory instance, we ensure that in future
     versions with multiple agents, one agent's observations do not leak
@@ -144,10 +144,15 @@ class Memory:
         """
         Remove up-to-date knowledge for an object (e.g. after its description changed).
 
-        The object stays in ever_looked so passive vision shows the changed
-        notification rather than plain "[?]".
+        The object stays in ever_looked so passive vision shows the stale
+        "[?] [changed]" state rather than plain "[?]".
         """
         self._looked_at.discard(object_id)
+
+    def clear_examination(self, object_id: str) -> None:
+        """Remove both current and historical look knowledge for an object."""
+        self._looked_at.discard(object_id)
+        self._ever_looked.discard(object_id)
 
     # ------------------------------------------------------------------
     # Utility

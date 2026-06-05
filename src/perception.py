@@ -5,7 +5,7 @@ Passive vision and look logic.
 
 Responsibilities:
 - Build the "Current Passive Vision" text block shown to the agent each turn.
-- Generalized "has changed" notification for stale object knowledge (V0.1).
+- Passive vs detailed description rendering (V0.1 perception extension).
 - Provide look logic: validate targets, return descriptions, update memory.
 
 The agent only sees objects in passive vision; walls/room boundaries are
@@ -22,15 +22,28 @@ def format_object_vision_desc(obj: Object, memory: Memory) -> str:
     """
     Return the description fragment for one object in passive vision.
 
-    Three states:
-    - Current knowledge: full description
-    - Never looked at: [?]
-    - Stale (looked before, invalidated): [?] The {name} has changed...
+    V0.1 perception extension rules:
+    - Detailed empty: no [?] tag; show passive only (if any).
+    - Never examined + detailed present: [?], or [?] {passive} if passive set.
+    - Current knowledge (looked_at): detailed if present, else passive.
+    - Stale (ever_looked, invalidated): [?] [changed] {passive} (passive omitted if empty).
     """
+    passive = obj.passive_description
+    detailed = obj.description
+
     if memory.has_looked_at(obj.id):
-        return obj.description
-    if memory.has_ever_looked_at(obj.id):
-        return f"[?] The {obj.name} has changed since you last looked at it."
+        return detailed if detailed else passive
+
+    if memory.has_ever_looked_at(obj.id) and detailed:
+        if passive:
+            return f"[?] [changed] {passive}"
+        return "[?] [changed]"
+
+    if not detailed:
+        return passive
+
+    if passive:
+        return f"[?] {passive}"
     return "[?]"
 
 
@@ -40,14 +53,17 @@ def build_passive_vision(agent: Agent, world: World) -> str:
 
     Format:
     You are at (x, y).
-    {name} ({id}), {coordinates} - {description}|[?]|changed notice
+    {name} ({id}), {coordinates} - {description fragment}
     """
     lines = [f"You are at {agent.position}."]
     memory = agent.memory
 
     for obj in world.get_objects():
         desc = format_object_vision_desc(obj, memory)
-        lines.append(f"{obj.name} ({obj.id}), {obj.position} - {desc}")
+        if desc:
+            lines.append(f"{obj.name} ({obj.id}), {obj.position} - {desc}")
+        else:
+            lines.append(f"{obj.name} ({obj.id}), {obj.position}")
 
     return "\n".join(lines)
 
@@ -68,8 +84,8 @@ def perform_look(agent: Agent, world: World, target_id: str) -> str:
     Execute the "look" action for the agent on the given target object ID.
 
     - Checks that the target is currently visible in passive vision.
-    - If valid: marks the object as looked-at and returns the full description.
-    - If not visible: returns a failure message.
+    - If detailed description is empty, returns a no-detail message (no memory update).
+    - If valid: marks the object as looked-at and returns the detailed description.
     """
     visible_ids = get_visible_object_ids(agent, world)
     if target_id not in visible_ids:
@@ -79,8 +95,13 @@ def perform_look(agent: Agent, world: World, target_id: str) -> str:
     if obj is None:
         return "You don't see anything like that to look at."
 
+    if not obj.description:
+        if agent.memory.has_ever_looked_at(target_id):
+            agent.memory.clear_examination(target_id)
+        return f"You don't notice anything more about the {obj.name.lower()}."
+
     agent.memory.mark_looked_at(target_id)
-    return f'You looked at the {obj.name.lower()}. {obj.description}'
+    return f"You looked at the {obj.name.lower()}. {obj.description}"
 
 
 def get_available_look_targets(agent: Agent, world: World) -> list[str]:

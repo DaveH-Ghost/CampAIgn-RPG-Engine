@@ -1,0 +1,438 @@
+"""
+world_edit.py
+
+Parsing, validation, and world mutations for V0.1 editing commands.
+Used by the manual stepper in main.py.
+"""
+
+from __future__ import annotations
+
+import re
+import shlex
+from dataclasses import dataclass
+from typing import Optional
+
+from src.agent import Agent
+from src.memory import Memory
+from src.object import Object
+from src.world import World
+
+
+@dataclass
+class DeleteAgentResult:
+    ok: bool
+    message: str
+    deleted_agent: Optional[Agent] = None
+
+
+@dataclass
+class EditAgentResult:
+    ok: bool
+    message: str
+    agent: Optional[Agent] = None
+    old_name_lower: Optional[str] = None
+
+
+def slugify_display_name(name: str) -> str:
+    """Lowercase, spaces to underscores, strip non-alphanumeric."""
+    slug = name.lower().replace(" ", "_")
+    slug = re.sub(r"[^a-z0-9_]", "", slug)
+    slug = re.sub(r"_+", "_", slug).strip("_")
+    return slug or "new"
+
+
+def generate_object_id(world: World, display_name: str) -> str:
+    """Auto-generate a unique object id from a display name."""
+    slug = slugify_display_name(display_name)
+    existing = {obj.id for obj in world.objects}
+    counter = 1
+    while True:
+        candidate = f"obj_{slug}_{counter:02d}"
+        if candidate not in existing:
+            return candidate
+        counter += 1
+
+
+def generate_agent_id(world: World, display_name: str) -> str:
+    """Auto-generate a unique agent id from a display name."""
+    slug = slugify_display_name(display_name)
+    existing = {agent.id for agent in world.agents}
+    counter = 1
+    while True:
+        candidate = f"agent_{slug}_{counter:02d}"
+        if candidate not in existing:
+            return candidate
+        counter += 1
+
+
+def agent_name_taken(
+    world: World, name: str, exclude_agent_id: Optional[str] = None
+) -> bool:
+    """Return True if another agent already has this name (case-insensitive)."""
+    name_lower = name.lower()
+    for agent in world.agents:
+        if exclude_agent_id and agent.id == exclude_agent_id:
+            continue
+        if agent.name.lower() == name_lower:
+            return True
+    return False
+
+
+def tokenize_args(arg: str) -> tuple[Optional[list[str]], Optional[str]]:
+    """Split arguments with shlex. Returns (tokens, error_message)."""
+    try:
+        return shlex.split(arg), None
+    except ValueError as e:
+        return None, f"Invalid quoting in arguments: {e}"
+
+
+def parse_position(value: str) -> tuple[Optional[tuple[int, int]], Optional[str]]:
+    """Parse x,y position. Returns (position, error_message)."""
+    value = value.strip()
+    if " " in value:
+        return None, "Position must be x,y with no spaces (e.g. 2,2)."
+    parts = value.split(",")
+    if len(parts) != 2:
+        return None, "Position must be x,y (e.g. 2,2)."
+    try:
+        x, y = int(parts[0]), int(parts[1])
+    except ValueError:
+        return None, "Position coordinates must be integers."
+    return (x, y), None
+
+
+def parse_field_tokens(
+    tokens: list[str], allowed: set[str]
+) -> tuple[dict[str, str], Optional[str]]:
+    """Parse keyword/value pairs (case-insensitive keys)."""
+    fields: dict[str, str] = {}
+    i = 0
+    while i < len(tokens):
+        key = tokens[i].lower()
+        if key not in allowed:
+            return {}, f"Unknown or unexpected token: '{tokens[i]}'"
+        if i + 1 >= len(tokens):
+            return {}, f"Missing value for '{key}'"
+        if key in fields:
+            return {}, f"Duplicate field '{key}' in arguments."
+        fields[key] = tokens[i + 1]
+        i += 2
+    return fields, None
+
+
+def format_objects_list(world: World) -> str:
+    """Format the objects listing block."""
+    lines = ["Objects in world:"]
+    objects = world.get_objects()
+    if not objects:
+        lines.append("  No objects in world.")
+    else:
+        for obj in objects:
+            lines.append(f"  - {obj.name} ({obj.id}) at {obj.position}")
+    return "\n".join(lines)
+
+
+def format_agents_list(world: World, active_agent: Optional[Agent]) -> str:
+    """Format the agents listing block."""
+    lines = ["Agents in world:"]
+    if not world.agents:
+        lines.append("  No agents in world.")
+    else:
+        for agent in world.agents:
+            marker = " (active)" if agent is active_agent else ""
+            lines.append(f"  - {agent.name} ({agent.id}) at {agent.position}{marker}")
+    return "\n".join(lines)
+
+
+def format_full_list(world: World, active_agent: Optional[Agent]) -> str:
+    """Format agents then objects (same as running agents + objects)."""
+    return f"{format_agents_list(world, active_agent)}\n\n{format_objects_list(world)}"
+
+
+def create_object_from_args(world: World, arg: str) -> tuple[Optional[Object], str]:
+    """
+    Parse and create an object from command arguments.
+
+    Usage: name "..." [pdesc "..."] [desc "..."] at x,y
+    """
+    tokens, err = tokenize_args(arg)
+    if err:
+        return None, err
+    if not tokens:
+        return None, 'Usage: create-object name "..." [pdesc "..."] [desc "..."] at x,y'
+
+    fields, err = parse_field_tokens(tokens, {"name", "desc", "pdesc", "at"})
+    if err:
+        return None, err
+    if "name" not in fields:
+        return None, "Missing required field: name"
+    if "at" not in fields:
+        return None, "Missing required field: at"
+
+    position, err = parse_position(fields["at"])
+    if err:
+        return None, err
+    assert position is not None
+
+    if not world.is_valid_position(position):
+        return None, f"Invalid position {position}. Grid is 0-4 in both axes."
+
+    desc = fields.get("desc", "")
+    pdesc = fields.get("pdesc", "")
+    obj_id = generate_object_id(world, fields["name"])
+    obj = Object(
+        id=obj_id,
+        name=fields["name"],
+        description=desc,
+        position=position,
+        passive_description=pdesc,
+    )
+    world.add_object(obj)
+    return obj, (
+        f'Created object {obj_id} "{fields["name"]}" at {position}. '
+        f"Use 'objects' or 'list' to see all object ids."
+    )
+
+
+def edit_object_from_args(world: World, arg: str) -> str:
+    """
+    Parse and edit an object.
+
+    Usage: <object_id> [desc "..."] [name "..."] [pos x,y] ...
+    """
+    tokens, err = tokenize_args(arg)
+    if err:
+        return err
+    if not tokens:
+        return 'Usage: edit-object <id> [pdesc "..."] [desc "..."] [name "..."] [pos x,y] ...'
+
+    object_id = tokens[0]
+    if not object_id.startswith("obj_"):
+        return (
+            f"Commands require object id (e.g. obj_ball_01), not display name. "
+            f"Use 'objects' or 'list' to look up ids."
+        )
+
+    obj = world.get_object_by_id(object_id)
+    if obj is None:
+        return f"Object '{object_id}' not found. Use 'objects' or 'list' to look up ids."
+
+    fields, err = parse_field_tokens(tokens[1:], {"name", "desc", "pdesc", "pos"})
+    if err:
+        return err
+    if not fields:
+        return "At least one field to change is required (name, pdesc, desc, or pos)."
+
+    changes: list[str] = []
+
+    if "name" in fields and fields["name"] != obj.name:
+        obj.name = fields["name"]
+        changes.append("name")
+
+    if "pdesc" in fields and fields["pdesc"] != obj.passive_description:
+        obj.passive_description = fields["pdesc"]
+        changes.append("pdesc")
+
+    if "desc" in fields and fields["desc"] != obj.description:
+        obj.description = fields["desc"]
+        if fields["desc"]:
+            world.invalidate_object_knowledge(object_id)
+        else:
+            world.clear_object_examination_history(object_id)
+        changes.append("desc")
+
+    if "pos" in fields:
+        position, err = parse_position(fields["pos"])
+        if err:
+            return err
+        assert position is not None
+        if not world.is_valid_position(position):
+            return f"Invalid position {position}. Grid is 0-4 in both axes."
+        if position != obj.position:
+            obj.position = position
+            changes.append("pos")
+
+    if not changes:
+        return f"No changes applied to {object_id}."
+
+    return f"Updated object {object_id} ({', '.join(changes)})."
+
+
+def delete_object_by_id(world: World, object_id: str) -> str:
+    """Delete an object by id."""
+    object_id = object_id.strip()
+    if not object_id:
+        return "Usage: delete-object <id>"
+    if not object_id.startswith("obj_"):
+        return (
+            f"Commands require object id (e.g. obj_ball_01), not display name. "
+            f"Use 'objects' or 'list' to look up ids."
+        )
+    if not world.remove_object(object_id):
+        return f"Object '{object_id}' not found. Use 'objects' or 'list' to look up ids."
+    return f"Deleted object {object_id}."
+
+
+def create_agent_from_args(world: World, arg: str) -> tuple[Optional[Agent], str]:
+    """
+    Parse and create an agent.
+
+    Usage: name "..." desc "..." at x,y
+    """
+    tokens, err = tokenize_args(arg)
+    if err:
+        return None, err
+    if not tokens:
+        return None, 'Usage: create-agent name "..." desc "..." at x,y'
+
+    fields, err = parse_field_tokens(tokens, {"name", "desc", "at"})
+    if err:
+        return None, err
+    if "name" not in fields:
+        return None, "Missing required field: name"
+    if "at" not in fields:
+        return None, "Missing required field: at"
+
+    if agent_name_taken(world, fields["name"]):
+        return None, f"Agent name '{fields['name']}' is already in use."
+
+    position, err = parse_position(fields["at"])
+    if err:
+        return None, err
+    assert position is not None
+
+    if not world.is_valid_position(position):
+        return None, f"Invalid position {position}. Grid is 0-4 in both axes."
+
+    desc = fields.get("desc", "")
+    agent_id = generate_agent_id(world, fields["name"])
+    agent = Agent(
+        id=agent_id,
+        name=fields["name"],
+        description=desc,
+        position=position,
+        memory=Memory(),
+        last_action=None,
+    )
+    world.add_agent(agent)
+    return agent, (
+        f'Created agent {agent_id} "{fields["name"]}" at {position}. '
+        f"Use 'agents' or 'list' to see all agent ids."
+    )
+
+
+def edit_agent_from_args(world: World, arg: str) -> EditAgentResult:
+    """
+    Parse and edit an agent.
+
+    Usage: <agent_id> [desc "..."] [name "..."] [pos x,y] ...
+    """
+    tokens, err = tokenize_args(arg)
+    if err:
+        return EditAgentResult(ok=False, message=err)
+    if not tokens:
+        return EditAgentResult(
+            ok=False,
+            message='Usage: edit-agent <id> [desc "..."] [name "..."] [pos x,y] ...',
+        )
+
+    agent_id = tokens[0]
+    if not agent_id.startswith("agent_"):
+        return EditAgentResult(
+            ok=False,
+            message=(
+                f"Commands require agent id (e.g. agent_01), not display name. "
+                f"Use 'agents' or 'list' to look up ids."
+            ),
+        )
+
+    agent = world.get_agent_by_id(agent_id)
+    if agent is None:
+        return EditAgentResult(
+            ok=False,
+            message=f"Agent '{agent_id}' not found. Use 'agents' or 'list' to look up ids.",
+        )
+
+    fields, err = parse_field_tokens(tokens[1:], {"name", "desc", "pos"})
+    if err:
+        return EditAgentResult(ok=False, message=err)
+    if not fields:
+        return EditAgentResult(
+            ok=False,
+            message="At least one field to change is required (name, desc, or pos).",
+        )
+
+    old_name_lower = agent.name.lower()
+    changes: list[str] = []
+
+    if "name" in fields and fields["name"] != agent.name:
+        if agent_name_taken(world, fields["name"], exclude_agent_id=agent_id):
+            return EditAgentResult(
+                ok=False,
+                message=f"Agent name '{fields['name']}' is already in use.",
+            )
+        agent.name = fields["name"]
+        changes.append("name")
+
+    if "desc" in fields and fields["desc"] != agent.description:
+        agent.description = fields["desc"]
+        changes.append("desc")
+
+    if "pos" in fields:
+        position, err = parse_position(fields["pos"])
+        if err:
+            return EditAgentResult(ok=False, message=err)
+        assert position is not None
+        if not world.is_valid_position(position):
+            return EditAgentResult(
+                ok=False,
+                message=f"Invalid position {position}. Grid is 0-4 in both axes.",
+            )
+        if position != agent.position:
+            agent.position = position
+            changes.append("pos")
+
+    if not changes:
+        return EditAgentResult(ok=False, message=f"No changes applied to {agent_id}.")
+
+    return EditAgentResult(
+        ok=True,
+        message=f"Updated agent {agent_id} ({', '.join(changes)}).",
+        agent=agent,
+        old_name_lower=old_name_lower if "name" in changes else None,
+    )
+
+
+def delete_agent_by_id(world: World, agent_id: str) -> DeleteAgentResult:
+    """Delete an agent by id. Rejects deleting the last agent."""
+    agent_id = agent_id.strip()
+    if not agent_id:
+        return DeleteAgentResult(ok=False, message="Usage: delete-agent <id>")
+    if not agent_id.startswith("agent_"):
+        return DeleteAgentResult(
+            ok=False,
+            message=(
+                f"Commands require agent id (e.g. agent_01), not display name. "
+                f"Use 'agents' or 'list' to look up ids."
+            ),
+        )
+
+    agent = world.get_agent_by_id(agent_id)
+    if agent is None:
+        return DeleteAgentResult(
+            ok=False,
+            message=f"Agent '{agent_id}' not found. Use 'agents' or 'list' to look up ids.",
+        )
+
+    if len(world.agents) <= 1:
+        return DeleteAgentResult(
+            ok=False,
+            message="Cannot delete the last agent in the world.",
+        )
+
+    world.remove_agent(agent_id)
+    return DeleteAgentResult(
+        ok=True,
+        message=f"Deleted agent {agent_id}.",
+        deleted_agent=agent,
+    )

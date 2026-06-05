@@ -131,7 +131,7 @@ def test_step_look_marks_object_as_looked_at():
     world = create_initial_world()
     agent = world.get_agent()
 
-    # Ball starts unknown (except for pre-marked sign)
+    # Ball starts unknown
     assert not agent.memory.has_looked_at("obj_ball_01")
 
     turn = make_turn(action="look", target="obj_ball_01")

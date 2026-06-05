@@ -46,15 +46,38 @@ class World:
         """Add an object to the world."""
         self.objects.append(obj)
 
+    def remove_object(self, object_id: str) -> bool:
+        """Remove an object by ID. Returns True if removed, False if not found."""
+        for i, obj in enumerate(self.objects):
+            if obj.id == object_id:
+                self.objects.pop(i)
+                return True
+        return False
+
+    def remove_agent(self, agent_id: str) -> bool:
+        """Remove an agent by ID. Returns True if removed, False if not found."""
+        for i, agent in enumerate(self.agents):
+            if agent.id == agent_id:
+                self.agents.pop(i)
+                return True
+        return False
+
     def get_agent(self) -> Optional[Agent]:
         """
-        Return the single agent in the world.
+        Return the first agent in the world.
 
-        In V0 there is only ever one agent. Returns None if no agent exists.
+        In V0 there is only ever one agent at startup. Returns None if no agent exists.
         """
         if not self.agents:
             return None
         return self.agents[0]
+
+    def get_agent_by_id(self, agent_id: str) -> Optional[Agent]:
+        """Return the agent with the given ID, if it exists in the world."""
+        for agent in self.agents:
+            if agent.id == agent_id:
+                return agent
+        return None
 
     def get_object_at(self, position: tuple[int, int]) -> Optional[Object]:
         """Return the object at a given position, if any."""
@@ -97,8 +120,8 @@ class World:
         """
         Remove up-to-date look knowledge for an object across all agents.
 
-        Call this whenever an object's description changes (e.g. sign command,
-        future edit-object). Do not call agent.memory.invalidate_look directly.
+        Call this whenever an object's description changes (e.g. edit-object).
+        Do not call agent.memory.invalidate_look directly.
 
         Agents who had looked at the object will see the generalized changed
         notification; agents who never looked still see plain [?].
@@ -106,6 +129,16 @@ class World:
         for agent in self.agents:
             if agent.memory.has_looked_at(object_id):
                 agent.memory.invalidate_look(object_id)
+
+    def clear_object_examination_history(self, object_id: str) -> None:
+        """
+        Clear looked_at and ever_looked for an object across all agents.
+
+        Used when detailed description is removed so agents are not stuck in
+        a stale state they cannot clear via look.
+        """
+        for agent in self.agents:
+            agent.memory.clear_examination(object_id)
 
 
 # =============================================================================
@@ -150,23 +183,17 @@ def create_initial_world() -> World:
     )
     world.add_object(ball)
 
-    # Create the wooden sign
     sign = Object(
         id="obj_sign_01",
         name="Wooden Sign",
+        passive_description="A simple wooden sign on the wall.",
         description=(
-            'A simple wooden sign. It reads: "This is a controlled environment. '
+            'It reads: "This is a controlled environment. '
             'You are the only one here. This sign may occasionally be updated '
             'with new information. When it changes, you will be notified."'
         ),
         position=(2, 4),
     )
     world.add_object(sign)
-
-    # Pre-mark the sign as "looked at" in initial state so it shows its
-    # description in passive vision (ball starts as [?]). This matches
-    # several examples in the readiness checklist. When the sign is later
-    # updated via debug command, we will invalidate it.
-    agent.memory.mark_looked_at(sign.id)
 
     return world

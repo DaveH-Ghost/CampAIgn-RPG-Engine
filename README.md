@@ -2,7 +2,7 @@
 
 A grid-based agent simulation framework designed around structured output and narrative roleplay.
 
-**Current Status:** V0 complete and validated (100+ LLM turns, reliable structured output). V0.1 design is complete; implementation has not started. The running code still reflects V0 behavior.
+**Current Status:** V0 complete and validated (100+ LLM turns, reliable structured output). V0.1 Sections 1–2 implemented (generalized perception + world editing commands). Section 3 (multi-agent polish) not yet implemented.
 
 **Documentation:**
 
@@ -28,22 +28,44 @@ A grid-based agent simulation framework designed around structured output and na
   ```
    Few-shot examples are disabled by default for token efficiency (saves ~50% tokens). Use `--with-fewshots` if you want the 4 examples included.
    Inside the `(realm)` prompt you can:
-  - `state` — see current world/agent state
-  - `vision` — see what the agent currently perceives
+  - `list` — overview of all agents and objects (no turn consumed)
+  - `objects` — list all objects with ids (for `edit-object` / `delete-object`)
+  - `agents` — list all agents with ids and active marker
+  - `state` — active agent context (memory, turn count, few-shots)
+  - `vision` — see what the active agent currently perceives
   - `prompt` — see the full prompt the LLM would receive
   - `step look obj_ball_01` — manually drive the agent (great for testing)
   - `Explorer` — (type the agent's name) to let the **LLM** decide the next action (requires OPENROUTER_API_KEY). Few-shot examples are OFF by default (saves ~50% tokens; current models perform well without them). Use `--with-fewshots` or `fewshots on` to enable.
-  - `sign "new text here"` — *(V0 only)* update the wooden sign and trigger the "has changed" notification (removed in V0.1; replaced by `edit-object obj_sign_01 desc "..."`)
   - `quit`
 
-### Planned for V0.1 (not in the running code yet)
+### World editing (V0.1)
 
-See the [V0.1 checklist](docs/v0.1-implementation-readiness-checklist.md) for full detail. Highlights:
+Listing and editing commands do **not** consume a turn. Use `list`, `objects`, or `agents` to look up entity ids before editing.
 
-- **Listing:** `list` (everything), `objects` (all objects), `agents` (all agents)
-- **World editing:** `create-object`, `edit-object`, `delete-object`, `create-agent`, `edit-agent`, `delete-agent`
-- **Multi-agent:** `switch <name>` to change active agent without a turn; typing an agent's name still runs an LLM turn
-- **Perception:** generalized "has changed" for any object (not sign-specific)
+```
+list
+objects
+agents
+create-object name "Crate" pdesc "A crate." desc "A wooden crate." at 0,0
+edit-object obj_sign_01 pdesc "A sign on the wall." desc "Updated sign text."
+edit-object obj_ball_01 pos 3,3
+delete-object obj_crate_01
+create-agent name "Goblin" desc "A grumpy goblin." at 0,3
+edit-agent agent_01 name "Scout"
+delete-agent agent_goblin_01
+```
+
+The old V0 `sign` command is removed. Update the sign with:
+
+```
+edit-object obj_sign_01 pdesc "A sign on the wall." desc "This is new text."
+```
+
+Objects support two description layers: **`pdesc`** (passive glance, visible without looking) and **`desc`** (detailed, hidden behind `[?]` until examined). Stale examined knowledge shows as `[?] [changed] {pdesc}`.
+
+### Planned for V0.1 Section 3 (not yet implemented)
+
+- **Multi-agent:** `switch <name>` to change active agent without a turn; per-agent turn numbers
 
 ## Environment Variables & .env Files (Beginner Guide)
 
@@ -188,6 +210,7 @@ uv run pytest -x
 | `tests/test_world.py` | Initial world state, grid rules, passive vision baseline |
 | `tests/test_simulation.py` | `step_turn`, actions, memory side effects, prompt builder |
 | `tests/test_perception.py` | V0.1 generalized "has changed" vision and cross-agent invalidation |
+| `tests/test_world_edit.py` | V0.1 world editing commands (create/edit/delete, listings, id generation) |
 
 ### First-time setup
 

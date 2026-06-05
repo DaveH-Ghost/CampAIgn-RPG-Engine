@@ -17,14 +17,6 @@ These are currently out of scope. They represent the kind of experiences we even
 
 These are considered lower-complexity improvements that could be reasonable targets for V0.1 or V0.2.
 
-- [ ] **"Object has changed since last looked at" system**  
-  When an object’s description (or other observable state) changes after an agent has previously looked at it, the agent should be notified in passive vision using neutral language, for example:  
-  *"[?] The Ceramic Ball has changed since you last looked at it."*  
-  The agent would then need to use the `look` action again to see the current description.  
-  In V0 this behavior applies only to the sign (a special case). The long-term goal is a **general** system for any object whose description changes.  
-  **V0.1 design** (not yet implemented) specifies this in [v0.1-implementation-readiness-checklist.md](docs/v0.1-implementation-readiness-checklist.md) Section 1 — move to Achieved when implementation is complete and validated.  
-  The purpose of this system is to encourage agents to intentionally use the `look` action to gather information, rather than having to constantly re-examine objects just in case something changed. It also keeps passive vision cleaner by avoiding constantly showing full updated descriptions for every changed object.
-
 ### More Complex Goals
 
 - [ ] Multiple agents that can observe each other, start conversations, form relationships, and influence one another over time  
@@ -44,7 +36,8 @@ These are considered lower-complexity improvements that could be reasonable targ
 
 This section is for goals that have actually been completed. When something moves here, it should feel like a genuine accomplishment.
 
-*(Nothing here yet — this is the exciting part.)*
+- [x] **General "object knowledge is stale" notification (V0.1)**  
+  When an object's detailed description changes after an agent has examined it, passive vision shows a neutral stale state (e.g. `[?] [changed] A simple wooden sign on the wall.`) so the agent knows to `look` again. Works for any object via `ever_looked` + `World.invalidate_object_knowledge()`, not sign-specific. Shipped in V0.1 Section 1 with passive/detailed descriptions (Section 2 perception extension). See [v0.1-implementation-readiness-checklist.md](docs/v0.1-implementation-readiness-checklist.md).
 
 ---
 

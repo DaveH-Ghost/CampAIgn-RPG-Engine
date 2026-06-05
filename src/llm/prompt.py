@@ -37,7 +37,7 @@ Example 1: Correct use of `speak` (pure dialogue only)
 Context:
 You are at (1, 1).
 Ceramic Ball (obj_ball_01), (2, 2) - [?]
-Wooden Sign (obj_sign_01), (2, 4) - A simple wooden sign. It reads: "This is a controlled environment..."
+Wooden Sign (obj_sign_01), (2, 4) - [?] A simple wooden sign on the wall.
 You can move in the following directions this turn:
 - north
 - east
@@ -60,7 +60,7 @@ Example 2: Using `look` when seeing `[?]`
 Context:
 You are at (2, 3).
 Ceramic Ball (obj_ball_01), (2, 2) - A slightly worn ceramic ball. It has a few scuffs and feels light.
-Wooden Sign (obj_sign_01), (2, 4) - [?]
+Wooden Sign (obj_sign_01), (2, 4) - [?] A simple wooden sign on the wall.
 You can move in the following directions this turn:
 - north
 - east
@@ -70,7 +70,7 @@ You can look at anything with the [?] tag.
 
 Output:
 {
-  "reasoning": "The wooden sign shows [?], which means I haven't properly examined it yet. I should look at it to get the current information.",
+  "reasoning": "The wooden sign shows [?] with only a glance description. I haven't read it properly yet. I should look at it to get the full text.",
   "action": "look",
   "target": "obj_sign_01",
   "content": null,
@@ -83,7 +83,7 @@ Example 3: Choosing a valid `move` direction
 Context:
 You are at (2, 2).
 Ceramic Ball (obj_ball_01), (2, 2) - A slightly worn ceramic ball. It has a few scuffs and feels light.
-Wooden Sign (obj_sign_01), (2, 4) - A simple wooden sign. It reads: "..."
+Wooden Sign (obj_sign_01), (2, 4) - It reads: "..."
 You can move in the following directions this turn:
 - north
 - east
@@ -104,8 +104,8 @@ Example 4: Responding to an object that has changed
 
 Context:
 You are at (1, 1).
-Ceramic Ball (obj_ball_01), (2, 2) - [?] The Ceramic Ball has changed since you last looked at it.
-Wooden Sign (obj_sign_01), (2, 4) - A simple wooden sign. It reads: "This is a controlled environment..."
+Ceramic Ball (obj_ball_01), (2, 2) - [?] [changed]
+Wooden Sign (obj_sign_01), (2, 4) - [?] A simple wooden sign on the wall.
 You can move in the following directions this turn:
 - north
 - east
@@ -115,7 +115,7 @@ You can look at anything with the [?] tag.
 
 Output:
 {
-  "reasoning": "The ceramic ball shows it has changed since I last looked at it. I should examine it again to see the current description.",
+  "reasoning": "The ceramic ball shows [?] [changed], which means my examined knowledge is out of date. I should look at it again to see the current description.",
   "action": "look",
   "target": "obj_ball_01",
   "content": null,
@@ -135,12 +135,12 @@ def _get_system_instructions() -> str:
 
 You may only perform ONE action per turn. The allowed actions are:
 - move: Move exactly one tile in a cardinal direction (north, east, south, or west). You cannot move outside the grid.
-- look: Examine an object that currently appears in your passive vision (including objects marked with [?]). You will receive its full description.
+- look: Examine an object that currently appears in your passive vision (including objects marked with [?]). You will receive its detailed description if one exists.
 - speak: Say something out loud. Limited to a maximum of three sentences. All text must be pure verbal dialogue. Do not include emotes (*smiles*), actions (_waves_), or parenthetical descriptions.
 
 Important rules:
 - Only objects listed in your current passive vision can be looked at.
-- Objects you have not examined (or that have changed since you last looked) appear with "[?]" instead of their description.
+- Objects may show a passive glance description without looking. Hidden detailed text is marked with "[?]" (optionally alongside the passive line). Stale examined knowledge appears as "[?] [changed]" with the passive line.
 - Your words when speaking have no direct mechanical effect on the world, but they are recorded and may influence how the environment responds over time (for example, object descriptions in the world may be updated based on what you say).
 - Always respond with a single, valid JSON object. Do not add any text before or after the JSON."""
 

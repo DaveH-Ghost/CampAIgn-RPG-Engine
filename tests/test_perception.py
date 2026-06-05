@@ -1,7 +1,7 @@
 """
 test_perception.py
 
-Tests for V0.1 generalized passive vision and cross-agent invalidation.
+Tests for V0.1 passive/detailed perception and cross-agent invalidation.
 """
 
 from src.agent import Agent
@@ -11,18 +11,22 @@ from src.object import Object
 from src.world import create_initial_world
 
 
-def test_initial_sign_in_ever_looked_after_pre_mark():
-    """Pre-marked sign in create_initial_world should be in both looked_at and ever_looked."""
+def test_initial_sign_shows_passive_not_pre_marked():
+    """Sign shows passive + [?] at startup; agent has not looked at anything."""
     world = create_initial_world()
     agent = world.get_agent()
 
-    assert agent.memory.has_looked_at("obj_sign_01")
-    assert agent.memory.has_ever_looked_at("obj_sign_01")
-    assert not agent.memory.has_ever_looked_at("obj_ball_01")
+    assert not agent.memory.has_looked_at("obj_sign_01")
+    assert not agent.memory.has_ever_looked_at("obj_sign_01")
+    vision = build_passive_vision(agent, world)
+    assert (
+        "Wooden Sign (obj_sign_01), (2, 4) - [?] A simple wooden sign on the wall."
+        in vision
+    )
 
 
 def test_ball_vision_states_never_stale_current():
-    """Ball: [?] initially, full description after look, changed after invalidate, restored after re-look."""
+    """Ball: [?] initially, detailed after look, [?] [changed] after invalidate."""
     world = create_initial_world()
     agent = world.get_agent()
 
@@ -35,7 +39,7 @@ def test_ball_vision_states_never_stale_current():
 
     world.invalidate_object_knowledge("obj_ball_01")
     vision = build_passive_vision(agent, world)
-    assert "[?] The Ceramic Ball has changed since you last looked at it." in vision
+    assert "Ceramic Ball (obj_ball_01), (2, 2) - [?] [changed]" in vision
     assert agent.memory.has_ever_looked_at("obj_ball_01")
     assert not agent.memory.has_looked_at("obj_ball_01")
 
@@ -44,30 +48,35 @@ def test_ball_vision_states_never_stale_current():
     assert "scuffs and feels light" in vision
 
 
-def test_sign_shows_changed_message_after_invalidation():
-    """Pre-known sign shows generalized changed notice after invalidate, not plain [?]."""
+def test_sign_stale_shows_changed_with_passive():
+    """After look + desc invalidation, sign shows [?] [changed] {passive}."""
     world = create_initial_world()
     agent = world.get_agent()
 
+    perform_look(agent, world, "obj_sign_01")
     world.invalidate_object_knowledge("obj_sign_01")
     vision = build_passive_vision(agent, world)
 
-    assert "[?] The Wooden Sign has changed since you last looked at it." in vision
+    assert (
+        "Wooden Sign (obj_sign_01), (2, 4) - [?] [changed] A simple wooden sign on the wall."
+        in vision
+    )
     assert "Ceramic Ball (obj_ball_01), (2, 2) - [?]" in vision
 
 
 def test_sign_description_update_look_restores_new_text():
-    """After sign description changes and invalidation, look returns the new text."""
+    """After sign detailed desc changes and invalidation, look returns new text."""
     world = create_initial_world()
     agent = world.get_agent()
     new_text = "Brand new sign text for testing."
 
+    perform_look(agent, world, "obj_sign_01")
     sign = world.get_object_by_id("obj_sign_01")
     sign.description = new_text
     world.invalidate_object_knowledge("obj_sign_01")
 
     vision = build_passive_vision(agent, world)
-    assert "[?] The Wooden Sign has changed since you last looked at it." in vision
+    assert "[?] [changed] A simple wooden sign on the wall." in vision
 
     result = perform_look(agent, world, "obj_sign_01")
     assert new_text in result
@@ -78,7 +87,7 @@ def test_sign_description_update_look_restores_new_text():
 
 
 def test_invalidate_object_knowledge_affects_all_agents_who_looked():
-    """Both agents who looked at the ball see changed message after invalidation."""
+    """Both agents who looked at the ball see [?] [changed] after invalidation."""
     world = create_initial_world()
     explorer = world.get_agent()
     goblin = Agent(
@@ -94,13 +103,13 @@ def test_invalidate_object_knowledge_affects_all_agents_who_looked():
     perform_look(goblin, world, "obj_ball_01")
     world.invalidate_object_knowledge("obj_ball_01")
 
-    changed = "[?] The Ceramic Ball has changed since you last looked at it."
+    changed = "Ceramic Ball (obj_ball_01), (2, 2) - [?] [changed]"
     assert changed in build_passive_vision(explorer, world)
     assert changed in build_passive_vision(goblin, world)
 
 
 def test_agent_who_never_looked_sees_plain_question_mark():
-    """Agent who never looked still sees plain [?] after another agent's knowledge is invalidated."""
+    """Agent who never looked still sees [?] after another agent's knowledge is invalidated."""
     world = create_initial_world()
     explorer = world.get_agent()
     goblin = Agent(
@@ -122,43 +131,95 @@ def test_agent_who_never_looked_sees_plain_question_mark():
     assert ball_line == "Ceramic Ball (obj_ball_01), (2, 2) - [?]"
 
 
-def test_reset_looked_at_clears_both_sets():
-    """reset_looked_at clears both looked_at and ever_looked."""
+def test_passive_only_object_has_no_question_mark():
+    """Object with passive but no detailed description never shows [?]."""
+    obj = Object(
+        id="obj_scenery_01",
+        name="Crack",
+        description="",
+        passive_description="A crack in the floor.",
+        position=(0, 0),
+    )
     memory = Memory()
-    memory.mark_looked_at("obj_ball_01")
-    memory.mark_looked_at("obj_sign_01")
-
-    assert memory.has_looked_at("obj_ball_01")
-    assert memory.has_ever_looked_at("obj_ball_01")
-
-    memory.reset_looked_at()
-
-    assert not memory.has_looked_at("obj_ball_01")
-    assert not memory.has_ever_looked_at("obj_ball_01")
-    assert not memory.has_looked_at("obj_sign_01")
-    assert not memory.has_ever_looked_at("obj_sign_01")
+    assert format_object_vision_desc(obj, memory) == "A crack in the floor."
+    memory.mark_looked_at("obj_scenery_01")
+    assert format_object_vision_desc(obj, memory) == "A crack in the floor."
 
 
-def test_format_object_vision_desc_three_states():
-    """format_object_vision_desc returns correct text for each state."""
+def test_look_on_empty_detailed_clears_stale_examination():
+    """look on object with no detailed text clears stale ever_looked state."""
+    world = create_initial_world()
+    agent = world.get_agent()
+    obj = Object(
+        id="obj_husk_01",
+        name="Husk",
+        description="Was something.",
+        passive_description="An empty shell.",
+        position=(0, 0),
+    )
+    world.add_object(obj)
+    perform_look(agent, world, "obj_husk_01")
+    obj.description = ""
+    world.invalidate_object_knowledge("obj_husk_01")
+    assert agent.memory.has_ever_looked_at("obj_husk_01")
+
+    result = perform_look(agent, world, "obj_husk_01")
+    assert "don't notice anything more" in result
+    assert not agent.memory.has_ever_looked_at("obj_husk_01")
+    vision = build_passive_vision(agent, world)
+    assert "Husk (obj_husk_01), (0, 0) - An empty shell." in vision
+
+
+def test_look_on_object_without_detailed_does_not_mark_memory():
+    """look on passive-only object returns no-detail message without updating memory."""
+    world = create_initial_world()
+    agent = world.get_agent()
+    world.add_object(
+        Object(
+            id="obj_scenery_01",
+            name="Crack",
+            description="",
+            passive_description="A crack in the floor.",
+            position=(1, 1),
+        )
+    )
+    result = perform_look(agent, world, "obj_scenery_01")
+    assert "don't notice anything more" in result
+    assert not agent.memory.has_looked_at("obj_scenery_01")
+
+
+def test_format_object_vision_desc_all_states():
+    """format_object_vision_desc covers never, current, and stale states."""
     obj = Object(
         id="obj_test_01",
         name="Test Object",
         description="Full description here.",
+        passive_description="A vague shape.",
         position=(0, 0),
     )
     memory = Memory()
 
-    assert format_object_vision_desc(obj, memory) == "[?]"
+    assert format_object_vision_desc(obj, memory) == "[?] A vague shape."
 
     memory.mark_looked_at("obj_test_01")
     assert format_object_vision_desc(obj, memory) == "Full description here."
 
     memory.invalidate_look("obj_test_01")
     assert (
-        format_object_vision_desc(obj, memory)
-        == "[?] The Test Object has changed since you last looked at it."
+        format_object_vision_desc(obj, memory) == "[?] [changed] A vague shape."
     )
+
+
+def test_reset_looked_at_clears_both_sets():
+    """reset_looked_at clears both looked_at and ever_looked."""
+    memory = Memory()
+    memory.mark_looked_at("obj_ball_01")
+    memory.mark_looked_at("obj_sign_01")
+
+    memory.reset_looked_at()
+
+    assert not memory.has_looked_at("obj_ball_01")
+    assert not memory.has_ever_looked_at("obj_ball_01")
 
 
 def test_invalidate_skips_agents_without_looked_at():

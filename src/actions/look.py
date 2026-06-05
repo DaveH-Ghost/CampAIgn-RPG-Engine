@@ -4,9 +4,10 @@ look.py
 Implementation of the `look` action for V0.
 
 The look action allows the agent to examine an object that appears in its
-current passive vision (even if marked with [?]). On success, the full
+current passive vision (even if marked with [?]). On success, the detailed
 description is returned and the object is marked as "looked at" in the
-agent's memory (so future passive vision will show the real description).
+agent's memory (so future passive vision shows the detailed text). Objects
+with no detailed description return a no-detail message without updating memory.
 """
 
 from src.agent import Agent
@@ -20,8 +21,8 @@ def look(agent: Agent, world: World, target: str) -> str:
 
     Delegates to perception.perform_look which handles:
     - Checking that the target object is currently visible in passive vision.
-    - Updating the agent's memory (mark_looked_at).
-    - Returning the appropriate result string.
+    - Updating the agent's memory (mark_looked_at) when detailed text exists.
+    - Returning the detailed description or a no-detail message.
 
     The target must be a valid object ID (e.g. "obj_ball_01").
     Runtime validation that it is visible happens inside perform_look
