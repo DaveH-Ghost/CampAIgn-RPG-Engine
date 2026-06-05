@@ -1,4 +1,4 @@
-# Realm Fabric
+﻿# Realm Fabric
 
 A grid-based agent simulation framework designed around structured output and narrative roleplay.
 
@@ -152,7 +152,49 @@ That's the whole magic.
 
 ## Running tests
 
+Tests use [pytest](https://docs.pytest.org/) and run **without** an API key or network access. They cover world setup, the `AgentTurn` schema, simulation turns, and passive vision / invalidation logic.
+
+### Run all tests
+
+From the project folder:
+
 ```powershell
 uv run pytest
+```
+
+By default this runs quietly (`-q` is set in `pyproject.toml`). You should see a final `passed` summary when everything is green.
+
+### Useful variants
+
+```powershell
+# Verbose — shows each test name as it runs
+uv run pytest -v
+
+# Single file
+uv run pytest tests/test_perception.py -v
+
+# Single test by name
+uv run pytest tests/test_perception.py::test_ball_vision_states_never_stale_current -v
+
+# Stop on first failure (helpful while debugging)
+uv run pytest -x
+```
+
+### What each test file covers
+
+| File | Focus |
+|------|--------|
+| `tests/test_schema.py` | `AgentTurn` Pydantic validation (valid/invalid move, look, speak) |
+| `tests/test_world.py` | Initial world state, grid rules, passive vision baseline |
+| `tests/test_simulation.py` | `step_turn`, actions, memory side effects, prompt builder |
+| `tests/test_perception.py` | V0.1 generalized "has changed" vision and cross-agent invalidation |
+
+### First-time setup
+
+`uv sync` installs pytest via the `dev` dependency group. If pytest is missing:
+
+```powershell
+uv sync
+uv run pytest -v
 ```
 

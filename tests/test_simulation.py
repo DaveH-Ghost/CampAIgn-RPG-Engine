@@ -269,7 +269,8 @@ def test_build_prompt_produces_reasonable_output():
     assert "You can look at anything with the [?] tag" in prompt
     assert '"reasoning"' in prompt  # output format reminder
     assert "Example 1: Correct use of `speak`" in prompt  # few-shot present
-    assert "Example 4: Responding to the sign being updated" in prompt
+    assert "Example 4: Responding to an object that has changed" in prompt
+    assert "object descriptions in the world may be updated" in prompt
 
 
 def test_build_prompt_without_fewshots_is_shorter_and_lacks_examples():

@@ -39,14 +39,16 @@ class Memory:
     """
     Encapsulates everything an agent remembers in Version 0.
 
-    This includes two main parts (as defined in the readiness checklist):
+    This includes three main parts:
 
     1. Recent turn history (last 10 turns, stored as full TurnRecord objects).
-    2. Set of objects the agent has "looked at".
+    2. `looked_at` — objects the agent has up-to-date knowledge of.
+    3. `ever_looked` — objects the agent has looked at at least once (V0.1).
 
     The looked-at set controls passive vision:
-    - If an object ID is in the set → the agent sees its full description.
-    - Otherwise → the agent sees "[?]" (or the special "has changed" message for the sign).
+    - If an object ID is in `looked_at` → the agent sees its full description.
+    - Else if in `ever_looked` → stale changed notification.
+    - Otherwise → plain "[?]".
 
     By giving each Agent its own Memory instance, we ensure that in future
     versions with multiple agents, one agent's observations do not leak
@@ -61,7 +63,10 @@ class Memory:
     """Internal storage for recent history. Use .turns to access a copy."""
 
     _looked_at: set[str] = field(default_factory=set, repr=False)
-    """Internal set of looked-at object IDs."""
+    """Object IDs the agent has up-to-date knowledge of."""
+
+    _ever_looked: set[str] = field(default_factory=set, repr=False)
+    """Object IDs the agent has looked at at least once (never cleared on invalidate)."""
 
     def __post_init__(self):
         # Enforce the V0 limit if someone constructs with more than 10 turns
@@ -82,8 +87,13 @@ class Memory:
 
     @property
     def looked_at(self) -> set[str]:
-        """Return a copy of the set of object IDs the agent has looked at."""
+        """Return a copy of object IDs with up-to-date knowledge."""
         return set(self._looked_at)
+
+    @property
+    def ever_looked(self) -> set[str]:
+        """Return a copy of object IDs the agent has ever successfully looked at."""
+        return set(self._ever_looked)
 
     @property
     def turn_count(self) -> int:
@@ -116,25 +126,26 @@ class Memory:
         """
         Mark that the agent has successfully looked at this object.
 
-        After this, passive vision should show the object's real description
-        instead of "[?]".
+        After this, passive vision shows the object's current description.
+        Also records the object in ever_looked (permanent until reset).
         """
         self._looked_at.add(object_id)
+        self._ever_looked.add(object_id)
 
     def has_looked_at(self, object_id: str) -> bool:
-        """Return whether the agent has previously looked at this object."""
+        """Return whether the agent has up-to-date knowledge of this object."""
         return object_id in self._looked_at
+
+    def has_ever_looked_at(self, object_id: str) -> bool:
+        """Return whether the agent has ever successfully looked at this object."""
+        return object_id in self._ever_looked
 
     def invalidate_look(self, object_id: str) -> None:
         """
-        Remove an object from the looked-at set.
+        Remove up-to-date knowledge for an object (e.g. after its description changed).
 
-        This is the key method for the special sign update mechanic (see
-        readiness checklist "Sign Change Special Case Containment Strategy").
-
-        When the human updates the sign via the debug command, we call this
-        so the sign reappears with the "[?]" marker (and the "has changed"
-        notification) the next time passive vision is built.
+        The object stays in ever_looked so passive vision shows the changed
+        notification rather than plain "[?]".
         """
         self._looked_at.discard(object_id)
 
@@ -144,9 +155,9 @@ class Memory:
 
     def reset_looked_at(self) -> None:
         """
-        Clear all looked-at knowledge.
+        Clear all look knowledge (current and ever).
 
-        Not expected to be used in normal V0 flow, but useful for testing
-        or resetting an agent's observations.
+        Useful for testing or resetting an agent's observations.
         """
         self._looked_at.clear()
+        self._ever_looked.clear()

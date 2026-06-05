@@ -151,3 +151,4 @@ def test_perform_look_updates_memory_and_returns_description():
     assert "You looked at the ceramic ball" in result
     assert "scuffs and feels light" in result
     assert agent.memory.has_looked_at("obj_ball_01")
+    assert agent.memory.has_ever_looked_at("obj_ball_01")

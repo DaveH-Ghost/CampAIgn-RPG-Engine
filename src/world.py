@@ -93,6 +93,20 @@ class World:
             "You are in a small room with a hardwood floor and four wooden walls."
         )
 
+    def invalidate_object_knowledge(self, object_id: str) -> None:
+        """
+        Remove up-to-date look knowledge for an object across all agents.
+
+        Call this whenever an object's description changes (e.g. sign command,
+        future edit-object). Do not call agent.memory.invalidate_look directly.
+
+        Agents who had looked at the object will see the generalized changed
+        notification; agents who never looked still see plain [?].
+        """
+        for agent in self.agents:
+            if agent.memory.has_looked_at(object_id):
+                agent.memory.invalidate_look(object_id)
+
 
 # =============================================================================
 # Initial World State (as defined in the V0 readiness checklist)

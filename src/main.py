@@ -8,9 +8,10 @@ Supports:
                           the AgentTurn fields to simulate what the LLM would
                           have output. This lets us test the full loop
                           (action -> memory -> vision) without the LLM.
-- sign "new text"       : debug command to update the wooden sign's description
-                          and invalidate the agent's memory of it (triggers the
-                          special "has changed" notification).
+- sign "new text"       : (V0 interim) update the wooden sign's description and
+                          invalidate look knowledge for all agents who examined
+                          it (generalized "has changed" notice; replaced by
+                          edit-object in Section 2).
 - quit / exit           : leave the simulation.
 - vision / state        : print current passive vision or agent/world state.
 
@@ -110,7 +111,8 @@ class ManualStepper(cmd.Cmd):
         print(f"Turn: {self.turn_number}")
         print(f"Active agent: {self.agent.name} at {self.agent.position}")
         print(f"Memory turns: {self.agent.memory.turn_count}")
-        print(f"Looked at: {sorted(self.agent.memory.looked_at)}")
+        print(f"Looked at (current): {sorted(self.agent.memory.looked_at)}")
+        print(f"Ever looked at: {sorted(self.agent.memory.ever_looked)}")
         print(f"Few-shots in prompts: {'on' if self.include_examples else 'off'}")
         objs = [(o.name, o.position) for o in self.world.get_objects()]
         print(f"Objects: {objs}")
@@ -204,7 +206,10 @@ class ManualStepper(cmd.Cmd):
 
     def do_sign(self, arg):
         """
-        Debug command: update the wooden sign's description.
+        Interim debug command: update the wooden sign's description.
+
+        Invalidates up-to-date look knowledge across all agents via
+        world.invalidate_object_knowledge (replaced by edit-object in Section 2).
 
         Usage:
             sign This is the new text on the sign.
@@ -220,12 +225,12 @@ class ManualStepper(cmd.Cmd):
 
         old = sign.description
         sign.description = arg
-        self.agent.memory.invalidate_look("obj_sign_01")
+        self.world.invalidate_object_knowledge("obj_sign_01")
 
         print("Sign updated.")
         print(f"Old: {old[:60]}...")
         print(f"New: {arg[:60]}...")
-        print("The agent's memory of the sign has been invalidated.")
+        print("Look knowledge invalidated for all agents who had examined the sign.")
 
     def do_quit(self, arg):
         """Exit the simulator."""

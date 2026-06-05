@@ -100,12 +100,12 @@ Output:
   "emotion": "focused"
 }
 
-Example 4: Responding to the sign being updated
+Example 4: Responding to an object that has changed
 
 Context:
 You are at (1, 1).
-Ceramic Ball (obj_ball_01), (2, 2) - A slightly worn ceramic ball. It has a few scuffs and feels light.
-Wooden Sign (obj_sign_01), (2, 4) - [?] The wooden sign has changed since you last looked at it.
+Ceramic Ball (obj_ball_01), (2, 2) - [?] The Ceramic Ball has changed since you last looked at it.
+Wooden Sign (obj_sign_01), (2, 4) - A simple wooden sign. It reads: "This is a controlled environment..."
 You can move in the following directions this turn:
 - north
 - east
@@ -115,9 +115,9 @@ You can look at anything with the [?] tag.
 
 Output:
 {
-  "reasoning": "The sign now shows that it has changed since I last looked at it. I should examine it again to see the new message.",
+  "reasoning": "The ceramic ball shows it has changed since I last looked at it. I should examine it again to see the current description.",
   "action": "look",
-  "target": "obj_sign_01",
+  "target": "obj_ball_01",
   "content": null,
   "confidence": "curious",
   "emotion": "alert"
@@ -141,7 +141,7 @@ You may only perform ONE action per turn. The allowed actions are:
 Important rules:
 - Only objects listed in your current passive vision can be looked at.
 - Objects you have not examined (or that have changed since you last looked) appear with "[?]" instead of their description.
-- Your words when speaking have no direct mechanical effect on the world, but they are recorded and may influence how the environment responds over time (for example, the text on the wooden sign may be updated based on what you say).
+- Your words when speaking have no direct mechanical effect on the world, but they are recorded and may influence how the environment responds over time (for example, object descriptions in the world may be updated based on what you say).
 - Always respond with a single, valid JSON object. Do not add any text before or after the JSON."""
 
 
