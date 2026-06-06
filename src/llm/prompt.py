@@ -1,7 +1,7 @@
 """
 prompt.py
 
-Prompt construction for Version 0.
+Prompt construction for V0 / V0.1.
 
 This module builds the full text prompt sent to the LLM (DeepSeek via OpenRouter).
 
@@ -43,7 +43,7 @@ You can move in the following directions this turn:
 - east
 - south
 - west
-You can look at anything with the [?] tag.
+You can look at any object or other agent listed in Passive Vision (including [?] and [?] [changed] entries).
 
 Output:
 {
@@ -66,7 +66,7 @@ You can move in the following directions this turn:
 - east
 - south
 - west
-You can look at anything with the [?] tag.
+You can look at any object or other agent listed in Passive Vision (including [?] and [?] [changed] entries).
 
 Output:
 {
@@ -111,7 +111,7 @@ You can move in the following directions this turn:
 - east
 - south
 - west
-You can look at anything with the [?] tag.
+You can look at any object or other agent listed in Passive Vision (including [?] and [?] [changed] entries).
 
 Output:
 {
@@ -135,13 +135,14 @@ def _get_system_instructions() -> str:
 
 You may only perform ONE action per turn. The allowed actions are:
 - move: Move exactly one tile in a cardinal direction (north, east, south, or west). You cannot move outside the grid.
-- look: Examine an object that currently appears in your passive vision (including objects marked with [?]). You will receive its detailed description if one exists.
-- speak: Say something out loud. Limited to a maximum of three sentences. All text must be pure verbal dialogue. Do not include emotes (*smiles*), actions (_waves_), or parenthetical descriptions.
+- look: Examine an object or another agent that appears in your passive vision (including entries marked with [?]). You will receive its detailed description if one exists.
+- speak: Say something out loud. Limited to a maximum of five sentences. Prefer pure verbal dialogue; avoid emotes (*smiles*), action markers (_waves_), or stage-direction asides.
 
 Important rules:
-- Only objects listed in your current passive vision can be looked at.
-- Objects may show a passive glance description without looking. Hidden detailed text is marked with "[?]" (optionally alongside the passive line). Stale examined knowledge appears as "[?] [changed]" with the passive line.
-- Your words when speaking have no direct mechanical effect on the world, but they are recorded and may influence how the environment responds over time (for example, object descriptions in the world may be updated based on what you say).
+- Only entities listed in your current passive vision can be looked at (objects and other agents; you do not see yourself).
+- Objects and other agents may show a passive glance line without looking. Hidden detailed description is marked with "[?]" (optionally alongside the passive line). Stale examined knowledge appears as "[?] [changed]" with the passive line.
+- Other agents also show their most recent observable action (e.g. speech or movement) appended to their passive vision line, including confidence and Emotion when provided (e.g. '(confidence: curious, Emotion: intrigued)').
+- Your words when speaking have no direct mechanical effect on the world, however other agents can hear and react to them.
 - Always respond with a single, valid JSON object. Do not add any text before or after the JSON."""
 
 
@@ -169,7 +170,7 @@ def _get_available_actions(agent: Agent, world: World) -> str:
             lines.append(f"- {d}")
         lines.append("")
 
-    lines.append("You can look at anything with the [?] tag.")
+    lines.append("You can look at any object or other agent listed in Passive Vision (including [?] and [?] [changed] entries).")
 
     return "\n".join(lines)
 
@@ -213,7 +214,9 @@ def build_prompt(agent: Agent, world: World, include_examples: bool = False) -> 
 
     # 1. Character Description
     parts.append(f"You are {agent.name}.")
-    parts.append(agent.description)
+    parts.append(f"Your personality: {agent.personality}")
+    parts.append("")
+    parts.append(f"Your detailed description: {agent.description}")
     parts.append("")
 
     # 2. System Instructions / Rules
@@ -240,7 +243,7 @@ def build_prompt(agent: Agent, world: World, include_examples: bool = False) -> 
     parts.append("")
 
     # 7. Current Instructions / Reminders
-    parts.append("You may only speak up to three sentences this turn. All spoken text must be pure verbal dialogue.")
+    parts.append("You may only speak up to five sentences this turn. Spoken text should be things you say out loud.")
     parts.append("")
 
     # 8. Output Format

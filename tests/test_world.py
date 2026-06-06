@@ -36,7 +36,8 @@ def test_initial_world_has_correct_agent():
     assert agent.position == (1, 1)
     assert len(agent.memory.turns) == 0
     assert agent.last_action is None
-    assert "curious explorer" in agent.description.lower()
+    assert "curious explorer" in agent.personality.lower()
+    assert "curious explorer" in agent.passive_description.lower()
 
 
 def test_initial_world_has_correct_objects():
@@ -149,9 +150,9 @@ def test_perform_look_updates_memory_and_returns_description():
     # Ball starts unknown
     assert not agent.memory.has_looked_at("obj_ball_01")
 
-    result = perform_look(agent, world, "obj_ball_01")
+    outcome = perform_look(agent, world, "obj_ball_01")
 
-    assert "You looked at the ceramic ball" in result
-    assert "scuffs and feels light" in result
+    assert "You looked at the ceramic ball" in outcome.result
+    assert "scuffs and feels light" in outcome.result
     assert agent.memory.has_looked_at("obj_ball_01")
     assert agent.memory.has_ever_looked_at("obj_ball_01")

@@ -281,15 +281,20 @@ def create_agent_from_args(world: World, arg: str) -> tuple[Optional[Agent], str
     """
     Parse and create an agent.
 
-    Usage: name "..." desc "..." at x,y
+    Usage: name "..." [pdesc "..."] [desc "..."] [personality "..."] at x,y
     """
     tokens, err = tokenize_args(arg)
     if err:
         return None, err
     if not tokens:
-        return None, 'Usage: create-agent name "..." desc "..." at x,y'
+        return None, (
+            'Usage: create-agent name "..." [pdesc "..."] [desc "..."] '
+            '[personality "..."] at x,y'
+        )
 
-    fields, err = parse_field_tokens(tokens, {"name", "desc", "at"})
+    fields, err = parse_field_tokens(
+        tokens, {"name", "pdesc", "desc", "personality", "at"}
+    )
     if err:
         return None, err
     if "name" not in fields:
@@ -311,13 +316,17 @@ def create_agent_from_args(world: World, arg: str) -> tuple[Optional[Agent], str
     if not world.is_valid_position(position):
         return None, f"Invalid position {position}. Grid is 0-4 in both axes."
 
+    pdesc = fields.get("pdesc", "")
     desc = fields.get("desc", "")
+    personality = fields.get("personality", "")
     agent_id = generate_agent_id(world, fields["name"])
     agent = Agent(
         id=agent_id,
         name=fields["name"],
-        description=desc,
+        personality=personality,
         position=position,
+        passive_description=pdesc,
+        description=desc,
         memory=Memory(),
         last_action=None,
     )
@@ -332,7 +341,7 @@ def edit_agent_from_args(world: World, arg: str) -> EditAgentResult:
     """
     Parse and edit an agent.
 
-    Usage: <agent_id> [desc "..."] [name "..."] [pos x,y] ...
+    Usage: <agent_id> [pdesc "..."] [desc "..."] [personality "..."] [name "..."] [pos x,y] ...
     """
     tokens, err = tokenize_args(arg)
     if err:
@@ -340,7 +349,10 @@ def edit_agent_from_args(world: World, arg: str) -> EditAgentResult:
     if not tokens:
         return EditAgentResult(
             ok=False,
-            message='Usage: edit-agent <id> [desc "..."] [name "..."] [pos x,y] ...',
+            message=(
+                'Usage: edit-agent <id> [pdesc "..."] [desc "..."] [personality "..."] '
+                '[name "..."] [pos x,y] ...'
+            ),
         )
 
     agent_id = tokens[0]
@@ -360,13 +372,18 @@ def edit_agent_from_args(world: World, arg: str) -> EditAgentResult:
             message=f"Agent '{agent_id}' not found. Use 'agents' or 'list' to look up ids.",
         )
 
-    fields, err = parse_field_tokens(tokens[1:], {"name", "desc", "pos"})
+    fields, err = parse_field_tokens(
+        tokens[1:], {"name", "pdesc", "desc", "personality", "pos"}
+    )
     if err:
         return EditAgentResult(ok=False, message=err)
     if not fields:
         return EditAgentResult(
             ok=False,
-            message="At least one field to change is required (name, desc, or pos).",
+            message=(
+                "At least one field to change is required "
+                "(name, pdesc, desc, personality, or pos)."
+            ),
         )
 
     old_name_lower = agent.name.lower()
@@ -386,9 +403,21 @@ def edit_agent_from_args(world: World, arg: str) -> EditAgentResult:
         agent.name = fields["name"]
         changes.append("name")
 
+    if "pdesc" in fields and fields["pdesc"] != agent.passive_description:
+        agent.passive_description = fields["pdesc"]
+        changes.append("pdesc")
+
     if "desc" in fields and fields["desc"] != agent.description:
         agent.description = fields["desc"]
+        if fields["desc"]:
+            world.invalidate_entity_knowledge(agent_id)
+        else:
+            world.clear_entity_examination_history(agent_id)
         changes.append("desc")
+
+    if "personality" in fields and fields["personality"] != agent.personality:
+        agent.personality = fields["personality"]
+        changes.append("personality")
 
     if "pos" in fields:
         position, err = parse_position(fields["pos"])

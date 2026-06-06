@@ -45,7 +45,7 @@ class Memory:
     2. `looked_at` — objects the agent has up-to-date knowledge of.
     3. `ever_looked` — objects the agent has looked at at least once (V0.1).
 
-    Look knowledge controls passive vision (see `perception.format_object_vision_desc`):
+    Look knowledge controls passive vision (see `perception.format_vision_desc`):
     - `looked_at` → detailed `desc` (or passive if no detailed).
     - `ever_looked` without `looked_at` (and detailed exists) → stale `[?] [changed]` (+ passive if set).
     - Otherwise → `[?]` or `[?] {passive}` / passive only, depending on object fields.

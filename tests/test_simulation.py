@@ -227,9 +227,9 @@ def test_execute_action_unknown_action_returns_error_result():
         target = None
         content = None
 
-    result = execute_action(agent, world, FakeTurn())
+    outcome = execute_action(agent, world, FakeTurn())
 
-    assert "wasn't recognized" in result
+    assert "wasn't recognized" in outcome.result
 
 
 def test_step_unknown_action_still_records_turn():
@@ -266,11 +266,15 @@ def test_build_prompt_produces_reasonable_output():
     assert "You are Explorer" in prompt
     assert "You exist inside a small, controlled 5x5 grid room" in prompt
     assert "You are at (1, 1)" in prompt  # from passive vision
-    assert "You can look at anything with the [?] tag" in prompt
+    assert "You can look at any object or other agent listed in Passive Vision" in prompt
     assert '"reasoning"' in prompt  # output format reminder
     assert "Example 1: Correct use of `speak`" in prompt  # few-shot present
     assert "Example 4: Responding to an object that has changed" in prompt
-    assert "object descriptions in the world may be updated" in prompt
+    assert "Your personality:" in prompt
+    assert "Your detailed description:" in prompt
+    assert "curious explorer" in prompt  # Explorer default personality
+    assert 'Stale examined knowledge appears as "[?] [changed]"' in prompt
+    assert "other agents can hear and react to them" in prompt
 
 
 def test_build_prompt_without_fewshots_is_shorter_and_lacks_examples():
@@ -284,4 +288,4 @@ def test_build_prompt_without_fewshots_is_shorter_and_lacks_examples():
     assert len(prompt_without) < len(prompt_with)
     assert "Example 1: Correct use of `speak`" not in prompt_without
     assert "You are Explorer" in prompt_without  # still has the core parts
-    assert "You can look at anything with the [?] tag" in prompt_without
+    assert "You can look at any object or other agent listed in Passive Vision" in prompt_without

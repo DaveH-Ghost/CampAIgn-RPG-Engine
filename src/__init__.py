@@ -1,6 +1,6 @@
 """
-Realm Fabric - V0
+Realm Fabric — grid-based agent simulation (V0 / V0.1).
 
-Grid-based agent simulation framework.
-This package contains the core simulation logic for Version 0.
+Core simulation logic: structured LLM turns, perception, world editing,
+and multi-agent support via the manual stepper.
 """

@@ -23,7 +23,7 @@ Run with:
 import pytest
 from pydantic import ValidationError
 
-from src.llm.schemas import AgentTurn
+from src.llm.schemas import AgentTurn, count_speak_sentences
 
 
 # =============================================================================
@@ -74,6 +74,46 @@ def test_valid_speak_action():
     assert "ball looks interesting" in turn.content
 
 
+def test_count_speak_sentences_treats_ellipsis_as_pause_not_boundary():
+    """Ellipsis runs should not inflate the sentence count."""
+    assert count_speak_sentences("I am Goblin! Nice to mee.... Please tell me again?") == 2
+    assert (
+        count_speak_sentences(
+            "I am Goblin! Nice to meet you... well actually... hmm... "
+            "Please tell me again?"
+        )
+        == 2
+    )
+
+
+def test_valid_speak_action_with_ellipsis_pauses():
+    """Chatty dialogue with ellipsis pauses should stay within the sentence limit."""
+    data = {
+        "reasoning": "Goblin is chatty.",
+        "action": "speak",
+        "content": (
+            "I am Goblin! Nice to meet you... well actually... hmm... "
+            "Please tell me again?"
+        ),
+    }
+    turn = AgentTurn(**data)
+    assert turn.action == "speak"
+
+
+def test_valid_speak_action_five_sentences():
+    """Speak content at the five-sentence limit should parse successfully."""
+    data = {
+        "reasoning": "The goblin has a lot to say.",
+        "action": "speak",
+        "content": (
+            "First sentence. Second sentence. Third sentence. "
+            "Fourth sentence. Fifth sentence."
+        ),
+    }
+    turn = AgentTurn(**data)
+    assert turn.action == "speak"
+
+
 # =============================================================================
 # INVALID CASES
 # =============================================================================
@@ -102,41 +142,42 @@ def test_invalid_reasoning_exceeds_400_chars():
     assert "REASONING_TOO_LONG" in str(exc_info.value)
 
 
-def test_invalid_speak_contains_emotes_asterisks():
-    """Speak content must not contain emotes using * or _."""
-    data = {
-        "reasoning": "I feel happy.",
-        "action": "speak",
-        "content": "This ball is really cool! *smiles happily*",
-    }
-    with pytest.raises(ValidationError) as exc_info:
-        AgentTurn(**data)
-    assert "INVALID_CONTENT" in str(exc_info.value)
-
-
-def test_invalid_speak_contains_parentheses():
-    """Speak content must not contain parentheses (lightweight heuristic)."""
+def test_valid_speak_action_with_parentheses():
+    """Parentheses in dialogue are allowed (no runtime emote/action detection)."""
     data = {
         "reasoning": "Just thinking out loud.",
         "action": "speak",
         "content": "I wonder what (the sign) is trying to tell me.",
     }
-    with pytest.raises(ValidationError) as exc_info:
-        AgentTurn(**data)
-    assert "INVALID_CONTENT" in str(exc_info.value)
+    turn = AgentTurn(**data)
+    assert "(the sign)" in turn.content
 
 
-def test_invalid_speak_exceeds_3_sentences():
-    """Speak content is limited to a maximum of 3 sentences."""
+def test_valid_speak_action_with_emote_markers():
+    """Emote-like markers in dialogue are allowed (prompt discourages, not validator)."""
+    data = {
+        "reasoning": "I feel happy.",
+        "action": "speak",
+        "content": "This ball is really cool! *smiles happily*",
+    }
+    turn = AgentTurn(**data)
+    assert "*smiles happily*" in turn.content
+
+
+def test_invalid_speak_exceeds_5_sentences():
+    """Speak content is limited to a maximum of 5 sentences."""
     data = {
         "reasoning": "I have a lot to say.",
         "action": "speak",
-        "content": "First sentence. Second sentence. Third sentence. Fourth sentence here.",
+        "content": (
+            "First sentence. Second sentence. Third sentence. "
+            "Fourth sentence. Fifth sentence. Sixth sentence here."
+        ),
     }
     with pytest.raises(ValidationError) as exc_info:
         AgentTurn(**data)
     assert "CONTENT_TOO_LONG" in str(exc_info.value)
-    assert "3 sentences" in str(exc_info.value)
+    assert "5 sentences" in str(exc_info.value)
 
 
 def test_invalid_speak_exceeds_280_characters():

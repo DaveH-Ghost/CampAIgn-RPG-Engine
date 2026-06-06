@@ -17,8 +17,8 @@ For all actual development and imports, use:
 
 Current V0 Scope:
 - Only three actions: move, look, speak
-- Max 3 sentences + 280 character limit for speak content
-- Lightweight pure-dialogue heuristic (rejects obvious emotes/actions)
+- Max 5 sentences + 280 character limit for speak content
+- Pure dialogue encouraged via prompt only (no runtime emote/action detection)
 - `reasoning` limited to 400 characters (supports prompt token budget)
 - move target uses full direction strings ("north", "east", etc.)
 - confidence and emotion fields are kept for now (can be removed later if problematic)
@@ -37,6 +37,15 @@ ActionType = Literal[
     "speak",
 ]
 
+MAX_SPEAK_SENTENCES = 5
+
+
+def count_speak_sentences(text: str) -> int:
+    """Count sentences; runs of 2+ periods are ellipses, not boundaries."""
+    normalized = re.sub(r"\.{2,}", "\u2026", text.strip())
+    parts = [s.strip() for s in re.split(r"[.!?]+\s*", normalized) if s.strip()]
+    return len(parts)
+
 
 class AgentTurn(BaseModel):
     """
@@ -46,8 +55,8 @@ class AgentTurn(BaseModel):
     - `reasoning` is always required and private (never shown to other agents).
       Limited to 400 characters.
     - `target` is kept as a string for simplicity (with format rules per action).
-    - `content` (for speak) is limited to a maximum of 3 sentences and 280 characters.
-    - All text in `content` is treated as verbal dialogue only (lightweight heuristic enforcement).
+    - `content` (for speak) is limited to a maximum of 5 sentences and 280 characters.
+    - All text in `content` is treated as verbal dialogue (enforced by prompt, not runtime parsing).
     - `confidence` and `emotion` are optional and kept short (max 3 words).
     """
 
@@ -68,14 +77,14 @@ class AgentTurn(BaseModel):
             "What the action is directed toward.\n"
             "Rules by action:\n"
             "- move: Must be a full direction string: 'north', 'east', 'south', or 'west'\n"
-            "- look: Use the object ID (e.g. 'obj_ball_01' or 'obj_sign_01')\n"
+            "- look: Use the entity ID (e.g. 'obj_ball_01', 'obj_sign_01', or 'agent_goblin_01')\n"
             "- speak: Leave empty (not used)"
         )
     )
 
     content: Optional[str] = Field(
         default=None,
-        description="Only used with the 'speak' action. Maximum 3 sentences of pure dialogue."
+        description="Only used with the 'speak' action. Maximum 5 sentences of pure dialogue."
     )
 
     confidence: Optional[str] = Field(
@@ -96,7 +105,7 @@ class AgentTurn(BaseModel):
     # - This model performs structural validation + basic content guardrails only.
     # - Runtime validation (e.g. "is the 'look' target currently visible in passive vision?")
     #   is the responsibility of the action execution layer, not this Pydantic model.
-    # - Sentence counting and pure-dialogue checks are intentionally lightweight heuristics.
+    # - Sentence counting is an intentionally lightweight heuristic.
     # - A new error code (REASONING_TOO_LONG) has been added to support token budget control.
 
     @field_validator("reasoning")
@@ -141,24 +150,11 @@ class AgentTurn(BaseModel):
         if not text:
             return v
 
-        # Lightweight pure-dialogue heuristic for V0
-        # NOTE: This heuristic is known to have false positives on legitimate dialogue
-        # that uses parentheses (e.g. "I wonder what (the sign) says"). This is an
-        # accepted limitation for V0. See "Known Limitations (V0)" in the checklist.
-        if any(c in text for c in "*_") or ("(" in text and ")" in text):
-            # Catches common emote/action patterns: *smiles*, _waves_, (laughs quietly), etc.
-            raise ValueError(
-                "ERR:INVALID_CONTENT: speak content must be pure verbal dialogue. "
-                "Emotes, actions, or descriptions using asterisks, underscores, or parentheses are not allowed."
-            )
+        sentence_count = count_speak_sentences(text)
 
-        # Improved sentence counting (handles ellipses and multiple punctuation better than before)
-        sentences = [s.strip() for s in re.split(r"[.!?]+\s*", text) if s.strip()]
-        sentence_count = len(sentences)
-
-        if sentence_count > 3:
+        if sentence_count > MAX_SPEAK_SENTENCES:
             raise ValueError(
-                f"ERR:CONTENT_TOO_LONG: speak is limited to a maximum of 3 sentences "
+                f"ERR:CONTENT_TOO_LONG: speak is limited to a maximum of 5 sentences "
                 f"in V0 (you used {sentence_count})."
             )
 

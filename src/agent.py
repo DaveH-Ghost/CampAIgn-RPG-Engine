@@ -7,10 +7,12 @@ from .memory import Memory, TurnRecord
 @dataclass
 class Agent:
     """
-    Represents the single agent in the V0 simulation.
+    Represents one agent in the simulation.
 
-    The agent maintains its own position, personality description,
-    and short-term memory.
+    Three text layers (mirrors objects for vision; personality is separate):
+    - passive_description: glance text in other agents' passive vision
+    - description: detailed text revealed by look (never includes personality)
+    - personality: private LLM prompt text for this agent only (never in vision)
     """
 
     id: str
@@ -19,33 +21,37 @@ class Agent:
     name: str
     """Display name of the agent (used in prompts and logging)."""
 
-    description: str
+    personality: str
     """
-    Core personality / character description.
+    Private character instructions for the LLM when this agent acts.
 
-    This text is injected into the prompt every turn so the agent
-    stays in character and behaves consistently.
+    Included in this agent's prompt every turn. Never shown in passive vision
+    and never revealed by look.
     """
 
     position: tuple[int, int]
     """Current grid position of the agent as (x, y)."""
 
-    memory: Memory = field(default_factory=Memory)
+    passive_description: str = ""
+    """Glance-level text visible to other agents without looking."""
+
+    description: str = ""
     """
-    The agent's memory.
+    Detailed observable text revealed when another agent uses look.
 
-    This is a Memory instance that holds:
-    - The last 10 turns (as TurnRecord objects)
-    - The set of objects the agent has looked at
+    Hidden behind [?] in passive vision until examined (same rules as objects).
+    """
 
-    Each agent gets its own Memory instance so that in future versions
-    with multiple agents, one agent's observations do not affect another's.
+    memory: Memory = field(default_factory=Memory)
+    """Per-agent turn history and look knowledge (objects and other agents)."""
+
+    passive_result: str = ""
+    """
+    Third-person summary of this agent's most recent successful action.
+
+    Appended in other agents' passive vision (e.g. 'Goblin says: "Hello." (confidence: curious, Emotion: intrigued)').
+    Replaced on each new successful action; not shown in look or personality.
     """
 
     last_action: Optional[str] = None
-    """
-    The action the agent took on the previous turn.
-
-    This field is retained for potential future use (e.g. richer memory
-    systems or prompt conditioning), but is currently underutilized in V0.
-    """
+    """The action taken on the previous turn (retained for future use)."""

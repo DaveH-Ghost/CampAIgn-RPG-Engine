@@ -18,7 +18,7 @@ These plans are subject to change as we learn and discuss.
 - Removed all sign-specific special cases in `perception.py`.
 - Added `ever_looked` tracking on `Memory` to distinguish never examined from stale examined knowledge.
 - Stale vision: **`[?] [changed] {passive}`** (or `[?] [changed]` if no passive line). Never-examined with hidden detail: `[?]` or `[?] {passive}`.
-- Any change to an object's **detailed** description (`desc`) calls `World.invalidate_object_knowledge(id)` on all agents with current knowledge.
+- Any change to an entity's **detailed** description (`desc` on objects or agents) calls `World.invalidate_entity_knowledge(id)` on all agents with current knowledge.
 - Name, position, or **passive** (`pdesc`) edits do **not** invalidate look knowledge.
 - Few-shot examples and system rules updated in `prompt.py`.
 - The `sign` command removed; use `edit-object obj_sign_01 desc "..."` (and optional `pdesc`).
@@ -29,10 +29,11 @@ These plans are subject to change as we learn and discuss.
 - **Listing commands** (read-only, no turn consumed): `list` (everything), `objects` (all objects), `agents` (all agents with ids and active marker). Primary way to look up ids for edit/delete without running a turn or viewing a prompt.
 - **ID rules:** auto-generated per category (`obj_{slug}_01`, `agent_{slug}_01`); immutable after creation. Object display names may duplicate; agent display names must be unique among agents (case-insensitive) and cannot match stepper commands (validated via `src/stepper_commands.py`). Objects and agents may share a display name with each other.
 - **Edit/delete** commands take entity **id**, not display name.
-- Editing an object's description triggers generalized "has changed" invalidation (per item 1).
-- Agent edits affect name/description/position only — private memory is untouched.
+- Editing an object's or agent's **`desc`** triggers generalized "has changed" invalidation (per item 1). **`personality`** edits do not invalidate look knowledge.
+- Agents support **`pdesc`**, **`desc`** (observable; same `[?]` rules as objects), and **`personality`** (private LLM prompt only).
+- Agent edits affect name, `pdesc`, `desc`, `personality`, or position — per-agent memory and turn history are untouched.
 - `create-agent` does not change the active agent.
-- The world starts identical to V0; all changes happen at runtime via these commands.
+- The default initial world keeps the same layout (Explorer + ball + sign) but Explorer uses the three-layer agent text model (`pdesc` / `desc` / `personality`); all runtime changes happen via stepper commands.
 - Keep the experience fully manual (no automatic sequencing of agent turns).
 
 ### 3. Multi-agent support — ✅ Implemented
@@ -44,8 +45,10 @@ These plans are subject to change as we learn and discuss.
 - `vision`, `state`, `prompt`, manual `step`, etc. operate on the active agent.
 - **Per-agent turn numbers** in `TurnRecord` (no gaps when agents alternate); `session_turn` is a console/log label only and increments after successful `step_turn`.
 - Add `World.get_agents()`, `get_agent_by_id()`, `get_agent_by_name()`; keep `get_agent()` as first agent for backward compatibility.
-- Agents share the same world grid and objects but do not observe or interact with each other (no other agents in passive vision).
-- Initial world (`create_initial_world`) stays exactly as in V0. Additional agents are introduced via editing commands from item 2.
+- Agents share the same world grid and objects. **Other agents appear in passive vision** (`pdesc` + hidden `desc` until `look`; `personality` is LLM-only). You do not see yourself.
+- **`look`** works on other agents (`agent_*` ids) as well as objects. **`passive_result`** shows each agent's most recent observable action to others (speech, movement, examination), with optional confidence/emotion appended.
+- No speak **targeting** (agents broadcast speech to the room), no relationships, no automatic turn sequencing, and no agent-initiated world edits.
+- Additional agents are introduced via editing commands from item 2.
 
 These changes improve experimentation while keeping the core "one structured action per LLM call per agent" model that was validated in V0.
 

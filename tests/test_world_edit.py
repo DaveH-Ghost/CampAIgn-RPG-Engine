@@ -139,8 +139,8 @@ def test_edit_object_sign_replaces_sign_workflow():
     assert "Updated object obj_sign_01" in msg
     vision = build_passive_vision(agent, world)
     assert "[?] [changed] A simple wooden sign on the wall." in vision
-    result = perform_look(agent, world, "obj_sign_01")
-    assert new_text in result
+    outcome = perform_look(agent, world, "obj_sign_01")
+    assert new_text in outcome.result
 
 
 def test_edit_object_rejects_display_name():
@@ -173,7 +173,9 @@ def test_two_objects_same_display_name_allowed():
 def test_create_agent_and_list():
     world = create_initial_world()
     agent, msg = create_agent_from_args(
-        world, 'name "Goblin" desc "A grumpy goblin." at 0,3'
+        world,
+        'name "Goblin" pdesc "A grumpy goblin." desc "Sharp-eyed goblin." '
+        'personality "Grumpy inside." at 0,3',
     )
     assert agent is not None
     assert agent.id == "agent_goblin_01"
@@ -194,7 +196,7 @@ def test_edit_agent_rename():
 
 def test_edit_agent_rejects_display_name():
     world = create_initial_world()
-    result = edit_agent_from_args(world, 'Explorer desc "nope"')
+    result = edit_agent_from_args(world, 'Explorer personality "nope"')
     assert not result.ok
     assert "require agent id" in result.message
 
@@ -220,7 +222,7 @@ def test_stepper_parses_hyphenated_commands():
 
 def test_create_agent_duplicate_name_rejected():
     world = create_initial_world()
-    agent, msg = create_agent_from_args(world, 'name "Explorer" desc "x" at 0,0')
+    agent, msg = create_agent_from_args(world, 'name "Explorer" personality "x" at 0,0')
     assert agent is None
     assert "already in use" in msg
 
@@ -297,7 +299,7 @@ def test_stepper_delete_active_agent_reassigns(capsys):
     from src.main import ManualStepper
 
     stepper = ManualStepper()
-    stepper.onecmd('create-agent name "Goblin" desc "x" at 0,0')
+    stepper.onecmd('create-agent name "Goblin" personality "x" at 0,0')
     goblin = stepper.world.get_agent_by_id("agent_goblin_01")
     stepper.agent = goblin
     stepper.onecmd("delete-agent agent_goblin_01")
@@ -308,7 +310,7 @@ def test_stepper_delete_active_agent_reassigns(capsys):
 
 def test_delete_non_active_agent():
     world = create_initial_world()
-    create_agent_from_args(world, 'name "Goblin" desc "x" at 0,0')
+    create_agent_from_args(world, 'name "Goblin" personality "x" at 0,0')
     active = world.get_agent()
     result = delete_agent_by_id(world, "agent_goblin_01")
     assert result.ok

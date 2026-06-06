@@ -8,24 +8,21 @@ from src.object import Object
 
 class World:
     """
-    Represents the entire simulation world for Version 0.
+    Represents the entire simulation world.
 
-    The World holds all the state:
-    - The single agent
+    The World holds all state:
+    - All agents (V0.1: multiple agents with independent memory)
     - All objects in the environment
     - Grid rules and boundaries
 
-    In V0 the world is very small and simple:
+    The default initial world (create_initial_world) matches V0:
     - 5x5 grid (coordinates 0-4 in both x and y)
     - (0, 0) is the southwest corner. Y increases northward.
-    - Only one agent.
-    - Only two objects (a ceramic ball and a wooden sign).
-    - No blocking objects. The agent can occupy the same tile as the ball.
+    - One starting agent (Explorer), a ceramic ball, and a wooden sign.
+    - Additional agents and objects may be added at runtime via stepper commands.
+    - No blocking objects. Agents can occupy the same tile as objects or each other.
     - Room boundaries are not represented as objects. They are described
       to the agent via a static room description string in the prompt.
-
-    This class is currently a regular class (not a dataclass) because it
-    will likely grow methods for querying and updating state.
     """
 
     # Grid constants (as defined in the V0 readiness checklist)
@@ -129,29 +126,39 @@ class World:
             "You are in a small room with a hardwood floor and four wooden walls."
         )
 
-    def invalidate_object_knowledge(self, object_id: str) -> None:
+    def invalidate_entity_knowledge(self, entity_id: str) -> None:
         """
-        Remove up-to-date look knowledge for an object across all agents.
+        Remove up-to-date look knowledge for an object or agent across all agents.
 
-        Call this whenever an object's description changes (e.g. edit-object).
+        Call when an object's or agent's **desc** (detailed observable text) changes.
         Do not call agent.memory.invalidate_look directly.
 
-        Agents who had looked at the object will see the generalized changed
-        notification; agents who never looked still see plain [?].
+        **Does not apply to `personality` edits** — personality is never revealed by look.
+
+        Agents who had looked will see [?] [changed]; agents who never looked
+        still see plain [?].
         """
         for agent in self.agents:
-            if agent.memory.has_looked_at(object_id):
-                agent.memory.invalidate_look(object_id)
+            if agent.memory.has_looked_at(entity_id):
+                agent.memory.invalidate_look(entity_id)
+
+    def clear_entity_examination_history(self, entity_id: str) -> None:
+        """
+        Clear looked_at and ever_looked for an entity across all agents.
+
+        Used when detailed description/personality is removed so agents are not
+        stuck in a stale state they cannot clear via look.
+        """
+        for agent in self.agents:
+            agent.memory.clear_examination(entity_id)
+
+    def invalidate_object_knowledge(self, object_id: str) -> None:
+        """Alias for invalidate_entity_knowledge (objects)."""
+        self.invalidate_entity_knowledge(object_id)
 
     def clear_object_examination_history(self, object_id: str) -> None:
-        """
-        Clear looked_at and ever_looked for an object across all agents.
-
-        Used when detailed description is removed so agents are not stuck in
-        a stale state they cannot clear via look.
-        """
-        for agent in self.agents:
-            agent.memory.clear_examination(object_id)
+        """Alias for clear_entity_examination_history (objects)."""
+        self.clear_entity_examination_history(object_id)
 
 
 # =============================================================================
@@ -160,15 +167,11 @@ class World:
 
 def create_initial_world() -> World:
     """
-    Create and return the starting world state for Version 0.
+    Create and return the starting world state.
 
-    This function centralizes the initial configuration so it is easy to
-    inspect and modify during development and experimentation.
-
-    Starting state:
-    - Agent at (1, 1)
-    - Ceramic Ball at (2, 2)
-    - Wooden Sign at (2, 4)
+    Same layout as V0 (Explorer at (1,1), ball at (2,2), sign at (2,4)).
+    Explorer uses the V0.1 three-layer text model: `passive_description`,
+    `description`, and `personality` (V0's single description field split).
     """
     world = World()
 
@@ -176,7 +179,12 @@ def create_initial_world() -> World:
     agent = Agent(
         id="agent_01",
         name="Explorer",
+        passive_description="A curious explorer in the room.",
         description=(
+            "A traveler in worn boots and a dusty coat, watching the room "
+            "with careful attention."
+        ),
+        personality=(
             "You are a curious explorer placed in a small, controlled room. "
             "Your goal is to understand your environment through careful "
             "observation and deliberate action."

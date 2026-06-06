@@ -1,7 +1,9 @@
 # Version 0 Implementation Readiness Checklist
 
+> **Historical document.** V0 is shipped (tag `v0`). For current behavior — generalized stale perception, world editing, multi-agent passive observation, observable actions (`passive_result`), removed `sign` command — see [v0.1-implementation-readiness-checklist.md](v0.1-implementation-readiness-checklist.md) and [ROADMAP.md](ROADMAP.md).
+
 **Purpose:**  
-This checklist defines everything we must design, decide, and document *before* we write any code. The goal is to make sure we have a clear, small, understandable foundation so implementation is straightforward and low-risk.
+This checklist defines everything we must design, decide, and document *before* we wrote V0 code. It remains a design reference for the original single-agent foundation.
 
 **Rule:** No code is written until every item on this checklist is checked off.
 
@@ -258,7 +260,7 @@ This checklist defines everything we must design, decide, and document *before* 
 
   **Agreed Behavior for `speak` (V0):**
 
-  - The agent may only speak **up to three sentences** per turn.
+  - The agent may only speak **up to five sentences** per turn.
   - All text provided in the `speak` action is treated as verbal dialogue.
   - Speaking has no *direct mechanical effect* on objects or the environment in V0. However, your words are recorded and may influence how the simulation responds over time (for example, through updates to the sign).
   - Spoken text is stored in the agent's action history (just like `move` and `look` results).
@@ -266,7 +268,7 @@ This checklist defines everything we must design, decide, and document *before* 
 
   **Example of how `speak` appears in the prompt:**
 
-  You may speak this turn (maximum 3 sentences). All text in the speak action is treated as verbal dialogue. Your words have no direct mechanical effect on the world, but what you say is recorded and may influence how the simulation responds (for example, through updates to the sign).
+  You may speak this turn (maximum 5 sentences). All text in the speak action is treated as verbal dialogue. Your words have no direct mechanical effect on the world, but what you say is recorded and may influence how the simulation responds (for example, through updates to the sign).
 
   **Example of what gets recorded in the agent's action history after speaking:**
 
@@ -337,7 +339,7 @@ This checklist defines everything we must design, decide, and document *before* 
   **Agreed Validation Rules:**
 
   - `move`: `target` must be one of "north", "east", "south", or "west".
-  - `speak`: `content` is limited to a maximum of 3 sentences **and** 280 characters. A lightweight heuristic also rejects obvious emotes/actions (e.g. text containing `*`, `_`, or parenthetical descriptions).
+  - `speak`: `content` is limited to a maximum of 5 sentences **and** 280 characters. Pure dialogue is encouraged via prompt only; no runtime emote/action detection.
   - `reasoning`: Limited to a maximum of 400 characters (to help control overall prompt token usage).
   - `confidence` and `emotion`: Limited to a maximum of 3 words each.
   - Full validators (including the new limits and heuristics) are implemented in `docs/schemas/AgentTurn.py`.
@@ -368,13 +370,13 @@ This checklist defines everything we must design, decide, and document *before* 
   - `INVALID_JSON` — Model output was not valid JSON or failed Pydantic schema validation.
   - `UNKNOWN_ACTION` — The `action` field contained a value that is not one of the allowed actions.
   - `INVALID_TARGET` — The `target` was invalid or inappropriate for the chosen action.
-  - `CONTENT_TOO_LONG` — The `content` field exceeded the allowed length (more than 3 sentences or 280 characters for `speak`).
-  - `INVALID_CONTENT` — The `content` field contained disallowed elements (e.g. emotes or actions when only pure dialogue is allowed).
+  - `CONTENT_TOO_LONG` — The `content` field exceeded the allowed length (more than 5 sentences or 280 characters for `speak`).
+  - `INVALID_CONTENT` — A field contained disallowed content (e.g. `confidence` or `emotion` longer than 3 words).
   - `REASONING_TOO_LONG` — The `reasoning` field exceeded the 400-character limit.
 
   **Known Limitations (V0) — Structured Output Validation**
 
-  The pure-dialogue heuristic in the `AgentTurn` validator (rejects content containing `*`, `_`, or parentheses) is intentionally lightweight. It may produce false positives on legitimate dialogue that uses parentheses for asides or emphasis. This is an accepted shortcut for V0 to keep validation simple and cheap. More sophisticated detection can be added in later versions if needed.
+  Speak `content` is not checked for emotes, action markers, or parenthetical asides at validation time. The prompt asks for verbal dialogue only; occasional non-dialogue text may appear in `passive_result` for other agents.
 
 ## Section 5: Perception (What the Agent Sees)
 
@@ -498,7 +500,7 @@ This checklist defines everything we must design, decide, and document *before* 
   - Turns are shown oldest first.
 
   7. **Current Instructions / Reminders**  
-     Any turn-specific notes (e.g. "You may only speak up to 3 sentences").
+     Any turn-specific notes (e.g. "You may only speak up to 5 sentences").
 
      **Note:** This section is intentionally minimal in V0. It currently contains only the speak limit reminder. Additional turn-specific guidance can be added here in the future if testing reveals the need.
 
@@ -552,7 +554,7 @@ This checklist defines everything we must design, decide, and document *before* 
   Use **4 few-shot examples** in the prompt.
 
   These examples should focus on the most important and error-prone behaviors in V0:
-  - Correct use of `speak` (pure dialogue only, max 3 sentences)
+  - Correct use of `speak` (pure dialogue only, max 5 sentences)
   - Using the `look` action when seeing objects marked with `[?]`
   - Choosing valid movement directions
   - Proper response when the sign has been updated
@@ -943,8 +945,8 @@ This checklist defines everything we must design, decide, and document *before* 
   - `INVALID_JSON` — The model output was not valid JSON or failed basic parsing.
   - `UNKNOWN_ACTION` — The `action` field contained a value that is not one of the allowed actions (`move`, `look`, `speak`).
   - `INVALID_TARGET` — The `target` was invalid or inappropriate for the chosen action (e.g. bad direction, unknown object ID).
-  - `CONTENT_TOO_LONG` — The `content` field exceeded the allowed length (more than 3 sentences or 280 characters for `speak`).
-  - `INVALID_CONTENT` — The `content` field contained disallowed elements (e.g. emotes or actions when only pure dialogue is allowed).
+  - `CONTENT_TOO_LONG` — The `content` field exceeded the allowed length (more than 5 sentences or 280 characters for `speak`).
+  - `INVALID_CONTENT` — A field contained disallowed content (e.g. `confidence` or `emotion` longer than 3 words).
   - `REASONING_TOO_LONG` — The `reasoning` field exceeded the 400-character limit.
 
   On any of these errors:
@@ -960,7 +962,7 @@ This checklist defines everything we must design, decide, and document *before* 
 
   **Summary of Review Performed:**
   - All major gaps identified in the Readiness Gap Report have been closed (memory length + TurnRecord, success criteria, Available Actions format, sign special case containment, validators, action history format, reasonable action rubric + evaluation method).
-  - Recent Verifier feedback (open look checkbox, pure-dialogue heuristic risk, last_action field, thin "Current Instructions / Reminders" section) has been addressed.
+  - Recent Verifier feedback (open look checkbox, last_action field, thin "Current Instructions / Reminders" section) has been addressed. Pure-dialogue emote heuristic removed after false-positive failures in live testing.
   - A "Known Limitations (V0)" subsection was added in Section 4.
   - All sections 1–11 are now marked complete in the status summary.
 

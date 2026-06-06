@@ -78,8 +78,8 @@ def test_sign_description_update_look_restores_new_text():
     vision = build_passive_vision(agent, world)
     assert "[?] [changed] A simple wooden sign on the wall." in vision
 
-    result = perform_look(agent, world, "obj_sign_01")
-    assert new_text in result
+    outcome = perform_look(agent, world, "obj_sign_01")
+    assert new_text in outcome.result
     assert agent.memory.has_looked_at("obj_sign_01")
 
     vision = build_passive_vision(agent, world)
@@ -93,7 +93,7 @@ def test_invalidate_object_knowledge_affects_all_agents_who_looked():
     goblin = Agent(
         id="agent_goblin_01",
         name="Goblin",
-        description="A test goblin.",
+        personality="A test goblin.",
         position=(0, 0),
         memory=Memory(),
     )
@@ -115,7 +115,7 @@ def test_agent_who_never_looked_sees_plain_question_mark():
     goblin = Agent(
         id="agent_goblin_01",
         name="Goblin",
-        description="A test goblin.",
+        personality="A test goblin.",
         position=(0, 0),
         memory=Memory(),
     )
@@ -163,8 +163,8 @@ def test_look_on_empty_detailed_clears_stale_examination():
     world.invalidate_object_knowledge("obj_husk_01")
     assert agent.memory.has_ever_looked_at("obj_husk_01")
 
-    result = perform_look(agent, world, "obj_husk_01")
-    assert "don't notice anything more" in result
+    outcome = perform_look(agent, world, "obj_husk_01")
+    assert "don't notice anything more" in outcome.result
     assert not agent.memory.has_ever_looked_at("obj_husk_01")
     vision = build_passive_vision(agent, world)
     assert "Husk (obj_husk_01), (0, 0) - An empty shell." in vision
@@ -183,8 +183,8 @@ def test_look_on_object_without_detailed_does_not_mark_memory():
             position=(1, 1),
         )
     )
-    result = perform_look(agent, world, "obj_scenery_01")
-    assert "don't notice anything more" in result
+    outcome = perform_look(agent, world, "obj_scenery_01")
+    assert "don't notice anything more" in outcome.result
     assert not agent.memory.has_looked_at("obj_scenery_01")
 
 

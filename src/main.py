@@ -256,7 +256,7 @@ class ManualStepper(cmd.Cmd):
         Create a new agent in the world. Does not change the active agent.
 
         Usage:
-            create-agent name "Goblin" desc "A grumpy goblin." at 0,3
+            create-agent name "Goblin" pdesc "A short figure." desc "A grumpy goblin." personality "You are a grumpy goblin." at 0,3
         """
         agent, message = create_agent_from_args(self.world, arg)
         if agent is not None:
@@ -268,7 +268,7 @@ class ManualStepper(cmd.Cmd):
         Edit an existing agent by id.
 
         Usage:
-            edit-agent agent_01 desc "Updated personality."
+            edit-agent agent_01 desc "Updated appearance." personality "Updated personality."
             edit-agent agent_01 name "Scout" pos 2,1
         """
         result = edit_agent_from_args(self.world, arg)
@@ -488,7 +488,7 @@ class ManualStepper(cmd.Cmd):
 
 def main():
     """Entry point for the manual stepper (used by `uv run realm`)."""
-    parser = argparse.ArgumentParser(description="Realm-Fabric V0 Manual Stepper")
+    parser = argparse.ArgumentParser(description="Realm-Fabric V0.1 Manual Stepper")
     parser.add_argument(
         "--log",
         action="store_true",

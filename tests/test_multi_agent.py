@@ -42,7 +42,7 @@ def test_get_agent_by_name_case_insensitive():
 def test_memory_isolation_between_agents():
     world = create_initial_world()
     explorer = world.get_agent()
-    create_agent_from_args(world, 'name "Goblin" desc "A goblin." at 0,3')
+    create_agent_from_args(world, 'name "Goblin" pdesc "A goblin." desc "A green goblin." personality "Secret goblin mind." at 0,3')
     goblin = world.get_agent_by_name("Goblin")
 
     perform_look(explorer, world, "obj_ball_01")
@@ -51,12 +51,34 @@ def test_memory_isolation_between_agents():
     assert not goblin.memory.has_looked_at("obj_ball_01")
     goblin_vision = build_passive_vision(goblin, world)
     assert "Ceramic Ball (obj_ball_01), (2, 2) - [?]" in goblin_vision
+    assert (
+        "Explorer (agent_01), (1, 1) - [?] A curious explorer in the room."
+        in goblin_vision
+    )
+    explorer_vision = build_passive_vision(explorer, world)
+    assert "Explorer (agent_01)" not in explorer_vision
+    assert "Goblin (agent_goblin_01), (0, 3) - [?] A goblin." in explorer_vision
+
+
+def test_personality_not_in_passive_vision_or_look():
+    world = create_initial_world()
+    explorer = world.get_agent()
+    create_agent_from_args(
+        world,
+        'name "Goblin" pdesc "A goblin." desc "Visible detail." '
+        'personality "SECRET_PERSONALITY_TEXT" at 0,3',
+    )
+    vision = build_passive_vision(explorer, world)
+    assert "SECRET_PERSONALITY_TEXT" not in vision
+    outcome = perform_look(explorer, world, "agent_goblin_01")
+    assert "SECRET_PERSONALITY_TEXT" not in outcome.result
+    assert "Visible detail." in outcome.result
 
 
 def test_per_agent_turn_numbers_when_alternating():
     world = create_initial_world()
     explorer = world.get_agent()
-    create_agent_from_args(world, 'name "Goblin" desc "A goblin." at 0,3')
+    create_agent_from_args(world, 'name "Goblin" pdesc "A goblin." desc "A green goblin." personality "Secret goblin mind." at 0,3')
     goblin = world.get_agent_by_name("Goblin")
 
     step_turn(
@@ -85,7 +107,7 @@ def test_per_agent_turn_numbers_when_alternating():
 def test_cross_agent_invalidation_per_agent():
     world = create_initial_world()
     explorer = world.get_agent()
-    create_agent_from_args(world, 'name "Goblin" desc "A goblin." at 0,3')
+    create_agent_from_args(world, 'name "Goblin" pdesc "A goblin." desc "A green goblin." personality "Secret goblin mind." at 0,3')
     goblin = world.get_agent_by_name("Goblin")
 
     perform_look(explorer, world, "obj_ball_01")
@@ -100,7 +122,7 @@ def test_stepper_switch_changes_active_agent_vision():
     from src.main import ManualStepper
 
     stepper = ManualStepper()
-    stepper.onecmd('create-agent name "Goblin" desc "A goblin." at 0,3')
+    stepper.onecmd('create-agent name "Goblin" pdesc "A goblin." desc "A green goblin." personality "Secret goblin mind." at 0,3')
     goblin = stepper.world.get_agent_by_name("Goblin")
 
     stepper.onecmd("switch Goblin")
@@ -123,7 +145,7 @@ def test_stepper_switch_does_not_increment_session_turn():
     from src.main import ManualStepper
 
     stepper = ManualStepper()
-    stepper.onecmd('create-agent name "Goblin" desc "x" at 0,0')
+    stepper.onecmd('create-agent name "Goblin" personality "x" at 0,0')
     before = stepper.session_turn
     stepper.onecmd("switch Goblin")
     assert stepper.session_turn == before
@@ -135,7 +157,7 @@ def test_stepper_manual_step_uses_per_agent_turn_number():
 
     stepper = ManualStepper()
     explorer = stepper.agent
-    stepper.onecmd('create-agent name "Goblin" desc "x" at 0,0')
+    stepper.onecmd('create-agent name "Goblin" personality "x" at 0,0')
     stepper.onecmd("switch Explorer")
     stepper.onecmd("step speak Hi from Explorer.")
     stepper.onecmd("switch Goblin")
@@ -149,7 +171,7 @@ def test_stepper_manual_step_uses_per_agent_turn_number():
 
 def test_create_agent_reserved_command_name_rejected():
     world = create_initial_world()
-    agent, msg = create_agent_from_args(world, 'name "vision" desc "x" at 0,0')
+    agent, msg = create_agent_from_args(world, 'name "vision" personality "x" at 0,0')
     assert agent is None
     assert "conflicts with a stepper command" in msg
 
@@ -157,7 +179,7 @@ def test_create_agent_reserved_command_name_rejected():
 def test_create_agent_reserved_hyphen_command_rejected():
     world = create_initial_world()
     agent, msg = create_agent_from_args(
-        world, 'name "create-object" desc "x" at 0,0'
+        world, 'name "create-object" personality "x" at 0,0'
     )
     assert agent is None
     assert "conflicts" in msg
@@ -191,7 +213,7 @@ def test_run_after_switch_uses_switched_agent(monkeypatch):
     from src.main import ManualStepper
 
     stepper = ManualStepper()
-    stepper.onecmd('create-agent name "Goblin" desc "x" at 0,0')
+    stepper.onecmd('create-agent name "Goblin" personality "x" at 0,0')
     goblin = stepper.world.get_agent_by_name("Goblin")
     stepper.onecmd("switch Goblin")
     called = []
@@ -234,7 +256,7 @@ def test_llm_failure_still_sets_active_agent(monkeypatch):
     from src.main import ManualStepper
 
     stepper = ManualStepper()
-    stepper.onecmd('create-agent name "Goblin" desc "x" at 0,0')
+    stepper.onecmd('create-agent name "Goblin" personality "x" at 0,0')
     goblin = stepper.world.get_agent_by_name("Goblin")
     assert stepper.agent.name == "Explorer"
 
@@ -249,11 +271,137 @@ def test_llm_failure_still_sets_active_agent(monkeypatch):
     assert stepper.agent is goblin
 
 
+def test_look_at_agent_reveals_description_not_personality():
+    world = create_initial_world()
+    explorer = world.get_agent()
+    create_agent_from_args(
+        world,
+        'name "Goblin" pdesc "A short figure." desc "A grumpy-looking goblin." '
+        'personality "You are a grumpy goblin." at 0,3',
+    )
+
+    outcome = perform_look(explorer, world, "agent_goblin_01")
+    assert "You looked at the goblin." in outcome.result
+    assert "grumpy-looking goblin" in outcome.result
+    assert "You are a grumpy goblin" not in outcome.result
+    vision = build_passive_vision(explorer, world)
+    assert "Goblin (agent_goblin_01), (0, 3) - A grumpy-looking goblin." in vision
+
+
+def test_edit_agent_desc_invalidates_other_agents():
+    from src.world_edit import edit_agent_from_args
+
+    world = create_initial_world()
+    explorer = world.get_agent()
+    create_agent_from_args(
+        world,
+        'name "Goblin" pdesc "A goblin." desc "Original detail." personality "x" at 0,3',
+    )
+    perform_look(explorer, world, "agent_goblin_01")
+    edit_agent_from_args(world, 'agent_goblin_01 desc "Updated detail."')
+
+    vision = build_passive_vision(explorer, world)
+    assert "Goblin (agent_goblin_01), (0, 3) - [?] [changed] A goblin." in vision
+
+
+def test_speak_visible_in_other_agent_passive_vision():
+    world = create_initial_world()
+    explorer = world.get_agent()
+    create_agent_from_args(
+        world,
+        'name "Goblin" pdesc "A goblin." desc "A green goblin." '
+        'personality "x" at 0,3',
+    )
+    goblin = world.get_agent_by_name("Goblin")
+
+    step_turn(
+        goblin,
+        world,
+        _make_turn(action="speak", content="Hello, Explorer!"),
+        next_turn_number_for_agent(goblin),
+    )
+
+    vision = build_passive_vision(explorer, world)
+    assert 'Goblin says: "Hello, Explorer!"' in vision
+
+
+def test_passive_result_includes_confidence_and_emotion():
+    world = create_initial_world()
+    explorer = world.get_agent()
+    create_agent_from_args(
+        world,
+        'name "Goblin" pdesc "A goblin." desc "x" personality "x" at 0,3',
+    )
+    goblin = world.get_agent_by_name("Goblin")
+
+    step_turn(
+        goblin,
+        world,
+        _make_turn(
+            action="speak",
+            content="Hello.",
+            confidence="curious",
+            emotion="amused",
+        ),
+        next_turn_number_for_agent(goblin),
+    )
+
+    expected = 'Goblin says: "Hello." (confidence: curious, Emotion: amused)'
+    assert goblin.passive_result == expected
+    vision = build_passive_vision(explorer, world)
+    assert expected in vision
+
+
+def test_failed_move_does_not_update_passive_result():
+    world = create_initial_world()
+    explorer = world.get_agent()
+    create_agent_from_args(
+        world,
+        'name "Goblin" pdesc "A goblin." desc "x" personality "x" at 0,0',
+    )
+    goblin = world.get_agent_by_name("Goblin")
+
+    step_turn(
+        goblin,
+        world,
+        _make_turn(action="speak", content="Hi."),
+        next_turn_number_for_agent(goblin),
+    )
+    step_turn(
+        goblin,
+        world,
+        _make_turn(action="move", target="south"),
+        next_turn_number_for_agent(goblin),
+    )
+
+    assert goblin.passive_result == 'Goblin says: "Hi."'
+    vision = build_passive_vision(explorer, world)
+    assert 'Goblin says: "Hi."' in vision
+    assert "moves south" not in vision
+
+
+def test_edit_agent_personality_does_not_invalidate():
+    from src.world_edit import edit_agent_from_args
+
+    world = create_initial_world()
+    explorer = world.get_agent()
+    create_agent_from_args(
+        world,
+        'name "Goblin" pdesc "A goblin." desc "Original detail." personality "Old" at 0,3',
+    )
+    perform_look(explorer, world, "agent_goblin_01")
+    edit_agent_from_args(world, 'agent_goblin_01 personality "New personality"')
+
+    vision = build_passive_vision(explorer, world)
+    assert "Goblin (agent_goblin_01), (0, 3) - Original detail." in vision
+    assert "[changed]" not in vision
+
+
 def test_stepper_delete_active_agent_fallback(capsys):
     from src.main import ManualStepper
 
     stepper = ManualStepper()
-    stepper.onecmd('create-agent name "Goblin" desc "x" at 0,0')
+    stepper.onecmd('create-agent name "Goblin" personality "x" at 0,0')
     goblin = stepper.world.get_agent_by_name("Goblin")
     stepper.agent = goblin
     stepper.onecmd("delete-agent agent_goblin_01")

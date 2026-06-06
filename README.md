@@ -2,7 +2,7 @@
 
 A grid-based agent simulation framework designed around structured output and narrative roleplay.
 
-**Current Status:** V0 complete and validated (100+ LLM turns, reliable structured output). **V0.1 complete** — generalized perception, world editing, passive/detailed descriptions, and multi-agent support (`switch`, `run`, per-agent turn numbers, reserved agent names).
+**Current Status:** V0 complete and validated (100+ LLM turns, reliable structured output). **V0.1 complete** — generalized perception, world editing, passive/detailed descriptions (`pdesc` / `desc`), multi-agent stepper (`switch`, `run`, per-agent turn numbers, reserved agent names), **agent-to-agent passive vision** (look at other agents; `personality` stays LLM-only), and **observable actions** (`passive_result`: speech, movement, and looks visible to other agents).
 
 **Documentation:**
 
@@ -19,7 +19,7 @@ A grid-based agent simulation framework designed around structured output and na
   ```
 2. In the project folder:
   ```powershell
-   cd C:\Users\david\desktop\Projects\Git_Projects\Realm-Fabric
+   cd path\to\Realm-Fabric
    uv sync
   ```
 3. Run the interactive manual tester:
@@ -53,7 +53,9 @@ create-object name "Crate" pdesc "A crate." desc "A wooden crate." at 0,0
 edit-object obj_sign_01 pdesc "A sign on the wall." desc "Updated sign text."
 edit-object obj_ball_01 pos 3,3
 delete-object obj_crate_01
-create-agent name "Goblin" desc "A grumpy goblin." at 0,3
+create-agent name "Goblin" pdesc "A short figure." desc "A grumpy goblin." personality "You are a grumpy goblin." at 0,3
+edit-agent agent_01 desc "Updated appearance."
+edit-agent agent_01 personality "Updated LLM personality."
 edit-agent agent_01 name "Scout"
 delete-agent agent_goblin_01
 ```
@@ -64,7 +66,7 @@ The old V0 `sign` command is removed. Update the sign with:
 edit-object obj_sign_01 pdesc "A sign on the wall." desc "This is new text."
 ```
 
-Objects support two description layers: **`pdesc`** (passive glance, visible without looking) and **`desc`** (detailed, hidden behind `[?]` until examined). Stale examined knowledge shows as `[?] [changed] {pdesc}`.
+Objects and agents share **`pdesc`** (glance) and **`desc`** (detailed, hidden behind `[?]` until `look`). Agents also have **`personality`** — private LLM prompt text only, never shown in vision or revealed by `look`. Other agents appear in passive vision; you do not see yourself. Stale examined knowledge shows as `[?] [changed] {pdesc}`.
 
 ### Multi-agent (V0.1 Section 3)
 
@@ -85,7 +87,7 @@ Explorer         # typing a name also runs an LLM turn for that agent
 - Commands are **case-insensitive** (`Run`, `Switch Goblin`, etc.)
 - Deleting the active agent reassigns to the first remaining agent and prints `Active agent: …`
 - Turn numbers in each agent's memory are **per-agent** (1, 2, 3…); `session_turn` in logs is a global session label only
-- Agents do not see each other in vision
+- Other agents appear in passive vision (`pdesc` + hidden `desc` until `look`); `personality` is LLM-only; agents do not see themselves
 
 ## Environment Variables & .env Files (Beginner Guide)
 
@@ -194,7 +196,7 @@ That's the whole magic.
 
 ## Running tests
 
-Tests use [pytest](https://docs.pytest.org/) and run **without** an API key or network access. They cover world setup, the `AgentTurn` schema, simulation turns, and passive vision / invalidation logic.
+Tests use [pytest](https://docs.pytest.org/) and run **without** an API key or network access. They cover world setup, the `AgentTurn` schema, simulation turns, V0.1 perception and invalidation, world editing, and multi-agent stepper behavior (101 tests).
 
 ### Run all tests
 
@@ -229,9 +231,9 @@ uv run pytest -x
 | `tests/test_schema.py` | `AgentTurn` Pydantic validation (valid/invalid move, look, speak) |
 | `tests/test_world.py` | Initial world state, grid rules, passive vision baseline |
 | `tests/test_simulation.py` | `step_turn`, actions, memory side effects, prompt builder |
-| `tests/test_perception.py` | V0.1 generalized "has changed" vision and cross-agent invalidation |
+| `tests/test_perception.py` | V0.1 `[?]` / stale vision for objects and cross-agent invalidation |
 | `tests/test_world_edit.py` | V0.1 world editing commands (create/edit/delete, listings, id generation) |
-| `tests/test_multi_agent.py` | V0.1 multi-agent (`switch`, `run`, reserved names, per-agent turns, memory isolation) |
+| `tests/test_multi_agent.py` | V0.1 multi-agent (`switch`, `run`, agent vision, `passive_result`, personality privacy, per-agent turns) |
 
 ### First-time setup
 
