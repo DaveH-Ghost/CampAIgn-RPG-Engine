@@ -15,6 +15,10 @@ from typing import Optional
 from src.agent import Agent
 from src.memory import Memory
 from src.object import Object
+from src.stepper_commands import (
+    agent_name_conflicts_with_commands,
+    reserved_agent_name_message,
+)
 from src.world import World
 
 
@@ -293,6 +297,9 @@ def create_agent_from_args(world: World, arg: str) -> tuple[Optional[Agent], str
     if "at" not in fields:
         return None, "Missing required field: at"
 
+    if agent_name_conflicts_with_commands(fields["name"]):
+        return None, reserved_agent_name_message(fields["name"])
+
     if agent_name_taken(world, fields["name"]):
         return None, f"Agent name '{fields['name']}' is already in use."
 
@@ -366,6 +373,11 @@ def edit_agent_from_args(world: World, arg: str) -> EditAgentResult:
     changes: list[str] = []
 
     if "name" in fields and fields["name"] != agent.name:
+        if agent_name_conflicts_with_commands(fields["name"]):
+            return EditAgentResult(
+                ok=False,
+                message=reserved_agent_name_message(fields["name"]),
+            )
         if agent_name_taken(world, fields["name"], exclude_agent_id=agent_id):
             return EditAgentResult(
                 ok=False,

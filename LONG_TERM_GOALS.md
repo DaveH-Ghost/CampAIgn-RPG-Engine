@@ -20,7 +20,7 @@ These are considered lower-complexity improvements that could be reasonable targ
 ### More Complex Goals
 
 - [ ] Multiple agents that can observe each other, start conversations, form relationships, and influence one another over time  
-  *(V0.1 will add multiple **non-interacting** agents sharing a world — same grid, private memory, no mutual perception. That is a stepping stone, not this goal.)*
+  *(V0.1 added multiple **non-interacting** agents sharing a world — same grid, private memory, no mutual perception. That is a stepping stone, not this goal.)*
 - [ ] Objects that have their own behaviors and actions (examples: food that can be eaten and gives a taste description, a puzzle box with interactive mechanisms, a door that can be locked/unlocked, etc.)
 - [ ] Rectangular / multi-tile objects (e.g. long walls, large furniture, 2x2 trees with 6x6 shadows) where objects occupy multiple grid tiles using size + bounding box definitions instead of single-tile objects
 - [ ] A visual interface similar to Roll20 — a grid with tokens representing agents and objects, plus chat bubbles when agents speak
@@ -38,6 +38,12 @@ This section is for goals that have actually been completed. When something move
 
 - [x] **General "object knowledge is stale" notification (V0.1)**  
   When an object's detailed description changes after an agent has examined it, passive vision shows a neutral stale state (e.g. `[?] [changed] A simple wooden sign on the wall.`) so the agent knows to `look` again. Works for any object via `ever_looked` + `World.invalidate_object_knowledge()`, not sign-specific. Shipped in V0.1 Section 1 with passive/detailed descriptions (Section 2 perception extension). See [v0.1-implementation-readiness-checklist.md](docs/v0.1-implementation-readiness-checklist.md).
+
+- [x] **Runtime world editing via stepper commands (V0.1)**  
+  Create, edit, and delete objects and agents at runtime (`create-object`, `edit-object`, `delete-object`, `create-agent`, `edit-agent`, `delete-agent`) with listing commands (`list`, `objects`, `agents`). Objects support passive (`pdesc`) and detailed (`desc`) descriptions. Replaces the V0 `sign` command.
+
+- [x] **Non-interacting multi-agent support (V0.1)**  
+  Multiple agents share one world with independent memory and per-agent turn numbers. `switch <name>` changes the active agent without a turn; `run` runs an LLM turn for the active agent; typing an agent's name runs an LLM turn for that agent. Agent names cannot collide with stepper commands.
 
 ---
 

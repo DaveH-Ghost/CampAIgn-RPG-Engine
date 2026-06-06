@@ -293,7 +293,7 @@ def test_stepper_edit_agent_rename_updates_dispatch_dict():
     assert stepper.agents["scout"].name == "Scout"
 
 
-def test_stepper_delete_active_agent_reassigns():
+def test_stepper_delete_active_agent_reassigns(capsys):
     from src.main import ManualStepper
 
     stepper = ManualStepper()
@@ -303,6 +303,7 @@ def test_stepper_delete_active_agent_reassigns():
     stepper.onecmd("delete-agent agent_goblin_01")
     assert stepper.agent.id == "agent_01"
     assert "goblin" not in stepper.agents
+    assert "Active agent: Explorer (agent_01)" in capsys.readouterr().out
 
 
 def test_delete_non_active_agent():

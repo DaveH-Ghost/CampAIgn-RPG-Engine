@@ -46,6 +46,11 @@ def execute_action(agent: Agent, world: World, turn: AgentTurn) -> str:
         return f"This action wasn't recognized: {action}"
 
 
+def next_turn_number_for_agent(agent: Agent) -> int:
+    """Return the next per-agent sequential turn number for TurnRecord."""
+    return agent.memory.turn_count + 1
+
+
 def step_turn(
     agent: Agent, world: World, turn: AgentTurn, turn_number: int
 ) -> TurnRecord:

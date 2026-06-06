@@ -2,11 +2,11 @@
 
 A grid-based agent simulation framework designed around structured output and narrative roleplay.
 
-**Current Status:** V0 complete and validated (100+ LLM turns, reliable structured output). V0.1 Sections 1–2 implemented (generalized perception + world editing commands). Section 3 (multi-agent polish) not yet implemented.
+**Current Status:** V0 complete and validated (100+ LLM turns, reliable structured output). **V0.1 complete** — generalized perception, world editing, passive/detailed descriptions, and multi-agent support (`switch`, `run`, per-agent turn numbers, reserved agent names).
 
 **Documentation:**
 
-- [V0.1 implementation checklist](docs/v0.1-implementation-readiness-checklist.md) — agreed design for the next version
+- [V0.1 implementation checklist](docs/v0.1-implementation-readiness-checklist.md) — design reference for the shipped V0.1 features
 - [Roadmap](docs/ROADMAP.md) — version plans (V0.1, V0.2, V0.3)
 - [Long-term goals](LONG_TERM_GOALS.md) — aspirational features
 - [V0 implementation checklist](docs/v0-implementation-readiness-checklist.md) — V0 design reference
@@ -35,7 +35,10 @@ A grid-based agent simulation framework designed around structured output and na
   - `vision` — see what the active agent currently perceives
   - `prompt` — see the full prompt the LLM would receive
   - `step look obj_ball_01` — manually drive the agent (great for testing)
-  - `Explorer` — (type the agent's name) to let the **LLM** decide the next action (requires OPENROUTER_API_KEY). Few-shot examples are OFF by default (saves ~50% tokens; current models perform well without them). Use `--with-fewshots` or `fewshots on` to enable.
+  - `run` — LLM turn for the **active** agent (requires OPENROUTER_API_KEY)
+  - `Explorer` — (type an agent's name) to run an LLM turn for that agent
+  - `switch Goblin` — change active agent for `vision` / `state` / `prompt` / `step` / `run` without a turn or LLM call
+  - `fewshots on/off` — toggle few-shot examples (OFF by default)
   - `quit`
 
 ### World editing (V0.1)
@@ -63,9 +66,26 @@ edit-object obj_sign_01 pdesc "A sign on the wall." desc "This is new text."
 
 Objects support two description layers: **`pdesc`** (passive glance, visible without looking) and **`desc`** (detailed, hidden behind `[?]` until examined). Stale examined knowledge shows as `[?] [changed] {pdesc}`.
 
-### Planned for V0.1 Section 3 (not yet implemented)
+### Multi-agent (V0.1 Section 3)
 
-- **Multi-agent:** `switch <name>` to change active agent without a turn; per-agent turn numbers
+Typical LLM workflow with two agents:
+
+```
+switch Goblin    # inspect Goblin's vision/state without a turn
+run              # LLM turn for the active agent (Goblin)
+switch Explorer
+Explorer         # typing a name also runs an LLM turn for that agent
+```
+
+- Create agents with `create-agent`; list with `agents` or `list`
+- **`run`** — LLM turn for the **active** agent (no arguments; use after `switch`)
+- **`switch <name>`** — change active agent without a turn (`vision`, `state`, `prompt`, `step`, `run`)
+- **Typing an agent's name** — LLM turn for that agent; sets them active (even if the LLM call fails)
+- Agent display names must be **unique** and **cannot match stepper commands** (e.g. `vision`, `run`, `list`, `create-agent`) — validated automatically via `src/stepper_commands.py`
+- Commands are **case-insensitive** (`Run`, `Switch Goblin`, etc.)
+- Deleting the active agent reassigns to the first remaining agent and prints `Active agent: …`
+- Turn numbers in each agent's memory are **per-agent** (1, 2, 3…); `session_turn` in logs is a global session label only
+- Agents do not see each other in vision
 
 ## Environment Variables & .env Files (Beginner Guide)
 
@@ -151,7 +171,7 @@ uv run python src/main.py
 You can still use almost everything:
 
 - All the manual commands (`step ...`, `vision`, `state`, etc.) work perfectly.
-- The only thing that requires an `OPENROUTER_API_KEY` is when you type an agent's name (e.g. `Explorer`) to let the LLM actually decide what to do.
+- The only thing that requires an `OPENROUTER_API_KEY` is an LLM turn: type an agent's name (e.g. `Explorer`) or use `run` after selecting the active agent.
 
 This design is intentional so you can explore and test the system without needing any paid services.
 
@@ -211,6 +231,7 @@ uv run pytest -x
 | `tests/test_simulation.py` | `step_turn`, actions, memory side effects, prompt builder |
 | `tests/test_perception.py` | V0.1 generalized "has changed" vision and cross-agent invalidation |
 | `tests/test_world_edit.py` | V0.1 world editing commands (create/edit/delete, listings, id generation) |
+| `tests/test_multi_agent.py` | V0.1 multi-agent (`switch`, `run`, reserved names, per-agent turns, memory isolation) |
 
 ### First-time setup
 

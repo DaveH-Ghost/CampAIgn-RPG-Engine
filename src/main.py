@@ -11,12 +11,13 @@ Supports:
 - list / objects / agents : list world entities (read-only, no turn)
 - create-object / edit-object / delete-object : edit objects at runtime
 - create-agent / edit-agent / delete-agent   : edit agents at runtime
+- run                   : LLM turn for the active agent
+- switch <name>         : change active agent without a turn (no LLM)
 - quit / exit           : leave the simulation.
 - vision / state        : print current passive vision or agent/world state.
 
-Typing an agent's name (e.g. "Explorer") will automatically build a prompt
-using the current world state and call the LLM to decide the next action.
-This design makes it easy to support multiple agents later.
+Typing an agent's name (e.g. "Explorer") runs an LLM turn for that agent.
+Use switch to inspect another agent's vision/state without consuming a turn.
 
 Future: real autonomous runs, better logging, etc.
 
@@ -53,7 +54,7 @@ import cmd
 
 from src.log_utils import close_file_logging, log_error, log_turn, setup_file_logging
 from src.world import create_initial_world
-from src.simulation import step_turn
+from src.simulation import next_turn_number_for_agent, step_turn
 from src.llm.schemas import AgentTurn
 from src.llm.prompt import build_prompt
 from src.perception import build_passive_vision
@@ -89,7 +90,9 @@ class ManualStepper(cmd.Cmd):
         "Realm-Fabric V0.1 Manual Stepper\n"
         "Type 'help' or '?' for commands.\n"
         "- 'step <action> ...'   : manually simulate a turn (for testing)\n"
-        "- Type an agent's name (e.g. 'Explorer') : let the LLM decide its action\n"
+        "- 'run' : LLM turn for the active agent\n"
+        "- Type an agent's name (e.g. 'Explorer') : LLM turn for that agent\n"
+        "- 'switch <name>' : change active agent (no turn, no LLM)\n"
         "- 'list' / 'objects' / 'agents' : list world entities (no turn)\n"
         "- 'create-object' / 'edit-object' / 'delete-object' : edit objects\n"
         "- 'create-agent' / 'edit-agent' / 'delete-agent' : edit agents\n"
@@ -107,13 +110,82 @@ class ManualStepper(cmd.Cmd):
     def __init__(self, include_examples: bool = False):
         super().__init__()
         self.world = create_initial_world()
-        # Support multiple agents by name (case-insensitive lookup)
-        self.agents: dict[str, "Agent"] = {
-            a.name.lower(): a for a in self.world.agents
-        }
+        # Case-insensitive name dispatch for default() and switch
+        self.agents: dict[str, "Agent"] = {}
+        self._rebuild_agents_dict_from_world()
         self.agent = self.world.get_agent()  # current active agent
-        self.turn_number = 0
+        self.session_turn = 0  # console/log label only; not stored in TurnRecord
         self.include_examples = include_examples  # for prompt builder, toggleable for experiments
+
+    # ------------------------------------------------------------------
+    # Agent dict sync (Section 3)
+    # ------------------------------------------------------------------
+
+    def _register_agent(self, agent: "Agent") -> None:
+        """Add an agent to the name dispatch dict after create-agent."""
+        self.agents[agent.name.lower()] = agent
+
+    def _unregister_agent(self, agent: "Agent") -> None:
+        """Remove an agent from the dict after delete-agent."""
+        self.agents.pop(agent.name.lower(), None)
+
+    def _rename_agent_in_dict(self, old_name_lower: str, agent: "Agent") -> None:
+        """Update dict keys after edit-agent name change."""
+        if old_name_lower in self.agents:
+            del self.agents[old_name_lower]
+        self.agents[agent.name.lower()] = agent
+
+    def _resolve_agent_by_name(self, name: str) -> "Agent | None":
+        """Case-insensitive agent lookup via dispatch dict (rebuilds if stale)."""
+        key = name.strip().lower()
+        agent = self.agents.get(key)
+        if agent is not None:
+            return agent
+        self._rebuild_agents_dict_from_world()
+        return self.agents.get(key)
+
+    def _rebuild_agents_dict_from_world(self) -> None:
+        """Rebuild name dispatch dict from world.agents."""
+        self.agents = {a.name.lower(): a for a in self.world.agents}
+
+    def do_run(self, arg):
+        """
+        Run an LLM turn for the currently active agent.
+
+        Same as typing the active agent's name, but does not require
+        remembering which agent is active after switch.
+
+        Usage:
+            run
+        """
+        if arg.strip():
+            print("Usage: run  (no arguments — uses the active agent)")
+            return
+        self._run_llm_turn_for_agent(self.agent)
+
+    def do_switch(self, arg):
+        """
+        Change the active agent without consuming a turn or calling the LLM.
+
+        Typing an agent's name still runs an LLM turn — switch is separate.
+
+        Usage:
+            switch Goblin
+            switch Explorer
+        """
+        name = arg.strip()
+        if not name:
+            print("Usage: switch <agent name>")
+            print("Use 'agents' or 'list' to see agent names.")
+            return
+
+        agent = self._resolve_agent_by_name(name)
+        if agent is None:
+            print(f"Agent '{name}' not found. Use 'agents' or 'list' to see agents.")
+            return
+
+        self.agent = agent
+        print(f"Active agent: {agent.name} ({agent.id}) at {agent.position}")
 
     def do_vision(self, arg):
         """Show current passive vision."""
@@ -127,8 +199,10 @@ class ManualStepper(cmd.Cmd):
 
     def do_state(self, arg):
         """Print basic agent and world state (for the currently active agent)."""
-        print(f"Turn: {self.turn_number}")
-        print(f"Active agent: {self.agent.name} at {self.agent.position}")
+        print(f"Session turns (log label): {self.session_turn}")
+        print(
+            f"Active agent: {self.agent.name} ({self.agent.id}) at {self.agent.position}"
+        )
         print(f"Memory turns: {self.agent.memory.turn_count}")
         print(f"Looked at (current): {sorted(self.agent.memory.looked_at)}")
         print(f"Ever looked at: {sorted(self.agent.memory.ever_looked)}")
@@ -186,7 +260,7 @@ class ManualStepper(cmd.Cmd):
         """
         agent, message = create_agent_from_args(self.world, arg)
         if agent is not None:
-            self.agents[agent.name.lower()] = agent
+            self._register_agent(agent)
         print(message)
 
     def do_edit_agent(self, arg):
@@ -198,10 +272,8 @@ class ManualStepper(cmd.Cmd):
             edit-agent agent_01 name "Scout" pos 2,1
         """
         result = edit_agent_from_args(self.world, arg)
-        if result.ok and result.agent is not None:
-            if result.old_name_lower and result.old_name_lower in self.agents:
-                del self.agents[result.old_name_lower]
-            self.agents[result.agent.name.lower()] = result.agent
+        if result.ok and result.agent is not None and result.old_name_lower:
+            self._rename_agent_in_dict(result.old_name_lower, result.agent)
         print(result.message)
 
     def do_delete_agent(self, arg):
@@ -212,13 +284,18 @@ class ManualStepper(cmd.Cmd):
             delete-agent agent_goblin_01
         """
         result = delete_agent_by_id(self.world, arg.strip())
+        reassigned_active = False
         if result.ok and result.deleted_agent is not None:
-            name_lower = result.deleted_agent.name.lower()
-            if name_lower in self.agents:
-                del self.agents[name_lower]
+            self._unregister_agent(result.deleted_agent)
             if self.agent.id == result.deleted_agent.id:
                 self.agent = self.world.agents[0]
+                reassigned_active = True
         print(result.message)
+        if reassigned_active:
+            print(
+                f"Active agent: {self.agent.name} ({self.agent.id}) "
+                f"at {self.agent.position}"
+            )
 
     def do_fewshots(self, arg):
         """
@@ -285,18 +362,21 @@ class ManualStepper(cmd.Cmd):
             print(f"Invalid turn data: {e}")
             return
 
-        self.turn_number += 1
+        agent = self.agent
+        turn_number = next_turn_number_for_agent(agent)
+        full_prompt = build_prompt(agent, self.world, include_examples=self.include_examples)
 
-        full_prompt = build_prompt(self.agent, self.world, include_examples=self.include_examples)
+        record = step_turn(agent, self.world, turn, turn_number)
+        self.session_turn += 1
 
-        record = step_turn(self.agent, self.world, turn, self.turn_number)
-
-        # Rich log for manual step (no raw LLM output since it was manual)
         log_turn(
-            self.turn_number,
+            self.session_turn,
             prompt=full_prompt,
-            result=f"Action: {record.action} target={record.target} content={record.content}\n"
-                   f"Reasoning: {record.reasoning}\nResult: {record.result}",
+            result=(
+                f"Agent: {agent.name} (turn {turn_number})\n"
+                f"Action: {record.action} target={record.target} content={record.content}\n"
+                f"Reasoning: {record.reasoning}\nResult: {record.result}"
+            ),
             always_to_file=False,
         )
 
@@ -309,7 +389,7 @@ class ManualStepper(cmd.Cmd):
         if not cmd:
             return self.postcmd(self.default(line), line)
         self.lastcmd = line
-        func = getattr(self, "do_" + cmd.replace("-", "_"), None)
+        func = getattr(self, "do_" + cmd.replace("-", "_").lower(), None)
         if func is None:
             return self.postcmd(self.default(line), line)
         return self.postcmd(func(arg), line)
@@ -348,9 +428,9 @@ class ManualStepper(cmd.Cmd):
         if not line:
             return
 
-        name_lower = line.lower()
-        if name_lower in self.agents:
-            self._run_llm_turn_for_agent(self.agents[name_lower])
+        agent = self._resolve_agent_by_name(line)
+        if agent is not None:
+            self._run_llm_turn_for_agent(agent)
             return
 
         # Not an agent name — let cmd.Cmd handle it (unknown command)
@@ -358,6 +438,8 @@ class ManualStepper(cmd.Cmd):
 
     def _run_llm_turn_for_agent(self, agent: "Agent"):
         """Build prompt, call LLM, execute the resulting turn."""
+        # Focus this agent for vision/state even if the LLM call fails.
+        self.agent = agent
         print(f"\n=== Running LLM for {agent.name} ===")
 
         try:
@@ -369,10 +451,12 @@ class ManualStepper(cmd.Cmd):
             llm_response = get_next_action(prompt)
             turn = llm_response.turn
 
-            # === Rich logging using the logging module (per readiness checklist) ===
-            # This will go to console (rich) and to file if --log or error
+            turn_number = next_turn_number_for_agent(agent)
+            record = step_turn(agent, self.world, turn, turn_number)
+            self.session_turn += 1
+
             log_turn(
-                self.turn_number + 1,
+                self.session_turn,
                 prompt=prompt,
                 raw_output=llm_response.raw_response,
                 parsed_turn={
@@ -391,16 +475,10 @@ class ManualStepper(cmd.Cmd):
                 always_to_file=False,
             )
 
-            self.turn_number += 1
-            record = step_turn(agent, self.world, turn, self.turn_number)
-
-            print(f"\n--- Turn {self.turn_number} result ---")
+            print(f"\n--- {agent.name} turn {turn_number} (session {self.session_turn}) ---")
             print(f"Action: {record.action}")
             print(f"Result: {record.result}")
             print()
-
-            # Make this agent the active one for subsequent vision/state commands
-            self.agent = agent
 
         except Exception as e:
             log_error(f"LLM call failed for {agent.name}", e)

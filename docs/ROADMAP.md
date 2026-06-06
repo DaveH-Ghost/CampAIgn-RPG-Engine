@@ -8,9 +8,9 @@ These plans are subject to change as we learn and discuss.
 
 ## V0.1
 
-**Status:** Sections 1–2 **implemented** (generalized perception, editing commands, passive/detailed descriptions). Section 3 (multi-agent polish: `switch`, per-agent turn numbers) — design complete, not yet implemented. See [v0.1-implementation-readiness-checklist.md](v0.1-implementation-readiness-checklist.md).
+**Status:** ✅ **Implemented** — see [v0.1-implementation-readiness-checklist.md](v0.1-implementation-readiness-checklist.md).
 
-**Focus:** Make the world dynamic with general editing tools and improved perception for changes, then add multi-agent support. Everything remains fully manual (human decides which agent acts when by typing its name, or uses `switch` to inspect another agent without a turn). The initial world still starts with a single "Explorer" agent, ball, and sign.
+**Focus:** Make the world dynamic with general editing tools and improved perception for changes, then add multi-agent support. Everything remains fully manual (human decides which agent acts when by typing its name, using `run` for the active agent, or using `switch` to inspect another agent without a turn). The initial world still starts with a single "Explorer" agent, ball, and sign.
 
 **Implementation order:** (1) generalized stale perception → (2) editing commands + perception extension → (3) multi-agent support.
 
@@ -27,7 +27,7 @@ These plans are subject to change as we learn and discuss.
 - Keyword-style stepper commands (`create-object`, `edit-object`, `delete-object`, `create-agent`, `edit-agent`, `delete-agent`), parsed with `shlex.split`.
 - Objects support **`pdesc`** (passive glance) and **`desc`** (detailed, hidden behind `[?]` until examined).
 - **Listing commands** (read-only, no turn consumed): `list` (everything), `objects` (all objects), `agents` (all agents with ids and active marker). Primary way to look up ids for edit/delete without running a turn or viewing a prompt.
-- **ID rules:** auto-generated per category (`obj_{slug}_01`, `agent_{slug}_01`); immutable after creation. Object display names may duplicate; agent display names must be unique among agents (case-insensitive). Objects and agents may share a display name with each other.
+- **ID rules:** auto-generated per category (`obj_{slug}_01`, `agent_{slug}_01`); immutable after creation. Object display names may duplicate; agent display names must be unique among agents (case-insensitive) and cannot match stepper commands (validated via `src/stepper_commands.py`). Objects and agents may share a display name with each other.
 - **Edit/delete** commands take entity **id**, not display name.
 - Editing an object's description triggers generalized "has changed" invalidation (per item 1).
 - Agent edits affect name/description/position only — private memory is untouched.
@@ -35,12 +35,14 @@ These plans are subject to change as we learn and discuss.
 - The world starts identical to V0; all changes happen at runtime via these commands.
 - Keep the experience fully manual (no automatic sequencing of agent turns).
 
-### 3. Multi-agent support — design complete, not yet implemented
+### 3. Multi-agent support — ✅ Implemented
 - Each agent has its own independent `Memory` (own turn history, own `looked_at` / `ever_looked`, own position).
-- Typing an agent's name (e.g. `Explorer` or `Goblin`) gives *that agent* an **LLM turn** — build prompt, execute action, update only that agent, set as active.
-- **`switch <name>`** changes the active agent without a turn or LLM call (for `vision`, `state`, `prompt`, manual `step`).
+- Typing an agent's name (e.g. `Explorer` or `Goblin`) gives *that agent* an **LLM turn** — build prompt, execute action, update only that agent, set as active (active is set at start of the LLM path so `vision`/`state` match even if the call fails).
+- **`run`** runs an LLM turn for the **active** agent (typical workflow: `switch Goblin` then `run`).
+- **`switch <name>`** changes the active agent without a turn or LLM call (for `vision`, `state`, `prompt`, manual `step`, `run`).
+- Stepper commands are case-insensitive (`Run` = `run`). Deleting the active agent falls back to `world.agents[0]` and prints the new active agent.
 - `vision`, `state`, `prompt`, manual `step`, etc. operate on the active agent.
-- **Per-agent turn numbers** in `TurnRecord` (no gaps when agents alternate).
+- **Per-agent turn numbers** in `TurnRecord` (no gaps when agents alternate); `session_turn` is a console/log label only and increments after successful `step_turn`.
 - Add `World.get_agents()`, `get_agent_by_id()`, `get_agent_by_name()`; keep `get_agent()` as first agent for backward compatibility.
 - Agents share the same world grid and objects but do not observe or interact with each other (no other agents in passive vision).
 - Initial world (`create_initial_world`) stays exactly as in V0. Additional agents are introduced via editing commands from item 2.

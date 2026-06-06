@@ -62,11 +62,16 @@ class World:
                 return True
         return False
 
+    def get_agents(self) -> list[Agent]:
+        """Return a copy of all agents in the world."""
+        return list(self.agents)
+
     def get_agent(self) -> Optional[Agent]:
         """
-        Return the first agent in the world.
+        Return the first agent in the world (backward compatibility for V0).
 
-        In V0 there is only ever one agent at startup. Returns None if no agent exists.
+        For multi-agent sessions, prefer get_agents() or lookup helpers.
+        Returns None if no agent exists.
         """
         if not self.agents:
             return None
@@ -76,6 +81,14 @@ class World:
         """Return the agent with the given ID, if it exists in the world."""
         for agent in self.agents:
             if agent.id == agent_id:
+                return agent
+        return None
+
+    def get_agent_by_name(self, name: str) -> Optional[Agent]:
+        """Return the agent with the given display name (case-insensitive)."""
+        name_lower = name.strip().lower()
+        for agent in self.agents:
+            if agent.name.lower() == name_lower:
                 return agent
         return None
 
