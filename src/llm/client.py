@@ -101,13 +101,7 @@ def get_structured_turn(
     )
 
 
-def get_navigation_turn(prompt: str, **kwargs) -> LLMResponse:
-    from src.llm.schemas import AgentNavigationTurn
+def get_compound_turn(prompt: str, **kwargs) -> LLMResponse:
+    from src.llm.schemas import AgentCompoundTurn
 
-    return get_structured_turn(prompt, AgentNavigationTurn, **kwargs)
-
-
-def get_action_turn(prompt: str, **kwargs) -> LLMResponse:
-    from src.llm.schemas import AgentActionTurn
-
-    return get_structured_turn(prompt, AgentActionTurn, **kwargs)
+    return get_structured_turn(prompt, AgentCompoundTurn, **kwargs)

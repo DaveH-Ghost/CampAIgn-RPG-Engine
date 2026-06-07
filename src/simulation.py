@@ -1,16 +1,16 @@
 """
 simulation.py
 
-Compound turn execution for V0.2.
+Compound turn execution for V0.2.5.
 
 Pipeline per agent turn:
-  navigation (optional move) → action phase (optional look → optional turn action)
+  optional move → optional look → optional turn action (speak / interact)
 """
 
 from src.action_outcome import ActionOutcome
 from src.actions import do_interact, do_move, do_speak
 from src.agent import Agent
-from src.llm.schemas import AgentActionTurn, AgentNavigationTurn
+from src.llm.schemas import AgentCompoundTurn
 from src.memory import StepKind, TurnRecord, TurnStep
 from src.perception import perform_look as do_look
 from src.world import World
@@ -21,16 +21,16 @@ def next_turn_number_for_agent(agent: Agent) -> int:
     return agent.memory.turn_count + 1
 
 
-def _append_passive_mood(passive_result: str, action_turn: AgentActionTurn | None) -> str:
-    """Append confidence/emotion from the action phase to passive_result."""
-    if not passive_result or action_turn is None:
+def _append_passive_mood(passive_result: str, turn: AgentCompoundTurn) -> str:
+    """Append confidence/emotion from the turn to passive_result."""
+    if not passive_result:
         return passive_result
 
     parts = []
-    if action_turn.confidence:
-        parts.append(f"confidence: {action_turn.confidence}")
-    if action_turn.emotion:
-        parts.append(f"Emotion: {action_turn.emotion}")
+    if turn.confidence:
+        parts.append(f"confidence: {turn.confidence}")
+    if turn.emotion:
+        parts.append(f"Emotion: {turn.emotion}")
     if not parts:
         return passive_result
 
@@ -61,72 +61,72 @@ def _make_step(
     )
 
 
-def execute_nav_phase(agent: Agent, world: World, nav_turn: AgentNavigationTurn) -> list[TurnStep]:
-    """Run optional move from navigation phase. Commits position changes."""
-    if not nav_turn.move_target:
+def execute_nav_phase(
+    agent: Agent, world: World, turn: AgentCompoundTurn
+) -> list[TurnStep]:
+    """Run optional move from compound turn. Commits position changes."""
+    if not turn.move_target:
         return []
 
-    outcome = do_move(agent, world, nav_turn.move_target)
+    outcome = do_move(agent, world, turn.move_target)
     return [
         _make_step(
             "move",
-            nav_turn.reasoning,
+            turn.reasoning,
             outcome,
-            target=nav_turn.move_target,
+            target=turn.move_target,
         )
     ]
 
 
 def execute_action_phase(
-    agent: Agent, world: World, action_turn: AgentActionTurn
+    agent: Agent, world: World, turn: AgentCompoundTurn
 ) -> list[TurnStep]:
-    """Run optional look and turn action from action phase."""
+    """Run optional look and turn action from compound turn."""
     steps: list[TurnStep] = []
 
-    if action_turn.look_target:
-        outcome = do_look(agent, world, action_turn.look_target)
+    if turn.look_target:
+        outcome = do_look(agent, world, turn.look_target)
         steps.append(
             _make_step(
                 "look",
-                action_turn.reasoning,
+                turn.reasoning,
                 outcome,
-                target=action_turn.look_target,
+                target=turn.look_target,
             )
         )
 
-    if action_turn.turn_action == "speak":
-        outcome = do_speak(agent, world, action_turn.content or "")
+    if turn.turn_action == "speak":
+        outcome = do_speak(agent, world, turn.content or "")
         steps.append(
             _make_step(
                 "speak",
-                action_turn.reasoning,
+                turn.reasoning,
                 outcome,
-                content=action_turn.content,
+                content=turn.content,
             )
         )
-    elif action_turn.turn_action == "interact":
+    elif turn.turn_action == "interact":
         outcome = do_interact(
             agent,
             world,
-            action_turn.target or "",
-            action_turn.action_name or "",
+            turn.target or "",
+            turn.action_name or "",
         )
         steps.append(
             _make_step(
                 "interact",
-                action_turn.reasoning,
+                turn.reasoning,
                 outcome,
-                target=action_turn.target,
-                content=action_turn.action_name,
+                target=turn.target,
+                content=turn.action_name,
             )
         )
 
     return steps
 
 
-def _pick_passive_from_steps(
-    steps: list[TurnStep], action_turn: AgentActionTurn | None
-) -> str:
+def _pick_passive_from_steps(steps: list[TurnStep], turn: AgentCompoundTurn) -> str:
     """Priority: turn action > look > move."""
     turn_action_passive = ""
     look_passive = ""
@@ -143,12 +143,11 @@ def _pick_passive_from_steps(
             move_passive = step.passive_result
 
     winner = turn_action_passive or look_passive or move_passive
-    return _append_passive_mood(winner, action_turn)
+    return _append_passive_mood(winner, turn)
 
 
 def finalize_turn_record(
-    nav_turn: AgentNavigationTurn,
-    action_turn: AgentActionTurn | None,
+    turn: AgentCompoundTurn,
     nav_steps: list[TurnStep],
     action_steps: list[TurnStep],
     turn_number: int,
@@ -159,18 +158,17 @@ def finalize_turn_record(
         turn_number=turn_number,
         steps=steps,
         result=_composite_result(steps),
-        nav_reasoning=nav_turn.reasoning,
-        action_reasoning=action_turn.reasoning if action_turn else "",
+        reasoning=turn.reasoning,
     )
 
 
 def commit_turn_record(
     agent: Agent,
     record: TurnRecord,
-    action_turn: AgentActionTurn | None,
+    turn: AgentCompoundTurn,
 ) -> TurnRecord:
     """Apply passive_result, memory, and last_action side effects."""
-    passive = _pick_passive_from_steps(record.steps, action_turn)
+    passive = _pick_passive_from_steps(record.steps, turn)
     if passive:
         agent.passive_result = passive
 
@@ -182,30 +180,23 @@ def commit_turn_record(
 def run_compound_turn(
     agent: Agent,
     world: World,
-    nav_turn: AgentNavigationTurn,
-    action_turn: AgentActionTurn | None,
+    turn: AgentCompoundTurn,
     turn_number: int,
     *,
     nav_steps: list[TurnStep] | None = None,
 ) -> TurnRecord:
     """
-    Run a compound agent turn: navigation then action phase.
+    Run a compound agent turn: move, then look/action.
 
-    Pass ``nav_steps`` when navigation was already executed (LLM path runs move
-    before the action LLM so the action prompt sees post-move vision). When
-    ``action_turn`` is None, records a partial turn with navigation steps only.
+    Pass ``nav_steps`` when navigation was already executed (e.g. debug step-nav).
     """
     if nav_steps is None:
-        nav_steps = execute_nav_phase(agent, world, nav_turn)
+        nav_steps = execute_nav_phase(agent, world, turn)
 
-    action_steps: list[TurnStep] = []
-    if action_turn is not None:
-        action_steps = execute_action_phase(agent, world, action_turn)
+    action_steps = execute_action_phase(agent, world, turn)
 
-    record = finalize_turn_record(
-        nav_turn, action_turn, nav_steps, action_steps, turn_number
-    )
-    return commit_turn_record(agent, record, action_turn)
+    record = finalize_turn_record(turn, nav_steps, action_steps, turn_number)
+    return commit_turn_record(agent, record, turn)
 
 
 # Checklist name alias

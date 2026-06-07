@@ -9,11 +9,10 @@ from pydantic import ValidationError
 
 from src.actions.move import move as do_move
 from src.coordinates import CoordinateParseError, parse_coordinate_target
-from src.llm.prompt import build_navigation_prompt
-from src.llm.schemas import AgentNavigationTurn
+from src.llm.prompt import build_compound_prompt
+from src.llm.schemas import AgentCompoundTurn
 from src.perception import build_passive_vision
 from src.simulation import execute_nav_phase, run_compound_turn
-from src.llm.schemas import AgentActionTurn
 from src.world import create_initial_world
 from src.world_edit import create_agent_from_args
 
@@ -89,7 +88,11 @@ def test_move_malformed_target_returns_invalid_result():
 
 def test_schema_rejects_cardinal_move_target():
     with pytest.raises(ValidationError) as exc_info:
-        AgentNavigationTurn(reasoning="Old.", move_target="north")
+        AgentCompoundTurn(
+            reasoning="Old.",
+            move_target="north",
+            turn_action="none",
+        )
     assert "ERR:INVALID_TARGET" in str(exc_info.value)
 
 
@@ -106,8 +109,11 @@ def test_other_agent_vision_after_successful_move():
     run_compound_turn(
         goblin,
         world,
-        AgentNavigationTurn(reasoning="Repositioning.", move_target="2,3"),
-        AgentActionTurn(reasoning="Done.", turn_action="none"),
+        AgentCompoundTurn(
+            reasoning="Repositioning.",
+            move_target="2,3",
+            turn_action="none",
+        ),
         turn_number=1,
     )
 
@@ -122,7 +128,11 @@ def test_nav_phase_via_simulation():
     steps = execute_nav_phase(
         agent,
         world,
-        AgentNavigationTurn(reasoning="Test.", move_target="3,1"),
+        AgentCompoundTurn(
+            reasoning="Test.",
+            move_target="3,1",
+            turn_action="none",
+        ),
     )
     assert agent.position == (3, 1)
     assert steps[0].result == "You moved to (3, 1)."
@@ -131,7 +141,7 @@ def test_nav_phase_via_simulation():
 def test_prompt_uses_coordinate_move_not_cardinals():
     world = create_initial_world()
     agent = world.get_agent()
-    prompt = build_navigation_prompt(agent, world, include_examples=True)
+    prompt = build_compound_prompt(agent, world, include_examples=True)
 
     assert "You may move to any coordinate (x, y) where x and y are integers from 0 to 4." in prompt
     assert "move_target" in prompt

@@ -5,8 +5,8 @@ V0.2 Section 3: declarative object interactions.
 """
 
 from src.actions.interact import interact
-from src.llm.prompt import build_action_prompt
-from src.llm.schemas import AgentActionTurn, AgentNavigationTurn
+from src.llm.prompt import build_compound_prompt
+from src.llm.schemas import AgentCompoundTurn
 from src.object_effects import format_effects_list
 from src.perception import build_passive_vision, perform_look
 from src.simulation import next_turn_number_for_agent, run_compound_turn
@@ -76,7 +76,7 @@ def test_kick_appears_in_action_prompt_when_adjacent():
     explorer = world.get_agent()
     explorer.position = (2, 3)
 
-    prompt = build_action_prompt(explorer, world)
+    prompt = build_compound_prompt(explorer, world)
     assert "Object interactions available this turn:" in prompt
     assert "kick obj_ball_01 (Ceramic Ball) — range 1" in prompt
 
@@ -100,7 +100,7 @@ def test_range_zero_same_tile_interact():
     )
     goblin = _create_goblin(world, at="2,3")
 
-    prompt = build_action_prompt(goblin, world)
+    prompt = build_compound_prompt(goblin, world)
     assert "pick obj_gem_01 (Gem) — same tile" in prompt
 
     outcome = interact(goblin, world, obj.id, "pick")
@@ -147,9 +147,9 @@ def test_failed_interact_after_move_shows_move_in_passive_result():
     record = run_compound_turn(
         goblin,
         world,
-        AgentNavigationTurn(reasoning="approach", move_target="4,3"),
-        AgentActionTurn(
-            reasoning="eat from too far",
+        AgentCompoundTurn(
+            reasoning="approach and eat from too far",
+            move_target="4,3",
             turn_action="interact",
             target=cookie.id,
             action_name="eat",
@@ -172,7 +172,7 @@ def test_in_range_goblin_sees_eat_in_action_prompt():
     _create_cookie(world)
     goblin = _create_goblin(world, at="2,3")
 
-    prompt = build_action_prompt(goblin, world)
+    prompt = build_compound_prompt(goblin, world)
     assert "Object interactions available this turn:" in prompt
     assert "eat obj_cookie_01 (Cookie) — range 1" in prompt
 
@@ -185,8 +185,7 @@ def test_goblin_interact_eat_deletes_cookie():
     record = run_compound_turn(
         goblin,
         world,
-        AgentNavigationTurn(reasoning="stay", move_target=None),
-        AgentActionTurn(
+        AgentCompoundTurn(
             reasoning="eat",
             turn_action="interact",
             target=cookie.id,
@@ -221,7 +220,7 @@ def test_out_of_range_not_in_prompt_and_runtime_fails():
     cookie = _create_cookie(world)
     goblin = _create_goblin(world, at="0,0")
 
-    prompt = build_action_prompt(goblin, world)
+    prompt = build_compound_prompt(goblin, world)
     assert "Object interactions available this turn:" not in prompt
 
     outcome = interact(goblin, world, cookie.id, "eat")
@@ -262,8 +261,7 @@ def test_explorer_vision_shows_goblin_eat_passive_result():
     run_compound_turn(
         goblin,
         world,
-        AgentNavigationTurn(reasoning="stay", move_target=None),
-        AgentActionTurn(
+        AgentCompoundTurn(
             reasoning="eat",
             turn_action="interact",
             target=cookie.id,
@@ -315,8 +313,7 @@ def test_result_only_interact_leaves_object():
     record = run_compound_turn(
         goblin,
         world,
-        AgentNavigationTurn(reasoning="stay", move_target=None),
-        AgentActionTurn(
+        AgentCompoundTurn(
             reasoning="smell",
             turn_action="interact",
             target=obj.id,
@@ -385,8 +382,7 @@ def test_random_move_self_moves_ball(monkeypatch):
     record = run_compound_turn(
         explorer,
         world,
-        AgentNavigationTurn(reasoning="stay", move_target=None),
-        AgentActionTurn(
+        AgentCompoundTurn(
             reasoning="kick",
             turn_action="interact",
             target="obj_ball_01",

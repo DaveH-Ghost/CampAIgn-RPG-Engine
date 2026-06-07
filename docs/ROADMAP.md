@@ -95,11 +95,18 @@ These changes improve experimentation while keeping the core "one structured act
 
 ## V0.2.5
 
-**Status:** Planned after **V0.2** (`v0.2.0`) — checklist not yet written.
+**Status:** In progress — see [v0.2.5-changelog.md](v0.2.5-changelog.md) (changelog, not a pre-implementation checklist).
 
 **Focus:** Memory as a first-class subsystem — required before V0.3. Addresses long-term roleplay, session/campaign continuity, and future D&D scale (e.g. low-token “minion” agents vs rich PC memory).
 
-**Planned themes (high level):**
+### 0.2.5a — Single LLM compound turn — ✅ Implemented
+- One LLM call per agent turn via `AgentCompoundTurn` (replaces two-phase nav + action schemas).
+- Single `build_compound_prompt()` / `get_compound_turn()`; logging phase `[compound]`.
+- Turn execution unchanged (move → look → turn action); `TurnRecord.reasoning` replaces split nav/action reasoning.
+- Pre-move vision in prompt; model plans post-move look/action (5×5 tradeoff documented in changelog).
+- `pyproject.toml` → `0.2.5`; tests updated.
+
+### Planned themes (high level, after 0.2.5a)
 - **Persistent memory store** (database): memories with IDs, priorities, and types; serializable for save/load later.
 - **Goals and tasks** linked to memory IDs (feeds LONG_TERM_GOALS “beliefs, relationships, goals, pursuit”).
 - **Tiered memory policies** per agent archetype (`pc`, `npc`, `minion`) controlling prompt budget and consolidation depth.
@@ -129,6 +136,6 @@ Larger items (richer agent interactions, object behaviors, full D&D-style system
 ---
 
 **Notes**
-- Each version should stay focused. Create a readiness checklist before implementation (as with V0, V0.1, and V0.2).
+- Prefer adding sections to the [V0.2.5 changelog](v0.2.5-changelog.md) over a readiness checklist for V0.2.5+.
 - When a version is **implemented**, move relevant items to "Achieved" in LONG_TERM_GOALS.md and update this roadmap.
 - This document is meant to be living — edit it as plans evolve.

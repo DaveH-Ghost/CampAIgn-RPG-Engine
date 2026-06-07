@@ -4,23 +4,21 @@ test_multi_agent.py
 Tests for V0.1 Section 3 multi-agent support (updated for V0.2 compound turns).
 """
 
-from src.llm.schemas import AgentActionTurn, AgentNavigationTurn
+from src.llm.schemas import AgentCompoundTurn
 from src.perception import build_passive_vision, perform_look
 from src.simulation import next_turn_number_for_agent, run_compound_turn
 from src.world import create_initial_world
 from src.world_edit import create_agent_from_args, edit_object_from_args
 
 
-def _speak(content: str, **kwargs) -> AgentActionTurn:
-    defaults = {"reasoning": "test", "turn_action": "speak", "content": content}
+def _compound(**kwargs) -> AgentCompoundTurn:
+    defaults = {"reasoning": "test", "turn_action": "none"}
     defaults.update(kwargs)
-    return AgentActionTurn(**defaults)
+    return AgentCompoundTurn(**defaults)
 
 
-def _nav(**kwargs) -> AgentNavigationTurn:
-    defaults = {"reasoning": "test", "move_target": None}
-    defaults.update(kwargs)
-    return AgentNavigationTurn(**defaults)
+def _speak(content: str, **kwargs) -> AgentCompoundTurn:
+    return _compound(turn_action="speak", content=content, **kwargs)
 
 
 def test_get_agents_returns_copy():
@@ -83,21 +81,18 @@ def test_per_agent_turn_numbers_when_alternating():
     run_compound_turn(
         explorer,
         world,
-        _nav(),
         _speak("Explorer speaks."),
         next_turn_number_for_agent(explorer),
     )
     run_compound_turn(
         goblin,
         world,
-        _nav(),
         _speak("Goblin speaks."),
         next_turn_number_for_agent(goblin),
     )
     run_compound_turn(
         explorer,
         world,
-        _nav(),
         _speak("Explorer again."),
         next_turn_number_for_agent(explorer),
     )
@@ -119,7 +114,6 @@ def test_speak_visible_in_other_agent_passive_vision():
     run_compound_turn(
         goblin,
         world,
-        _nav(),
         _speak("Hello, Explorer!"),
         next_turn_number_for_agent(goblin),
     )
@@ -140,7 +134,6 @@ def test_passive_result_includes_confidence_and_emotion():
     run_compound_turn(
         goblin,
         world,
-        _nav(),
         _speak("Hello.", confidence="curious", emotion="amused"),
         next_turn_number_for_agent(goblin),
     )
@@ -163,15 +156,13 @@ def test_failed_move_does_not_update_passive_result():
     run_compound_turn(
         goblin,
         world,
-        _nav(),
         _speak("Hi."),
         next_turn_number_for_agent(goblin),
     )
     run_compound_turn(
         goblin,
         world,
-        _nav(move_target="-1,0"),
-        AgentActionTurn(reasoning="test", turn_action="none"),
+        _compound(move_target="-1,0"),
         next_turn_number_for_agent(goblin),
     )
 
@@ -348,7 +339,7 @@ def test_reserved_commands_include_run_and_hyphenated():
     assert "?" in cached
 
 
-def test_llm_nav_failure_does_not_increment_session_turn(monkeypatch):
+def test_llm_failure_does_not_increment_session_turn(monkeypatch):
     from src.main import ManualStepper
 
     stepper = ManualStepper()
@@ -356,44 +347,14 @@ def test_llm_nav_failure_does_not_increment_session_turn(monkeypatch):
     before_session = stepper.session_turn
     before_turns = agent.memory.turn_count
 
-    def fail_nav(_prompt):
+    def fail_llm(_prompt):
         raise RuntimeError("LLM unavailable")
 
-    monkeypatch.setattr("src.llm.client.get_navigation_turn", fail_nav)
+    monkeypatch.setattr("src.llm.client.get_compound_turn", fail_llm)
     stepper._run_llm_turn_for_agent(agent)
 
     assert stepper.session_turn == before_session
     assert agent.memory.turn_count == before_turns
-
-
-def test_llm_action_failure_records_partial_turn(monkeypatch):
-    from src.main import ManualStepper
-    from src.llm.schemas import AgentNavigationTurn
-    from src.llm.types import LLMResponse
-
-    stepper = ManualStepper()
-    agent = stepper.agent
-
-    def ok_nav(_prompt):
-        return LLMResponse(
-            parsed=AgentNavigationTurn(reasoning="go", move_target="2,3"),
-            raw_response="{}",
-        )
-
-    def fail_action(_prompt):
-        raise RuntimeError("action LLM unavailable")
-
-    monkeypatch.setattr("src.llm.client.get_navigation_turn", ok_nav)
-    monkeypatch.setattr("src.llm.client.get_action_turn", fail_action)
-
-    before_session = stepper.session_turn
-    stepper._run_llm_turn_for_agent(agent)
-
-    assert agent.position == (2, 3)
-    assert agent.memory.turn_count == 1
-    assert len(agent.memory.turns[-1].steps) == 1
-    assert agent.memory.turns[-1].steps[0].kind == "move"
-    assert stepper.session_turn == before_session + 1
 
 
 def test_step_compound_increments_session_turn_once():
@@ -413,10 +374,10 @@ def test_llm_failure_still_sets_active_agent(monkeypatch):
     goblin = stepper.world.get_agent_by_name("Goblin")
     assert stepper.agent.name == "Explorer"
 
-    def fail_nav(_prompt):
+    def fail_llm(_prompt):
         raise RuntimeError("LLM unavailable")
 
-    monkeypatch.setattr("src.llm.client.get_navigation_turn", fail_nav)
+    monkeypatch.setattr("src.llm.client.get_compound_turn", fail_llm)
     stepper.default("Goblin")
     assert stepper.agent is goblin
 

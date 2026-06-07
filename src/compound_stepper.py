@@ -1,7 +1,7 @@
 """
 compound_stepper.py
 
-Parse manual step-compound commands for V0.2.
+Parse manual step-compound commands for V0.2.5.
 """
 
 from __future__ import annotations
@@ -10,13 +10,12 @@ import shlex
 from dataclasses import dataclass
 from typing import Optional
 
-from src.llm.schemas import AgentActionTurn, AgentNavigationTurn
+from src.llm.schemas import AgentCompoundTurn
 
 
 @dataclass
 class ParsedCompoundStep:
-    nav: AgentNavigationTurn
-    action: AgentActionTurn
+    turn: AgentCompoundTurn
 
 
 def parse_compound_step_arg(arg: str) -> ParsedCompoundStep:
@@ -76,34 +75,34 @@ def parse_compound_step_arg(arg: str) -> ParsedCompoundStep:
             raise ValueError(f"Unknown token '{tokens[idx]}' in step-compound")
 
     if interact_target:
-        action = AgentActionTurn(
+        turn = AgentCompoundTurn(
             reasoning="[manual step-compound]",
+            move_target=move_target,
             look_target=look_target,
             turn_action="interact",
             target=interact_target,
             action_name=interact_action,
         )
     elif speak_content:
-        action = AgentActionTurn(
+        turn = AgentCompoundTurn(
             reasoning="[manual step-compound]",
+            move_target=move_target,
             look_target=look_target,
             turn_action="speak",
             content=speak_content,
         )
     elif look_target:
-        action = AgentActionTurn(
+        turn = AgentCompoundTurn(
             reasoning="[manual step-compound]",
+            move_target=move_target,
             look_target=look_target,
             turn_action="none",
         )
     else:
-        action = AgentActionTurn(
+        turn = AgentCompoundTurn(
             reasoning="[manual step-compound]",
+            move_target=move_target,
             turn_action="none",
         )
 
-    nav = AgentNavigationTurn(
-        reasoning="[manual step-compound]",
-        move_target=move_target,
-    )
-    return ParsedCompoundStep(nav=nav, action=action)
+    return ParsedCompoundStep(turn=turn)

@@ -28,8 +28,7 @@ class TurnRecord:
     turn_number: int
     steps: list[TurnStep]
     result: str
-    nav_reasoning: str
-    action_reasoning: str
+    reasoning: str
 
 
 @dataclass

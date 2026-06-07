@@ -1,7 +1,7 @@
 """
 prompt.py
 
-Two-phase prompt construction for V0.2 compound turns.
+Single-call prompt construction for V0.2.5 compound turns.
 """
 
 from src.agent import Agent
@@ -14,48 +14,18 @@ from src.perception import (
 from src.world import World
 
 
-FEW_SHOT_NAV_EXAMPLES = """
-Example 1: Move to a coordinate
+FEW_SHOT_COMPOUND_EXAMPLES = """
+Example 1: Move, look, and speak
 
 Context:
 You are at (1, 1).
-You may move to any coordinate (x, y) where x and y are integers from 0 to 4.
-
-Output:
-{
-  "reasoning": "The sign is at (2, 4). I will move closer.",
-  "move_target": "2,3",
-  "confidence": "decided",
-  "emotion": "focused"
-}
-
-Example 2: Stay in place
-
-Context:
-You are at (2, 2).
-You may move to any coordinate (x, y) where x and y are integers from 0 to 4.
-
-Output:
-{
-  "reasoning": "I am already well positioned. I will stay and act from here.",
-  "move_target": null,
-  "confidence": "certain",
-  "emotion": "calm"
-}
-""".strip()
-
-
-FEW_SHOT_ACTION_EXAMPLES = """
-Example 1: Look then speak
-
-Context:
-You are at (2, 3).
 Ceramic Ball (obj_ball_01), (2, 2) - [?]
 You can look at: obj_ball_01, obj_sign_01
 
 Output:
 {
-  "reasoning": "I want to examine the ball and comment.",
+  "reasoning": "The ball is at (2, 2). I will move closer, examine it, and comment.",
+  "move_target": "2,3",
   "look_target": "obj_ball_01",
   "turn_action": "speak",
   "target": null,
@@ -65,15 +35,16 @@ Output:
   "emotion": "intrigued"
 }
 
-Example 2: Speak only
+Example 2: Stay in place and speak
 
 Context:
-You are at (1, 1).
+You are at (2, 2).
 You can look at: obj_ball_01, obj_sign_01
 
 Output:
 {
-  "reasoning": "Nothing new to examine. I will speak.",
+  "reasoning": "Nothing new to examine. I will speak from here.",
+  "move_target": null,
   "look_target": null,
   "turn_action": "speak",
   "target": null,
@@ -81,6 +52,25 @@ Output:
   "content": "Hello, room.",
   "confidence": "certain",
   "emotion": "calm"
+}
+
+Example 3: Move only
+
+Context:
+You are at (1, 1).
+You may move to any coordinate (x, y) where x and y are integers from 0 to 4.
+
+Output:
+{
+  "reasoning": "The sign is at (2, 4). I will move closer.",
+  "move_target": "2,3",
+  "look_target": null,
+  "turn_action": "none",
+  "target": null,
+  "action_name": null,
+  "content": null,
+  "confidence": "decided",
+  "emotion": "focused"
 }
 """.strip()
 
@@ -93,35 +83,29 @@ def _character_block(agent: Agent) -> str:
     )
 
 
-def _get_nav_system_instructions() -> str:
+def _get_compound_system_instructions() -> str:
     return """You exist inside a small, controlled 5x5 grid room. Your coordinates range from (0,0) in the southwest corner to (4,4) in the northeast. Y increases northward.
 
-This is the **navigation phase** of your turn. Decide whether to move before your action phase.
+Each turn you may plan a **compound turn** executed in this order:
+1. **Move** (optional): move to any in-bounds grid coordinate (x, y), or stay (move_target null).
+2. **Look** (optional): examine one entity from passive vision (at most one look_target).
+3. **Turn action** (optional): speak, interact with a listed object action, or none.
 
-- move: Move to any in-bounds grid coordinate (x, y). Use move_target "x,y" (e.g. "2,3"), or null to stay.
-- You cannot move outside the grid.
+Important rules:
+- You plan from your **current** position and vision. Your move runs first; look and turn action happen **after** that move.
+- Only pick look/interact targets you expect to be valid after moving.
+- move: use move_target "x,y" (e.g. "2,3"), or null to stay. You cannot move outside the grid.
+- look: optional; entities in passive vision only (you do not see yourself).
+- Hidden detail is marked "[?]"; stale examined knowledge is "[?] [changed]".
+- Other agents show their most recent observable action on their vision line.
+- speak: up to five sentences when turn_action is "speak".
+- interact: turn_action "interact" with target object id + action_name when listed below.
+- turn_action "none": end after optional move/look without speaking or interacting.
 
 Always respond with a single, valid JSON object. Do not add any text before or after the JSON."""
 
 
-def _get_action_system_instructions() -> str:
-    return """You exist inside a small, controlled 5x5 grid room. Your coordinates range from (0,0) in the southwest corner to (4,4) in the northeast. Y increases northward.
-
-This is the **action phase** of your turn (after any move). You may look at one entity, then take one turn action.
-
-- look: Examine one entity from passive vision (optional; at most one look_target).
-- speak: Say something out loud (turn_action "speak"; up to five sentences).
-- interact: Use a listed object action (turn_action "interact" with target + action_name).
-- turn_action "none": End after an optional look without speaking or interacting.
-
-Important rules:
-- Only entities in passive vision can be looked at (you do not see yourself).
-- Hidden detail is marked "[?]"; stale examined knowledge is "[?] [changed]".
-- Other agents show their most recent observable action on their vision line.
-- Always respond with a single, valid JSON object. Do not add any text before or after the JSON."""
-
-
-def _get_nav_move_block(agent: Agent) -> str:
+def _get_move_block(agent: Agent) -> str:
     x, y = agent.position
     return (
         f"You are at ({x}, {y}).\n"
@@ -143,7 +127,7 @@ def _format_interact_block(agent: Agent, world: World) -> str:
     return "\n".join(lines)
 
 
-def _get_action_available_block(agent: Agent, world: World) -> str:
+def _get_available_block(agent: Agent, world: World) -> str:
     targets = get_available_look_targets(agent, world)
     lines = []
     if targets:
@@ -169,10 +153,8 @@ def _format_history(turns: list[TurnRecord]) -> str:
     lines = []
     for t in turns:
         lines.append(f"Turn {t.turn_number}:")
-        if t.nav_reasoning:
-            lines.append(f"Navigation reasoning: {t.nav_reasoning}")
-        if t.action_reasoning:
-            lines.append(f"Action reasoning: {t.action_reasoning}")
+        if t.reasoning:
+            lines.append(f"Reasoning: {t.reasoning}")
         for step in t.steps:
             label = step.kind
             if step.target:
@@ -183,92 +165,56 @@ def _format_history(turns: list[TurnRecord]) -> str:
     return "\n".join(lines).rstrip()
 
 
-def _nav_output_format() -> str:
+def _compound_output_format() -> str:
     return (
         "Respond with ONLY a valid JSON object matching this exact structure "
         "(no extra text, no markdown):\n"
         "{\n"
-        '  "reasoning": "Your private navigation thoughts (max 400 characters).",\n'
+        '  "reasoning": "Your private thoughts for the full turn (max 400 characters).",\n'
         '  "move_target": "2,3" | null,\n'
-        '  "confidence": "curious" | "certain" | ... (1-3 words),\n'
-        '  "emotion": "focused" | "calm" | ... (1-3 words)\n'
-        "}"
-    )
-
-
-def _action_output_format() -> str:
-    return (
-        "Respond with ONLY a valid JSON object matching this exact structure "
-        "(no extra text, no markdown):\n"
-        "{\n"
-        '  "reasoning": "Your private action thoughts (max 400 characters).",\n'
         '  "look_target": "obj_ball_01" | null,\n'
         '  "turn_action": "speak" | "interact" | "none",\n'
         '  "target": "obj_cookie_01" | null,\n'
         '  "action_name": "eat" | null,\n'
         '  "content": "spoken text or null",\n'
         '  "confidence": "curious" | "certain" | ... (1-3 words),\n'
-        '  "emotion": "focused" | "intrigued" | ... (1-3 words)\n'
+        '  "emotion": "focused" | "calm" | ... (1-3 words)\n'
         "}"
     )
 
 
-def build_navigation_prompt(
+def build_compound_prompt(
     agent: Agent, world: World, include_examples: bool = False
 ) -> str:
-    """Navigation-phase prompt (pre-turn vision + move rules)."""
+    """Build the single LLM prompt for one compound agent turn."""
     parts = [
         _character_block(agent),
         "",
-        _get_nav_system_instructions(),
+        _get_compound_system_instructions(),
         "",
         world.get_room_description(),
         "",
         "Current situation:",
         build_passive_vision(agent, world),
         "",
-        _get_nav_move_block(agent),
+        _get_move_block(agent),
+        "",
+        _get_available_block(agent, world),
         "",
         "Recent history:",
         _format_history(agent.memory.get_recent_turns(10)),
         "",
-        "Decide your move for this turn (or null to stay).",
-        "",
-        _nav_output_format(),
-    ]
-    if include_examples:
-        parts.extend(["", "Here are navigation examples:", FEW_SHOT_NAV_EXAMPLES])
-    return "\n".join(parts).strip()
-
-
-def build_action_prompt(
-    agent: Agent, world: World, include_examples: bool = False
-) -> str:
-    """Action-phase prompt (post-move vision + look + turn action)."""
-    parts = [
-        _character_block(agent),
-        "",
-        _get_action_system_instructions(),
-        "",
-        world.get_room_description(),
-        "",
-        "Current situation (after your move):",
-        build_passive_vision(agent, world),
-        "",
-        _get_action_available_block(agent, world),
-        "",
-        "Recent history:",
-        _format_history(agent.memory.get_recent_turns(10)),
+        "Plan your full compound turn (move, then look, then turn action).",
         "",
         "You may speak up to five sentences. Spoken text should be things you say out loud.",
         "",
-        _action_output_format(),
+        _compound_output_format(),
     ]
     if include_examples:
-        parts.extend(["", "Here are action-phase examples:", FEW_SHOT_ACTION_EXAMPLES])
+        parts.extend(["", "Here are compound turn examples:", FEW_SHOT_COMPOUND_EXAMPLES])
     return "\n".join(parts).strip()
 
 
 def build_prompt(agent: Agent, world: World, include_examples: bool = False) -> str:
-    """Backward-compatible alias: returns the navigation prompt."""
-    return build_navigation_prompt(agent, world, include_examples=include_examples)
+    """Alias for the compound turn prompt."""
+    return build_compound_prompt(agent, world, include_examples=include_examples)

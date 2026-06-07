@@ -1,8 +1,7 @@
 """
-LLM structured output schemas — V0.2 compound turns.
+LLM structured output schemas — V0.2.5 single-call compound turns.
 
-Navigation phase: AgentNavigationTurn
-Action phase: AgentActionTurn
+One AgentCompoundTurn per agent turn: optional move, then optional look, then turn action.
 """
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -65,52 +64,19 @@ def _validate_speak_content(v: Optional[str]) -> Optional[str]:
     return v
 
 
-class AgentNavigationTurn(BaseModel):
-    """Structured output for the navigation phase of a compound agent turn."""
+class AgentCompoundTurn(BaseModel):
+    """Structured output for one compound agent turn (move → look → turn action)."""
 
     reasoning: str = Field(
-        description="Private thoughts for the navigation decision (max 400 characters)."
+        description="Private thoughts for the full turn (max 400 characters)."
     )
     move_target: Optional[str] = Field(
         default=None,
         description='Grid coordinate as "x,y" (e.g. "2,3"), or null to stay in place.',
     )
-    confidence: Optional[str] = Field(default=None, description="1-3 words.")
-    emotion: Optional[str] = Field(default=None, description="1-3 words.")
-
-    @field_validator("reasoning")
-    @classmethod
-    def validate_reasoning(cls, v: str) -> str:
-        return _validate_reasoning(v)
-
-    @field_validator("move_target")
-    @classmethod
-    def validate_move_target(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return v
-        if not str(v).strip():
-            return None
-        try:
-            parse_coordinate_target(v)
-        except CoordinateParseError as exc:
-            raise ValueError(str(exc)) from exc
-        return v
-
-    @field_validator("confidence", "emotion")
-    @classmethod
-    def validate_short_fields(cls, v: Optional[str]) -> Optional[str]:
-        return _validate_short_optional(v)
-
-
-class AgentActionTurn(BaseModel):
-    """Structured output for the action phase of a compound agent turn."""
-
-    reasoning: str = Field(
-        description="Private thoughts for look/speak/interact decisions (max 400 characters)."
-    )
     look_target: Optional[str] = Field(
         default=None,
-        description="Entity id to examine, or null to skip look.",
+        description="Entity id to examine after moving, or null to skip look.",
     )
     turn_action: TurnActionType = Field(
         description='Turn-ending action: "speak", "interact", or "none".',
@@ -135,6 +101,19 @@ class AgentActionTurn(BaseModel):
     def validate_reasoning(cls, v: str) -> str:
         return _validate_reasoning(v)
 
+    @field_validator("move_target")
+    @classmethod
+    def validate_move_target(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        if not str(v).strip():
+            return None
+        try:
+            parse_coordinate_target(v)
+        except CoordinateParseError as exc:
+            raise ValueError(str(exc)) from exc
+        return v
+
     @field_validator("content")
     @classmethod
     def validate_content(cls, v: Optional[str]) -> Optional[str]:
@@ -146,7 +125,7 @@ class AgentActionTurn(BaseModel):
         return _validate_short_optional(v)
 
     @model_validator(mode="after")
-    def validate_turn_action_fields(self) -> "AgentActionTurn":
+    def validate_turn_action_fields(self) -> "AgentCompoundTurn":
         if self.turn_action == "speak":
             if not self.content or not str(self.content).strip():
                 raise ValueError("ERR:INVALID_TARGET: speak requires content")
