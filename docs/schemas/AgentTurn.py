@@ -1,21 +1,22 @@
 """
-AgentTurn Schema - Version 0 (Design Reference)
+AgentTurn Schema - V0 / V0.1 (Design Reference)
 
 !!! IMPORTANT !!!
 
-This file is NO LONGER the authoritative version.
+This file is NO LONGER the authoritative version for new work.
 
-The real implementation now lives here:
+The real V0.1 implementation lives here:
     src/llm/schemas.py
 
-This file in docs/ is kept only as a design reference / historical snapshot
-so it's easy to review the schema during planning discussions without
-having to look at implementation code.
+**V0.2** replaces single-action `AgentTurn` on the LLM path with
+`AgentNavigationTurn` + `AgentActionTurn` (see docs/schemas/ and
+v0.2-implementation-readiness-checklist.md). This file remains a snapshot
+of the pre-V0.2 one-action-per-call model.
 
-For all actual development and imports, use:
+For current runtime imports (until v0.2.0 ships), use:
     from src.llm.schemas import AgentTurn
 
-Current V0 Scope:
+Current V0.1 Scope (superseded by V0.2 when shipped):
 - Only three actions: move, look, speak
 - Max 5 sentences + 280 character limit for speak content
 - Pure dialogue encouraged via prompt only (no runtime emote/action detection)
@@ -23,7 +24,7 @@ Current V0 Scope:
 - move target uses full direction strings ("north", "east", etc.)
 - confidence and emotion fields are kept for now (can be removed later if problematic)
 
-Last synced: 2026-05-31
+Last synced: 2026-06-05 (V0.2 prep — marked pre-V0.2; runtime still V0.1)
 """
 
 from pydantic import BaseModel, Field, field_validator

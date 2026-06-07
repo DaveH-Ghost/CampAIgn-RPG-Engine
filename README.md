@@ -2,14 +2,16 @@
 
 A grid-based agent simulation framework designed around structured output and narrative roleplay.
 
-**Current Status:** V0 complete and validated (100+ LLM turns, reliable structured output). **V0.1 complete** — generalized perception, world editing, passive/detailed descriptions (`pdesc` / `desc`), multi-agent stepper (`switch`, `run`, per-agent turn numbers, reserved agent names), **agent-to-agent passive vision** (look at other agents; `personality` stays LLM-only), and **observable actions** (`passive_result`: speech, movement, and looks visible to other agents).
+**Current Status:** **V0.1 shipped** (`v0.1.0`) — generalized perception, world editing, passive/detailed descriptions (`pdesc` / `desc`), multi-agent stepper (`switch`, `run`, per-agent turn numbers), **agent-to-agent passive vision**, and **observable actions** (`passive_result`). **V0.2 design is complete** (checklist Sections 0–4 agreed); implementation has not started — the stepper and runtime below still reflect V0.1 until `v0.2.0` ships.
 
 **Documentation:**
 
-- [V0.1 implementation checklist](docs/v0.1-implementation-readiness-checklist.md) — design reference for the shipped V0.1 features
-- [Roadmap](docs/ROADMAP.md) — version plans (V0.1, V0.2, V0.3)
+- [V0.2 implementation checklist](docs/v0.2-implementation-readiness-checklist.md) — **authoritative V0.2 spec** (design complete, ready for code)
+- [V0.1 implementation checklist](docs/v0.1-implementation-readiness-checklist.md) — design reference for shipped V0.1 behavior
+- [Roadmap](docs/ROADMAP.md) — version plans (V0.1 ✅, V0.2, V0.2.5, V0.3)
 - [Long-term goals](LONG_TERM_GOALS.md) — aspirational features
-- [V0 implementation checklist](docs/v0-implementation-readiness-checklist.md) — V0 design reference
+- [V0 implementation checklist](docs/v0-implementation-readiness-checklist.md) — V0 historical design reference
+- [Schema design references](docs/schemas/) — `AgentTurn` (V0.1); `AgentNavigationTurn` / `AgentActionTurn` (V0.2 planned)
 
 ## Running / Testing (without LLM)
 
@@ -88,6 +90,21 @@ Explorer         # typing a name also runs an LLM turn for that agent
 - Deleting the active agent reassigns to the first remaining agent and prints `Active agent: …`
 - Turn numbers in each agent's memory are **per-agent** (1, 2, 3…); `session_turn` in logs is a global session label only
 - Other agents appear in passive vision (`pdesc` + hidden `desc` until `look`); `personality` is LLM-only; agents do not see themselves
+
+### V0.2 (planned — design complete, not yet in runtime)
+
+The [V0.2 checklist](docs/v0.2-implementation-readiness-checklist.md) is fully agreed. When implemented (`v0.2.0`), expect these **breaking** changes:
+
+| Area | V0.1 (current) | V0.2 (planned) |
+|------|----------------|----------------|
+| Move | Cardinal one step (`north`, …) | Coordinate teleport (`"x,y"` on 0–4 grid) |
+| LLM turn | One call, one action (`AgentTurn`) | Two calls: navigation then action (`AgentNavigationTurn` + `AgentActionTurn`) |
+| Turn shape | Move, look, or speak — one per turn | Optional move → optional one look → optional speak **or** object interact |
+| Manual step | `step move\|look\|speak` | `step-compound` (+ optional `step-nav` / `step-action`) |
+| Objects | Look only | Declarative **interact** actions (e.g. cookie `eat` + `delete_self` effect) |
+| Speak limit | 280 characters | 500 characters (5 sentences unchanged) |
+
+**Unchanged in V0.2:** 5×5 grid, manual human control (`switch`, `run`, typing agent names), world editing, multi-agent passive vision, V0.1-style memory (10 turns, single `passive_result`). Full memory subsystem → **V0.2.5**; GUI → **V0.3**.
 
 ## Environment Variables & .env Files (Beginner Guide)
 

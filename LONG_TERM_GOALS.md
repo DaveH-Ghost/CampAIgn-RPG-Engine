@@ -17,14 +17,17 @@ These are currently out of scope. They represent the kind of experiences we even
 
 - [ ] Multiple agents that can observe each other, start conversations, form relationships, and influence one another over time  
   *(V0.1 added shared-grid multi-agent with passive vision, `look` at other agents, and observable speech/movement via `passive_result` — but no relationships, beliefs, speak targeting, or agent-driven world edits. That is a stepping stone, not this goal.)*
-- [ ] Objects that have their own behaviors and actions (examples: food that can be eaten and gives a taste description, a puzzle box with interactive mechanisms, a door that can be locked/unlocked, etc.)
+- [ ] Objects that have their own behaviors and actions (examples: food that can be eaten and gives a taste description, a puzzle box with interactive mechanisms, a door that can be locked/unlocked, etc.)  
+  *(**V0.2** — design complete — adds the first step: declarative `interact` actions with a small effect registry, starting with `delete_self` on objects like a cookie `eat`. Richer behaviors and new effect types come in later versions; see [v0.2-implementation-readiness-checklist.md](docs/v0.2-implementation-readiness-checklist.md).)*
 - [ ] Rectangular / multi-tile objects (e.g. long walls, large furniture, 2x2 trees with 6x6 shadows) where objects occupy multiple grid tiles using size + bounding box definitions instead of single-tile objects
 - [ ] A visual interface similar to Roll20 — a grid with tokens representing agents and objects, plus chat bubbles when agents speak
 - [ ] **Roll20 plugin support**  
   Integrate the agent with real Roll20 games (via Mod/API Scripts + chat bridge). Enable the agent to perceive live map state and control tokens representing D&D characters, NPCs, and enemies. The external agent handles reasoning/LLM calls; a companion Roll20 script executes token movement, sheet updates, etc. (Roll20 Pro required for the scripting side; communication constrained by the sandbox model.)
 - [ ] Agents that can create or modify objects in the world (with some form of validation or rules)
-- [ ] Richer memory systems (beliefs, relationships, long-term goals, emotional state)
-- [ ] The ability for agents to develop and pursue their own goals over many turns instead of only reacting to the current situation
+- [ ] Richer memory systems (beliefs, relationships, long-term goals, emotional state)  
+  *(Planned for **V0.2.5** — persistent memory store, tiered policies, memory manager LLM; see [ROADMAP.md](docs/ROADMAP.md). V0.2 leaves compound `TurnRecord.steps` as ingestion hooks.)*
+- [ ] The ability for agents to develop and pursue their own goals over many turns instead of only reacting to the current situation  
+  *(Tied to **V0.2.5** goals/tasks linked to memory IDs.)*
 
 ---
 
