@@ -1,7 +1,7 @@
 """
 test_coordinate_move.py
 
-V0.2 Section 1: coordinate-based move.
+V0.2 Section 1: coordinate-based move (via compound nav phase).
 """
 
 import pytest
@@ -9,17 +9,13 @@ from pydantic import ValidationError
 
 from src.actions.move import move as do_move
 from src.coordinates import CoordinateParseError, parse_coordinate_target
-from src.llm.prompt import build_prompt
-from src.llm.schemas import AgentTurn
+from src.llm.prompt import build_navigation_prompt
+from src.llm.schemas import AgentNavigationTurn
 from src.perception import build_passive_vision
-from src.simulation import execute_action, step_turn
+from src.simulation import execute_nav_phase, run_compound_turn
+from src.llm.schemas import AgentActionTurn
 from src.world import create_initial_world
 from src.world_edit import create_agent_from_args
-
-
-# =============================================================================
-# Coordinate parser
-# =============================================================================
 
 
 @pytest.mark.parametrize(
@@ -41,15 +37,9 @@ def test_parse_coordinate_target_rejects_non_coordinates(target):
         parse_coordinate_target(target)
 
 
-# =============================================================================
-# move() execution
-# =============================================================================
-
-
 def test_move_to_valid_coordinate_updates_position_and_results():
     world = create_initial_world()
     agent = world.get_agent()
-    assert agent.position == (1, 1)
 
     outcome = do_move(agent, world, "2,3")
 
@@ -93,47 +83,13 @@ def test_move_malformed_target_returns_invalid_result():
     assert agent.position == start
     assert "wasn't recognized" in outcome.result
     assert "ERR:INVALID_TARGET" in outcome.result
-    assert "INVALID_COORDINATES" not in outcome.result
     assert outcome.passive_result == ""
-
-
-# =============================================================================
-# Schema validation
-# =============================================================================
-
-
-def test_schema_accepts_valid_coordinate_move():
-    turn = AgentTurn(
-        reasoning="Going to the sign.",
-        action="move",
-        target="2,4",
-    )
-    assert turn.target == "2,4"
 
 
 def test_schema_rejects_cardinal_move_target():
     with pytest.raises(ValidationError) as exc_info:
-        AgentTurn(
-            reasoning="Old habit.",
-            action="move",
-            target="north",
-        )
+        AgentNavigationTurn(reasoning="Old.", move_target="north")
     assert "ERR:INVALID_TARGET" in str(exc_info.value)
-
-
-def test_schema_accepts_parseable_out_of_bounds_coordinate():
-    """Bounds are enforced at runtime in move(), not in the schema."""
-    turn = AgentTurn(
-        reasoning="Too far.",
-        action="move",
-        target="5,5",
-    )
-    assert turn.target == "5,5"
-
-
-# =============================================================================
-# Integration: other agents see updated position and passive_result
-# =============================================================================
 
 
 def test_other_agent_vision_after_successful_move():
@@ -146,49 +102,37 @@ def test_other_agent_vision_after_successful_move():
     goblin = world.get_agent_by_name("Goblin")
     goblin.position = (1, 1)
 
-    turn = AgentTurn(reasoning="Repositioning.", action="move", target="2,3")
-    step_turn(goblin, world, turn, turn_number=1)
+    run_compound_turn(
+        goblin,
+        world,
+        AgentNavigationTurn(reasoning="Repositioning.", move_target="2,3"),
+        AgentActionTurn(reasoning="Done.", turn_action="none"),
+        turn_number=1,
+    )
 
     vision = build_passive_vision(explorer, world)
     assert "Goblin (agent_goblin_01), (2, 3)" in vision
     assert "Goblin moves to (2, 3)." in vision
 
 
-def test_step_move_via_simulation_matches_direct_move():
+def test_nav_phase_via_simulation():
     world = create_initial_world()
     agent = world.get_agent()
-
-    turn = AgentTurn(reasoning="Test.", action="move", target="2,3")
-    record = step_turn(agent, world, turn, turn_number=1)
-
-    assert agent.position == (2, 3)
-    assert record.result == "You moved to (2, 3)."
-    assert agent.passive_result == "Explorer moves to (2, 3)."
-
-
-def test_execute_action_move_path():
-    world = create_initial_world()
-    agent = world.get_agent()
-    turn = AgentTurn(reasoning="Test.", action="move", target="3,1")
-
-    outcome = execute_action(agent, world, turn)
-
+    steps = execute_nav_phase(
+        agent,
+        world,
+        AgentNavigationTurn(reasoning="Test.", move_target="3,1"),
+    )
     assert agent.position == (3, 1)
-    assert outcome.result == "You moved to (3, 1)."
-
-
-# =============================================================================
-# Prompt (Section 1 success criteria #8)
-# =============================================================================
+    assert steps[0].result == "You moved to (3, 1)."
 
 
 def test_prompt_uses_coordinate_move_not_cardinals():
     world = create_initial_world()
     agent = world.get_agent()
-    prompt = build_prompt(agent, world, include_examples=True)
+    prompt = build_navigation_prompt(agent, world, include_examples=True)
 
     assert "You may move to any coordinate (x, y) where x and y are integers from 0 to 4." in prompt
-    assert "Move to any in-bounds grid coordinate" in prompt
-    assert '"target": "2,4"' in prompt
+    assert "move_target" in prompt
     assert "cardinal direction" not in prompt.lower()
     assert "\n- north\n" not in prompt

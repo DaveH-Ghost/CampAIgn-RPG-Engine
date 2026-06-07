@@ -1,240 +1,252 @@
 """
 prompt.py
 
-Prompt construction for V0 / V0.1.
-
-This module builds the full text prompt sent to the LLM (DeepSeek via OpenRouter).
-
-It follows the exact structure and rules agreed in the readiness checklist (Section 7).
-
-The prompt includes:
-- Character description
-- System rules
-- Room description
-- Current passive vision (from perception)
-- Available actions this turn (computed from world state)
-- Recent history (from agent's memory)
-- Turn-specific reminders
-- Output format reminder
-- 4 few-shot examples (optional; off by default for token efficiency)
-
-This is kept separate from the LLM client so it can be tested and iterated independently.
+Two-phase prompt construction for V0.2 compound turns.
 """
 
 from src.agent import Agent
 from src.memory import TurnRecord
-from src.perception import build_passive_vision
+from src.perception import build_passive_vision, get_available_look_targets
 from src.world import World
 
 
-# =============================================================================
-# Few-shot examples (copied verbatim from the readiness checklist)
-# =============================================================================
-
-FEW_SHOT_EXAMPLES = """
-Example 1: Correct use of `speak` (pure dialogue only)
+FEW_SHOT_NAV_EXAMPLES = """
+Example 1: Move to a coordinate
 
 Context:
 You are at (1, 1).
-Ceramic Ball (obj_ball_01), (2, 2) - [?]
-Wooden Sign (obj_sign_01), (2, 4) - [?] A simple wooden sign on the wall.
-You are at (1, 1).
 You may move to any coordinate (x, y) where x and y are integers from 0 to 4.
-You can look at any object or other agent listed in Passive Vision (including [?] and [?] [changed] entries).
 
 Output:
 {
-  "reasoning": "I notice the ball has a [?] tag. I should comment on that and consider looking at it soon.",
-  "action": "speak",
-  "target": null,
-  "content": "That ball has a question mark next to it. I wonder what happens if I look at it.",
-  "confidence": "curious",
-  "emotion": "intrigued"
-}
-
-Example 2: Using `look` when seeing `[?]` 
-
-Context:
-You are at (2, 3).
-Ceramic Ball (obj_ball_01), (2, 2) - A slightly worn ceramic ball. It has a few scuffs and feels light.
-Wooden Sign (obj_sign_01), (2, 4) - [?] A simple wooden sign on the wall.
-You are at (2, 3).
-You may move to any coordinate (x, y) where x and y are integers from 0 to 4.
-You can look at any object or other agent listed in Passive Vision (including [?] and [?] [changed] entries).
-
-Output:
-{
-  "reasoning": "The wooden sign shows [?] with only a glance description. I haven't read it properly yet. I should look at it to get the full text.",
-  "action": "look",
-  "target": "obj_sign_01",
-  "content": null,
+  "reasoning": "The sign is at (2, 4). I will move closer.",
+  "move_target": "2,3",
   "confidence": "decided",
-  "emotion": "curious"
-}
-
-Example 3: Choosing a valid coordinate `move`
-
-Context:
-You are at (2, 2).
-Ceramic Ball (obj_ball_01), (2, 2) - A slightly worn ceramic ball. It has a few scuffs and feels light.
-Wooden Sign (obj_sign_01), (2, 4) - It reads: "..."
-You are at (2, 2).
-You may move to any coordinate (x, y) where x and y are integers from 0 to 4.
-
-Output:
-{
-  "reasoning": "I want to get closer to the sign so I can examine it more easily. Moving to (2, 4) puts me on the sign's tile.",
-  "action": "move",
-  "target": "2,4",
-  "content": null,
-  "confidence": "certain",
   "emotion": "focused"
 }
 
-Example 4: Responding to an object that has changed
+Example 2: Stay in place
 
 Context:
-You are at (1, 1).
-Ceramic Ball (obj_ball_01), (2, 2) - [?] [changed]
-Wooden Sign (obj_sign_01), (2, 4) - [?] A simple wooden sign on the wall.
-You are at (1, 1).
+You are at (2, 2).
 You may move to any coordinate (x, y) where x and y are integers from 0 to 4.
-You can look at any object or other agent listed in Passive Vision (including [?] and [?] [changed] entries).
 
 Output:
 {
-  "reasoning": "The ceramic ball shows [?] [changed], which means my examined knowledge is out of date. I should look at it again to see the current description.",
-  "action": "look",
-  "target": "obj_ball_01",
-  "content": null,
-  "confidence": "curious",
-  "emotion": "alert"
+  "reasoning": "I am already well positioned. I will stay and act from here.",
+  "move_target": null,
+  "confidence": "certain",
+  "emotion": "calm"
 }
 """.strip()
 
 
-# =============================================================================
-# Prompt sections
-# =============================================================================
+FEW_SHOT_ACTION_EXAMPLES = """
+Example 1: Look then speak
 
-def _get_system_instructions() -> str:
-    """Core rules of the simulation (compiled from the V0 spec)."""
+Context:
+You are at (2, 3).
+Ceramic Ball (obj_ball_01), (2, 2) - [?]
+You can look at: obj_ball_01, obj_sign_01
+
+Output:
+{
+  "reasoning": "I want to examine the ball and comment.",
+  "look_target": "obj_ball_01",
+  "turn_action": "speak",
+  "target": null,
+  "action_name": null,
+  "content": "Interesting ball.",
+  "confidence": "curious",
+  "emotion": "intrigued"
+}
+
+Example 2: Speak only
+
+Context:
+You are at (1, 1).
+You can look at: obj_ball_01, obj_sign_01
+
+Output:
+{
+  "reasoning": "Nothing new to examine. I will speak.",
+  "look_target": null,
+  "turn_action": "speak",
+  "target": null,
+  "action_name": null,
+  "content": "Hello, room.",
+  "confidence": "certain",
+  "emotion": "calm"
+}
+""".strip()
+
+
+def _character_block(agent: Agent) -> str:
+    return (
+        f"You are {agent.name}.\n"
+        f"Your personality: {agent.personality}\n\n"
+        f"Your detailed description: {agent.description}"
+    )
+
+
+def _get_nav_system_instructions() -> str:
     return """You exist inside a small, controlled 5x5 grid room. Your coordinates range from (0,0) in the southwest corner to (4,4) in the northeast. Y increases northward.
 
-You may only perform ONE action per turn. The allowed actions are:
-- move: Move to any in-bounds grid coordinate (x, y). Use target "x,y" (e.g. "2,3"). You cannot move outside the grid.
-- look: Examine an object or another agent that appears in your passive vision (including entries marked with [?]). You will receive its detailed description if one exists.
-- speak: Say something out loud. Limited to a maximum of five sentences. Prefer pure verbal dialogue; avoid emotes (*smiles*), action markers (_waves_), or stage-direction asides.
+This is the **navigation phase** of your turn. Decide whether to move before your action phase.
+
+- move: Move to any in-bounds grid coordinate (x, y). Use move_target "x,y" (e.g. "2,3"), or null to stay.
+- You cannot move outside the grid.
+
+Always respond with a single, valid JSON object. Do not add any text before or after the JSON."""
+
+
+def _get_action_system_instructions() -> str:
+    return """You exist inside a small, controlled 5x5 grid room. Your coordinates range from (0,0) in the southwest corner to (4,4) in the northeast. Y increases northward.
+
+This is the **action phase** of your turn (after any move). You may look at one entity, then take one turn action.
+
+- look: Examine one entity from passive vision (optional; at most one look_target).
+- speak: Say something out loud (turn_action "speak"; up to five sentences).
+- interact: Use a listed object action (turn_action "interact" with target + action_name).
+- turn_action "none": End after an optional look without speaking or interacting.
 
 Important rules:
-- Only entities listed in your current passive vision can be looked at (objects and other agents; you do not see yourself).
-- Objects and other agents may show a passive glance line without looking. Hidden detailed description is marked with "[?]" (optionally alongside the passive line). Stale examined knowledge appears as "[?] [changed]" with the passive line.
-- Other agents also show their most recent observable action (e.g. speech or movement) appended to their passive vision line, including confidence and Emotion when provided (e.g. '(confidence: curious, Emotion: intrigued)').
-- Your words when speaking have no direct mechanical effect on the world, however other agents can hear and react to them.
+- Only entities in passive vision can be looked at (you do not see yourself).
+- Hidden detail is marked "[?]"; stale examined knowledge is "[?] [changed]".
+- Other agents show their most recent observable action on their vision line.
 - Always respond with a single, valid JSON object. Do not add any text before or after the JSON."""
 
 
-def _get_available_actions(agent: Agent, world: World) -> str:
-    """Build the exact 'Available Actions This Turn' block per the V0.2 spec."""
+def _get_nav_move_block(agent: Agent) -> str:
     x, y = agent.position
-    lines = [
-        f"You are at ({x}, {y}).",
-        "You may move to any coordinate (x, y) where x and y are integers from 0 to 4.",
-        "",
-        "You can look at any object or other agent listed in Passive Vision "
-        "(including [?] and [?] [changed] entries).",
-    ]
+    return (
+        f"You are at ({x}, {y}).\n"
+        "You may move to any coordinate (x, y) where x and y are integers from 0 to 4."
+    )
+
+
+def _get_action_available_block(agent: Agent, world: World) -> str:
+    targets = get_available_look_targets(agent, world)
+    lines = []
+    if targets:
+        lines.append("You can look at: " + ", ".join(targets))
+    else:
+        lines.append("You can look at: (nothing visible to examine)")
+    lines.append("")
+    lines.append(
+        'Turn action: set turn_action to "speak" (with content), "interact" '
+        '(with target + action_name when available), or "none".'
+    )
     return "\n".join(lines)
 
 
 def _format_history(turns: list[TurnRecord]) -> str:
-    """Format the recent history exactly as specified in the checklist."""
     if not turns:
         return "No previous turns yet."
 
     lines = []
-    for t in turns:  # oldest first
+    for t in turns:
         lines.append(f"Turn {t.turn_number}:")
-        lines.append(f"Action: {t.action}")
-        if t.target is not None:
-            lines.append(f"Target: {t.target}")
-        lines.append(f"Reasoning: {t.reasoning}")
+        if t.nav_reasoning:
+            lines.append(f"Navigation reasoning: {t.nav_reasoning}")
+        if t.action_reasoning:
+            lines.append(f"Action reasoning: {t.action_reasoning}")
+        for step in t.steps:
+            label = step.kind
+            if step.target:
+                label += f" → {step.target}"
+            lines.append(f"  - {label}: {step.result}")
         lines.append(f"Result: {t.result}")
-        lines.append("")  # blank line between turns
-
+        lines.append("")
     return "\n".join(lines).rstrip()
 
 
-def build_prompt(agent: Agent, world: World, include_examples: bool = False) -> str:
-    """
-    Assemble the complete prompt for the current turn.
-
-    This follows the canonical high-level order from the V0 spec:
-    Character Description, System Instructions, Room Description,
-    Current Passive Vision, Available Actions, Recent History,
-    Current Instructions, Output Format.
-
-    The four few-shot examples from the checklist are included only when
-    include_examples=True (off by default for token efficiency; current
-    models perform well without them).
-
-    Args:
-        include_examples: Whether to include the four few-shot examples.
-            Default is False.
-    """
-    parts = []
-
-    # 1. Character Description
-    parts.append(f"You are {agent.name}.")
-    parts.append(f"Your personality: {agent.personality}")
-    parts.append("")
-    parts.append(f"Your detailed description: {agent.description}")
-    parts.append("")
-
-    # 2. System Instructions / Rules
-    parts.append(_get_system_instructions())
-    parts.append("")
-
-    # 3. Room Description
-    parts.append(world.get_room_description())
-    parts.append("")
-
-    # 4. Current Passive Vision
-    parts.append("Current situation:")
-    parts.append(build_passive_vision(agent, world))
-    parts.append("")
-
-    # 5. Available Actions This Turn
-    parts.append(_get_available_actions(agent, world))
-    parts.append("")
-
-    # 6. Recent History
-    history_text = _format_history(agent.memory.get_recent_turns(10))
-    parts.append("Recent history:")
-    parts.append(history_text)
-    parts.append("")
-
-    # 7. Current Instructions / Reminders
-    parts.append("You may only speak up to five sentences this turn. Spoken text should be things you say out loud.")
-    parts.append("")
-
-    # 8. Output Format
-    parts.append(
-        "Respond with ONLY a valid JSON object matching this exact structure (no extra text, no markdown):\n"
+def _nav_output_format() -> str:
+    return (
+        "Respond with ONLY a valid JSON object matching this exact structure "
+        "(no extra text, no markdown):\n"
         "{\n"
-        '  "reasoning": "Your private thoughts (max 400 characters).",\n'
-        '  "action": "move" | "look" | "speak",\n'
-        '  "target": "2,3" | "obj_ball_01" | null,\n'
+        '  "reasoning": "Your private navigation thoughts (max 400 characters).",\n'
+        '  "move_target": "2,3" | null,\n'
+        '  "confidence": "curious" | "certain" | ... (1-3 words),\n'
+        '  "emotion": "focused" | "calm" | ... (1-3 words)\n'
+        "}"
+    )
+
+
+def _action_output_format() -> str:
+    return (
+        "Respond with ONLY a valid JSON object matching this exact structure "
+        "(no extra text, no markdown):\n"
+        "{\n"
+        '  "reasoning": "Your private action thoughts (max 400 characters).",\n'
+        '  "look_target": "obj_ball_01" | null,\n'
+        '  "turn_action": "speak" | "interact" | "none",\n'
+        '  "target": "obj_cookie_01" | null,\n'
+        '  "action_name": "eat" | null,\n'
         '  "content": "spoken text or null",\n'
         '  "confidence": "curious" | "certain" | ... (1-3 words),\n'
         '  "emotion": "focused" | "intrigued" | ... (1-3 words)\n'
         "}"
     )
-    parts.append("")
 
-    # Few-shot examples (optional for token savings / future chat format)
+
+def build_navigation_prompt(
+    agent: Agent, world: World, include_examples: bool = False
+) -> str:
+    """Navigation-phase prompt (pre-turn vision + move rules)."""
+    parts = [
+        _character_block(agent),
+        "",
+        _get_nav_system_instructions(),
+        "",
+        world.get_room_description(),
+        "",
+        "Current situation:",
+        build_passive_vision(agent, world),
+        "",
+        _get_nav_move_block(agent),
+        "",
+        "Recent history:",
+        _format_history(agent.memory.get_recent_turns(10)),
+        "",
+        "Decide your move for this turn (or null to stay).",
+        "",
+        _nav_output_format(),
+    ]
     if include_examples:
-        parts.append("Here are some examples of correct behavior:")
-        parts.append(FEW_SHOT_EXAMPLES)
-
+        parts.extend(["", "Here are navigation examples:", FEW_SHOT_NAV_EXAMPLES])
     return "\n".join(parts).strip()
+
+
+def build_action_prompt(
+    agent: Agent, world: World, include_examples: bool = False
+) -> str:
+    """Action-phase prompt (post-move vision + look + turn action)."""
+    parts = [
+        _character_block(agent),
+        "",
+        _get_action_system_instructions(),
+        "",
+        world.get_room_description(),
+        "",
+        "Current situation (after your move):",
+        build_passive_vision(agent, world),
+        "",
+        _get_action_available_block(agent, world),
+        "",
+        "Recent history:",
+        _format_history(agent.memory.get_recent_turns(10)),
+        "",
+        "You may speak up to five sentences. Spoken text should be things you say out loud.",
+        "",
+        _action_output_format(),
+    ]
+    if include_examples:
+        parts.extend(["", "Here are action-phase examples:", FEW_SHOT_ACTION_EXAMPLES])
+    return "\n".join(parts).strip()
+
+
+def build_prompt(agent: Agent, world: World, include_examples: bool = False) -> str:
+    """Backward-compatible alias: returns the navigation prompt."""
+    return build_navigation_prompt(agent, world, include_examples=include_examples)

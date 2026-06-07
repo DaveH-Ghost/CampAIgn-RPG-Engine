@@ -71,6 +71,7 @@ def _write_to_file(text: str) -> None:
 def log_turn(
     turn_number: int,
     *,
+    phase: Optional[str] = None,
     prompt: Optional[str] = None,
     raw_output: Optional[str] = None,
     parsed_turn: Optional[dict] = None,
@@ -87,6 +88,8 @@ def log_turn(
     This provides the "rich, verbose console output on every turn" required by the spec.
     """
     header = f"Turn {turn_number}"
+    if phase:
+        header += f" [{phase}]"
     if error:
         header += " [ERROR]"
 
@@ -122,7 +125,8 @@ def log_turn(
             console.print(Panel(raw_output, title="Raw Model Output", border_style="yellow"))
 
     if parsed_turn:
-        console.print(Panel(str(parsed_turn), title="Parsed AgentTurn", border_style="green"))
+        title = "Parsed turn" if phase else "Parsed output"
+        console.print(Panel(str(parsed_turn), title=title, border_style="green"))
 
     if result:
         console.print(Panel(result, title="Action Result", border_style="cyan"))

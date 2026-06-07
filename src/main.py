@@ -4,10 +4,8 @@ main.py
 Entry point for manual stepping in V0.2 (per readiness checklist).
 
 Supports:
-- step                  : advance one turn. For now you (the human) supply
-                          the AgentTurn fields to simulate what the LLM would
-                          have output. This lets us test the full loop
-                          (action -> memory -> vision) without the LLM.
+- step-compound         : manually simulate one compound turn (move / look / speak)
+- step-nav / step-action: debug isolated phases without LLM
 - list / objects / agents : list world entities (read-only, no turn)
 - create-object / edit-object / delete-object : edit objects at runtime
 - create-agent / edit-agent / delete-agent   : edit agents at runtime
@@ -26,7 +24,7 @@ Run with (from the project root):
     # Easiest way (few-shots OFF by default for token efficiency)
     uv run python src/main.py
 
-    # To include the four few-shot examples:
+    # To include few-shot examples in both prompt phases:
     uv run python src/main.py --with-fewshots
 
     # After `uv sync`, you can also do:
@@ -54,9 +52,15 @@ import cmd
 
 from src.log_utils import close_file_logging, log_error, log_turn, setup_file_logging
 from src.world import create_initial_world
-from src.simulation import next_turn_number_for_agent, step_turn
-from src.llm.schemas import AgentTurn
-from src.llm.prompt import build_prompt
+from src.compound_stepper import parse_compound_step_arg
+from src.simulation import (
+    execute_action_phase,
+    execute_nav_phase,
+    next_turn_number_for_agent,
+    run_compound_turn,
+)
+from src.llm.schemas import AgentActionTurn, AgentNavigationTurn
+from src.llm.prompt import build_action_prompt, build_navigation_prompt
 from src.perception import build_passive_vision
 from src.world_edit import (
     create_agent_from_args,
@@ -72,14 +76,6 @@ from src.world_edit import (
 
 # Lazy import for the client so you can run the manual stepper
 # without an OPENROUTER_API_KEY
-_get_next_action = None
-
-def _get_llm_function():
-    global _get_next_action
-    if _get_next_action is None:
-        from src.llm.client import get_next_action as _gn
-        _get_next_action = _gn
-    return _get_next_action
 
 
 class ManualStepper(cmd.Cmd):
@@ -89,7 +85,7 @@ class ManualStepper(cmd.Cmd):
     intro = (
         "Realm-Fabric V0.2 Manual Stepper\n"
         "Type 'help' or '?' for commands.\n"
-        "- 'step <action> ...'   : manually simulate a turn (e.g. step move 2,3)\n"
+        "- 'step-compound ...'   : manual compound turn (e.g. step-compound 2,3 look obj_ball_01 speak Hi)\n"
         "- 'run' : LLM turn for the active agent\n"
         "- Type an agent's name (e.g. 'Explorer') : LLM turn for that agent\n"
         "- 'switch <name>' : change active agent (no turn, no LLM)\n"
@@ -101,8 +97,7 @@ class ManualStepper(cmd.Cmd):
         "Sign updates: edit-object obj_sign_01 desc \"new text\" (pdesc for glance text)\n"
         "CLI flags: --log , --with-fewshots\n"
         "Example: Explorer\n"
-        "Example: step move 2,3\n"
-        "Example: step look obj_ball_01\n"
+        "Example: step-compound 2,3 look obj_ball_01 speak Hello.\n"
         "Example: list\n"
         "Example: edit-object obj_sign_01 desc \"Updated sign text.\"\n"
     )
@@ -193,10 +188,30 @@ class ManualStepper(cmd.Cmd):
         print(build_passive_vision(self.agent, self.world))
 
     def do_prompt(self, arg):
-        """Show the full prompt that would be sent to the LLM right now."""
-        prompt = build_prompt(self.agent, self.world, include_examples=self.include_examples)
-        print(f"[Full prompt - {len(prompt)} characters] (fewshots={'on' if self.include_examples else 'off'})\n")
-        print(prompt)
+        """Show navigation and action prompts for the active agent."""
+        arg = arg.strip().lower()
+        nav = build_navigation_prompt(
+            self.agent, self.world, include_examples=self.include_examples
+        )
+        action = build_action_prompt(
+            self.agent, self.world, include_examples=self.include_examples
+        )
+        if arg in ("nav", "navigation"):
+            print(f"[Navigation prompt - {len(nav)} chars]\n")
+            print(nav)
+        elif arg in ("action", "act"):
+            print(f"[Action prompt - {len(action)} chars] (post-move position)\n")
+            print(action)
+        else:
+            print(
+                f"[Navigation: {len(nav)} chars | Action: {len(action)} chars] "
+                f"(fewshots={'on' if self.include_examples else 'off'})\n"
+            )
+            print("--- NAVIGATION PHASE ---\n")
+            print(nav)
+            print("\n--- ACTION PHASE (current position; after move in a real turn) ---\n")
+            print(action)
+            print("\nTip: prompt nav | prompt action for one phase only.")
 
     def do_state(self, arg):
         """Print basic agent and world state (for the currently active agent)."""
@@ -208,6 +223,15 @@ class ManualStepper(cmd.Cmd):
         print(f"Looked at (current): {sorted(self.agent.memory.looked_at)}")
         print(f"Ever looked at: {sorted(self.agent.memory.ever_looked)}")
         print(f"Few-shots in prompts: {'on' if self.include_examples else 'off'}")
+        if self.agent.memory.turns:
+            last = self.agent.memory.turns[-1]
+            print(f"Last turn ({last.turn_number}) steps:")
+            for step in last.steps:
+                target = f" target={step.target}" if step.target else ""
+                content = f" content={step.content!r}" if step.content else ""
+                print(f"  - {step.kind}{target}{content}: {step.result}")
+            print(f"Composite result: {last.result}")
+        print(f"passive_result: {self.agent.passive_result or '(none)'}")
         objs = [(o.name, o.id, o.position) for o in self.world.get_objects()]
         print(f"Objects: {objs}")
 
@@ -305,13 +329,13 @@ class ManualStepper(cmd.Cmd):
 
         Usage:
             fewshots          # show current state
-            fewshots on       # enable (adds the 4 examples)
+            fewshots on       # enable nav + action few-shot examples
             fewshots off      # disable
         """
         arg = arg.strip().lower()
         if arg in ("on", "yes", "true", "1", "enable"):
             self.include_examples = True
-            print("Few-shot examples: ENABLED (included in prompts)")
+            print("Few-shot examples: ENABLED (included in navigation and action prompts)")
         elif arg in ("off", "no", "false", "0", "disable"):
             self.include_examples = False
             print("Few-shot examples: DISABLED (removed from prompts to save tokens)")
@@ -320,66 +344,92 @@ class ManualStepper(cmd.Cmd):
             print(f"Few-shot examples are currently {status}.")
             print("Use 'fewshots on' or 'fewshots off' to change.")
 
-    def do_step(self, arg):
+    def do_step_compound(self, arg):
         """
-        Manually simulate one turn for the currently active agent.
-        Use this for testing specific behaviors without calling the LLM.
+        Manually simulate one compound turn without the LLM.
 
         Usage:
-            step move 2,3
-            step look obj_ball_01
-            step speak This is what I say.
+            step-compound 2,3 look obj_ball_01 speak Hello.
+            step-compound - look obj_ball_01
+            step-compound 2,3 interact obj_cookie_01 eat
+            step-compound 2,3
         """
-        if not arg:
-            print("Usage: step <move|look|speak> [target_or_content...]")
-            return
-
-        parts = arg.split(maxsplit=1)
-        action = parts[0].lower()
-        rest = parts[1] if len(parts) > 1 else ""
-
-        target = None
-        content = None
-
-        if action == "move":
-            target = rest.strip() or None
-        elif action == "look":
-            target = rest.strip() or None
-        elif action == "speak":
-            content = rest.strip() or None
-        else:
-            print(f"Unknown action '{action}'. Use move, look, or speak.")
-            return
-
-        try:
-            turn = AgentTurn(
-                reasoning="[manual step - no real reasoning]",
-                action=action,
-                target=target,
-                content=content,
+        if not arg.strip():
+            print(
+                "Usage: step-compound <move|-|[stay]> [look ID] "
+                "[speak text... | interact OBJ_ID ACTION]"
             )
-        except Exception as e:
-            log_error("Invalid manual turn data", e)
-            print(f"Invalid turn data: {e}")
             return
+        try:
+            parsed = parse_compound_step_arg(arg)
+        except Exception as e:
+            log_error("Invalid step-compound", e)
+            print(f"Invalid step-compound: {e}")
+            return
+        self._run_manual_compound(parsed.nav, parsed.action)
 
+    def do_step_nav(self, arg):
+        """
+        Debug: run navigation move only.
+
+        Does not create a TurnRecord or increment session_turn. Position changes
+        persist — use step-compound for a full recorded turn.
+
+        Usage:
+            step-nav 2,3
+            step-nav -
+        """
+        move_target = None if arg.strip().lower() in ("-", "stay", "") else arg.strip()
+        if arg.strip().lower() in ("-", "stay"):
+            print("Staying in place (no move).")
+            return
+        nav = AgentNavigationTurn(
+            reasoning="[manual step-nav]",
+            move_target=move_target or None,
+        )
+        steps = execute_nav_phase(self.agent, self.world, nav)
+        for step in steps:
+            print(step.result)
+
+    def do_step_action(self, arg):
+        """
+        Debug: run action phase only from current position.
+
+        Does not create a TurnRecord or increment session_turn. Side effects
+        (look memory, passive_result) may persist — use step-compound for a
+        full recorded turn.
+
+        Usage:
+            step-action look obj_ball_01
+            step-action speak Hello there.
+            step-action interact obj_cookie_01 eat
+        """
+        try:
+            parsed = parse_compound_step_arg(f"- {arg}" if arg.strip() else "-")
+        except Exception as e:
+            print(f"Invalid step-action: {e}")
+            return
+        steps = execute_action_phase(self.agent, self.world, parsed.action)
+        for step in steps:
+            print(step.result)
+
+    def _run_manual_compound(
+        self, nav: AgentNavigationTurn, action: AgentActionTurn
+    ) -> None:
         agent = self.agent
         turn_number = next_turn_number_for_agent(agent)
-        full_prompt = build_prompt(agent, self.world, include_examples=self.include_examples)
-
-        record = step_turn(agent, self.world, turn, turn_number)
+        record = run_compound_turn(agent, self.world, nav, action, turn_number)
         self.session_turn += 1
-
         log_turn(
             self.session_turn,
-            prompt=full_prompt,
             result=(
                 f"Agent: {agent.name} (turn {turn_number})\n"
-                f"Action: {record.action} target={record.target} content={record.content}\n"
-                f"Reasoning: {record.reasoning}\nResult: {record.result}"
+                f"Steps: {len(record.steps)}\n"
+                f"Result: {record.result}"
             ),
             always_to_file=False,
         )
+        print(record.result)
 
     def onecmd(self, line):
         """Support hyphenated commands like create-object and edit-agent."""
@@ -438,47 +488,88 @@ class ManualStepper(cmd.Cmd):
         super().default(line)
 
     def _run_llm_turn_for_agent(self, agent: "Agent"):
-        """Build prompt, call LLM, execute the resulting turn."""
-        # Focus this agent for vision/state even if the LLM call fails.
+        """Two-phase LLM compound turn: navigation then action."""
         self.agent = agent
         print(f"\n=== Running LLM for {agent.name} ===")
 
         try:
-            prompt = build_prompt(agent, self.world, include_examples=self.include_examples)
-            print(f"Prompt length: {len(prompt)} chars (fewshots={'on' if self.include_examples else 'off'}, type 'prompt' to view full)")
+            from src.llm.client import get_action_turn, get_navigation_turn
 
-            print("Calling LLM...")
-            get_next_action = _get_llm_function()
-            llm_response = get_next_action(prompt)
-            turn = llm_response.turn
+            nav_prompt = build_navigation_prompt(
+                agent, self.world, include_examples=self.include_examples
+            )
+            print(
+                f"Navigation prompt: {len(nav_prompt)} chars "
+                f"(fewshots={'on' if self.include_examples else 'off'})"
+            )
+            print("Calling LLM [nav]...")
+            nav_response = get_navigation_turn(nav_prompt)
+            nav_turn: AgentNavigationTurn = nav_response.parsed
 
             turn_number = next_turn_number_for_agent(agent)
-            record = step_turn(agent, self.world, turn, turn_number)
-            self.session_turn += 1
+            pending_session = self.session_turn + 1
 
             log_turn(
-                self.session_turn,
-                prompt=prompt,
-                raw_output=llm_response.raw_response,
-                parsed_turn={
-                    "action": turn.action,
-                    "target": turn.target,
-                    "content": turn.content,
-                    "reasoning": turn.reasoning,
-                    "confidence": turn.confidence,
-                    "emotion": turn.emotion,
-                },
+                pending_session,
+                phase="nav",
+                prompt=nav_prompt,
+                raw_output=nav_response.raw_response,
+                parsed_turn=nav_turn.model_dump(),
                 tokens={
-                    "prompt": llm_response.prompt_tokens,
-                    "completion": llm_response.completion_tokens,
-                    "total": llm_response.total_tokens,
-                } if llm_response.total_tokens is not None else None,
+                    "prompt": nav_response.prompt_tokens,
+                    "completion": nav_response.completion_tokens,
+                    "total": nav_response.total_tokens,
+                }
+                if nav_response.total_tokens is not None
+                else None,
                 always_to_file=False,
             )
 
+            nav_steps = execute_nav_phase(agent, self.world, nav_turn)
+
+            action_turn: AgentActionTurn | None = None
+            try:
+                action_prompt = build_action_prompt(
+                    agent, self.world, include_examples=self.include_examples
+                )
+                print(f"Action prompt: {len(action_prompt)} chars")
+                print("Calling LLM [action]...")
+                action_response = get_action_turn(action_prompt)
+                action_turn = action_response.parsed
+                log_turn(
+                    pending_session,
+                    phase="action",
+                    prompt=action_prompt,
+                    raw_output=action_response.raw_response,
+                    parsed_turn=action_turn.model_dump(),
+                    tokens={
+                        "prompt": action_response.prompt_tokens,
+                        "completion": action_response.completion_tokens,
+                        "total": action_response.total_tokens,
+                    }
+                    if action_response.total_tokens is not None
+                    else None,
+                    always_to_file=False,
+                )
+            except Exception as action_err:
+                log_error(f"Action LLM failed for {agent.name}", action_err)
+                print(f"Action phase failed: {action_err}")
+                print("Recording partial turn (navigation committed).")
+
+            record = run_compound_turn(
+                agent,
+                self.world,
+                nav_turn,
+                action_turn,
+                turn_number,
+                nav_steps=nav_steps,
+            )
+            self.session_turn += 1
+
             print(f"\n--- {agent.name} turn {turn_number} (session {self.session_turn}) ---")
-            print(f"Action: {record.action}")
-            print(f"Result: {record.result}")
+            for step in record.steps:
+                print(f"  [{step.kind}] {step.result}")
+            print(f"Composite: {record.result}")
             print()
 
         except Exception as e:
@@ -498,7 +589,7 @@ def main():
     parser.add_argument(
         "--with-fewshots",
         action="store_true",
-        help="Include the four few-shot examples in prompts (off by default for token efficiency; current models perform well without them)",
+        help="Include few-shot examples in navigation and action prompts (off by default)",
     )
     args = parser.parse_args()
 

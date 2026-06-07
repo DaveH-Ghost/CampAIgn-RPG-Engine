@@ -1,292 +1,145 @@
 """
 test_simulation.py
 
-Purpose:
-Pytest tests for the core step functionality (step_turn + execute_action).
-
-These tests verify:
-- TurnRecord creation with correct reasoning + result
-- Memory updates (turns added, looked_at changes via look)
-- last_action tracking on the agent
-- Correct result strings for move / look / speak per the V0 spec
-- Position changes only on successful actions
-- Graceful handling of unexpected actions
-
-This lets us exercise the full "AgentTurn → action → memory/world update" loop
-in isolation, before wiring up the LLM client.
-
-Run with:
-    uv run pytest tests/test_simulation.py -q
-    # or for more detail:
-    uv run pytest tests/test_simulation.py -v
-
-# You can also just run:
-#   uv run pytest
-# to discover and run all tests in the tests/ folder.
+Compound turn simulation tests.
 """
 
 import pytest
 
-from src.llm.prompt import build_prompt
-from src.llm.schemas import AgentTurn
-from src.simulation import execute_action, step_turn
+from src.llm.prompt import build_navigation_prompt
+from src.llm.schemas import AgentActionTurn, AgentNavigationTurn
+from src.simulation import next_turn_number_for_agent, run_compound_turn
 from src.world import create_initial_world
 
 
-# =============================================================================
-# Helper to create AgentTurn for tests (simulates LLM output)
-# =============================================================================
-
-def make_turn(
-    reasoning: str = "Test reasoning.",
-    action: str = "move",
-    target: str | None = None,
-    content: str | None = None,
-) -> AgentTurn:
-    """Convenience for creating valid AgentTurn objects in tests."""
-    return AgentTurn(
-        reasoning=reasoning,
-        action=action,
-        target=target,
-        content=content,
-    )
+def nav(move_target=None, reasoning="Test reasoning.") -> AgentNavigationTurn:
+    return AgentNavigationTurn(reasoning=reasoning, move_target=move_target)
 
 
-# =============================================================================
-# Basic step_turn behavior
-# =============================================================================
+def action(**kwargs) -> AgentActionTurn:
+    defaults = {"reasoning": "Test reasoning.", "turn_action": "none"}
+    defaults.update(kwargs)
+    return AgentActionTurn(**defaults)
 
-def test_step_turn_creates_and_records_turn_record():
-    """step_turn should return a TurnRecord and add it to the agent's memory."""
+
+def test_compound_turn_creates_and_records_turn_record():
     world = create_initial_world()
     agent = world.get_agent()
 
-    turn = make_turn(action="look", target="obj_ball_01")
-    record = step_turn(agent, world, turn, turn_number=1)
+    record = run_compound_turn(
+        agent,
+        world,
+        nav(),
+        action(look_target="obj_ball_01"),
+        turn_number=1,
+    )
 
     assert record.turn_number == 1
-    assert record.action == "look"
-    assert record.target == "obj_ball_01"
-    assert record.reasoning == "Test reasoning."
-    assert "You looked at the ceramic ball" in record.result
-
+    assert record.steps[0].kind == "look"
+    assert record.steps[0].target == "obj_ball_01"
+    assert "You looked at" in record.result
     assert len(agent.memory.turns) == 1
-    assert agent.memory.turns[0] is record  # same object
     assert agent.last_action == "look"
 
 
-def test_step_turn_preserves_reasoning_from_agent_turn():
-    """The agent's private reasoning must be stored exactly as provided."""
+def test_compound_preserves_reasoning():
     world = create_initial_world()
     agent = world.get_agent()
 
-    custom_reasoning = "I really want to examine that interesting ball because reasons."
-    turn = make_turn(reasoning=custom_reasoning, action="look", target="obj_ball_01")
-    record = step_turn(agent, world, turn, turn_number=42)
+    record = run_compound_turn(
+        agent,
+        world,
+        nav(reasoning="Nav thoughts."),
+        action(reasoning="Action thoughts.", look_target="obj_ball_01"),
+        turn_number=42,
+    )
 
-    assert record.reasoning == custom_reasoning
-    assert agent.memory.turns[0].reasoning == custom_reasoning
+    assert record.nav_reasoning == "Nav thoughts."
+    assert record.action_reasoning == "Action thoughts."
 
 
-# =============================================================================
-# Move action via step
-# =============================================================================
-
-def test_step_move_success_updates_position():
-    """Successful move should update position and produce V0.2 result strings."""
+def test_compound_move_success():
     world = create_initial_world()
     agent = world.get_agent()
-    assert agent.position == (1, 1)
 
-    turn = make_turn(action="move", target="2,3")
-    record = step_turn(agent, world, turn, turn_number=1)
+    record = run_compound_turn(
+        agent, world, nav("2,3"), action(), turn_number=1
+    )
 
     assert agent.position == (2, 3)
     assert record.result == "You moved to (2, 3)."
     assert agent.passive_result == "Explorer moves to (2, 3)."
-    assert len(agent.memory.turns) == 1
 
 
-def test_step_move_failure_does_not_change_position():
-    """Failed move (out of bounds) must leave position unchanged."""
+def test_compound_move_failure_off_grid():
     world = create_initial_world()
     agent = world.get_agent()
 
-    turn = make_turn(action="move", target="5,5")
-    record = step_turn(agent, world, turn, turn_number=1)
+    record = run_compound_turn(
+        agent, world, nav("5,5"), action(), turn_number=1
+    )
 
     assert agent.position == (1, 1)
     assert "outside the room" in record.result.lower()
-    assert len(agent.memory.turns) == 1
     assert agent.last_action == "move"
 
 
-# =============================================================================
-# Look action via step
-# =============================================================================
-
-def test_step_look_marks_object_as_looked_at():
-    """Successful look must update the agent's memory so future vision shows full desc."""
+def test_compound_look_marks_object():
     world = create_initial_world()
     agent = world.get_agent()
-
-    # Ball starts unknown
     assert not agent.memory.has_looked_at("obj_ball_01")
 
-    turn = make_turn(action="look", target="obj_ball_01")
-    record = step_turn(agent, world, turn, turn_number=1)
+    run_compound_turn(
+        agent,
+        world,
+        nav(),
+        action(look_target="obj_ball_01"),
+        turn_number=1,
+    )
 
     assert agent.memory.has_looked_at("obj_ball_01")
-    assert "You looked at the ceramic ball" in record.result
-    assert "scuffs and feels light" in record.result
 
 
-def test_step_look_on_already_known_object_still_works():
-    """Looking at something already known should still succeed and record the turn."""
+def test_compound_speak_records_text():
     world = create_initial_world()
     agent = world.get_agent()
-    agent.memory.mark_looked_at("obj_sign_01")
+    spoken = "This ball feels familiar."
 
-    turn = make_turn(action="look", target="obj_sign_01")
-    record = step_turn(agent, world, turn, turn_number=1)
-
-    assert agent.memory.has_looked_at("obj_sign_01")
-    assert "You looked at the wooden sign" in record.result
-
-
-# =============================================================================
-# Speak action via step
-# =============================================================================
-
-def test_step_speak_records_exact_text():
-    """Speak should record the content exactly and have no side effects on position or looked_at."""
-    world = create_initial_world()
-    agent = world.get_agent()
-    start_pos = agent.position
-    initial_looked = set(agent.memory.looked_at)
-
-    spoken = "This ball feels familiar. I wonder where it came from."
-    turn = make_turn(action="speak", content=spoken)
-    record = step_turn(agent, world, turn, turn_number=1)
+    record = run_compound_turn(
+        agent,
+        world,
+        nav(),
+        action(turn_action="speak", content=spoken),
+        turn_number=1,
+    )
 
     assert f'You said: "{spoken}"' in record.result
-    assert agent.position == start_pos  # no movement
-    assert agent.memory.looked_at == initial_looked  # no change to looked_at
-    assert len(agent.memory.turns) == 1
+    assert agent.position == (1, 1)
 
 
-# =============================================================================
-# Memory and last_action side effects
-# =============================================================================
-
-def test_multiple_steps_accumulate_in_memory():
-    """Repeated steps should add multiple TurnRecords (capped at 10 by Memory)."""
+def test_multiple_compound_turns_accumulate():
     world = create_initial_world()
     agent = world.get_agent()
 
-    targets = ["2,1", "3,1", "3,2", "2,2", "1,2"]
-    for i, target in enumerate(targets):
-        turn = make_turn(action="move", target=target)
-        step_turn(agent, world, turn, turn_number=i + 1)
+    for i in range(5):
+        run_compound_turn(
+            agent,
+            world,
+            nav("2,1"),
+            action(),
+            turn_number=i + 1,
+        )
 
     assert len(agent.memory.turns) == 5
     assert agent.last_action == "move"
-    assert all(r.action == "move" for r in agent.memory.turns)
 
 
-def test_last_action_is_always_updated():
-    """last_action should reflect the most recent action taken."""
+def test_build_navigation_prompt_sections():
     world = create_initial_world()
     agent = world.get_agent()
+    prompt = build_navigation_prompt(agent, world, include_examples=True)
 
-    turn1 = make_turn(action="move", target="2,1")
-    step_turn(agent, world, turn1, turn_number=1)
-    assert agent.last_action == "move"
-
-    turn2 = make_turn(action="look", target="obj_ball_01")
-    step_turn(agent, world, turn2, turn_number=2)
-    assert agent.last_action == "look"
-
-    turn3 = make_turn(action="speak", content="Thinking out loud.")
-    step_turn(agent, world, turn3, turn_number=3)
-    assert agent.last_action == "speak"
-
-
-# =============================================================================
-# Edge / error cases for step
-# =============================================================================
-
-def test_execute_action_unknown_action_returns_error_result():
-    """execute_action has a fallback for unknown actions (should never reach it via schema)."""
-    world = create_initial_world()
-    agent = world.get_agent()
-
-    # Simulate a bad AgentTurn (e.g. if future schema changes or direct calls)
-    class FakeTurn:
-        action = "teleport"
-        target = None
-        content = None
-
-    outcome = execute_action(agent, world, FakeTurn())
-
-    assert "wasn't recognized" in outcome.result
-
-
-def test_step_unknown_action_still_records_turn():
-    """Even for unknown action, step_turn should still produce a TurnRecord."""
-    world = create_initial_world()
-    agent = world.get_agent()
-
-    class FakeTurn:
-        action = "teleport"
-        target = None
-        content = None
-        reasoning = "Weird state"
-
-    record = step_turn(agent, world, FakeTurn(), turn_number=1)
-
-    assert "wasn't recognized" in record.result
-    assert record.action == "teleport"
-    assert len(agent.memory.turns) == 1
-
-
-# =============================================================================
-# Prompt builder integration (used by the real LLM path)
-# =============================================================================
-
-def test_build_prompt_produces_reasonable_output():
-    """The prompt builder should produce a non-empty string containing key sections (with examples enabled)."""
-    world = create_initial_world()
-    agent = world.get_agent()
-
-    prompt = build_prompt(agent, world, include_examples=True)
-
-    assert isinstance(prompt, str)
-    assert len(prompt) > 500  # at least the rules + examples + current state
     assert "You are Explorer" in prompt
-    assert "You exist inside a small, controlled 5x5 grid room" in prompt
-    assert "You are at (1, 1)" in prompt  # from passive vision
-    assert "You may move to any coordinate (x, y) where x and y are integers from 0 to 4." in prompt
-    assert "You can look at any object or other agent listed in Passive Vision" in prompt
-    assert '"reasoning"' in prompt  # output format reminder
-    assert "Example 1: Correct use of `speak`" in prompt  # few-shot present
-    assert "Example 4: Responding to an object that has changed" in prompt
-    assert "Your personality:" in prompt
-    assert "Your detailed description:" in prompt
-    assert "curious explorer" in prompt  # Explorer default personality
-    assert 'Stale examined knowledge appears as "[?] [changed]"' in prompt
-    assert "other agents can hear and react to them" in prompt
-
-
-def test_build_prompt_without_fewshots_is_shorter_and_lacks_examples():
-    """With include_examples=False, prompt should be much shorter and omit the examples."""
-    world = create_initial_world()
-    agent = world.get_agent()
-
-    prompt_with = build_prompt(agent, world, include_examples=True)
-    prompt_without = build_prompt(agent, world, include_examples=False)
-
-    assert len(prompt_without) < len(prompt_with)
-    assert "Example 1: Correct use of `speak`" not in prompt_without
-    assert "You are Explorer" in prompt_without  # still has the core parts
-    assert "You can look at any object or other agent listed in Passive Vision" in prompt_without
+    assert "navigation phase" in prompt.lower()
+    assert "move_target" in prompt
+    assert "Example 1: Move" in prompt

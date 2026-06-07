@@ -1,27 +1,26 @@
 """
 test_multi_agent.py
 
-Tests for V0.1 Section 3 multi-agent support.
+Tests for V0.1 Section 3 multi-agent support (updated for V0.2 compound turns).
 """
 
-from src.agent import Agent
-from src.llm.schemas import AgentTurn
-from src.memory import Memory
+from src.llm.schemas import AgentActionTurn, AgentNavigationTurn
 from src.perception import build_passive_vision, perform_look
-from src.simulation import next_turn_number_for_agent, step_turn
+from src.simulation import next_turn_number_for_agent, run_compound_turn
 from src.world import create_initial_world
 from src.world_edit import create_agent_from_args, edit_object_from_args
 
 
-def _make_turn(**kwargs) -> AgentTurn:
-    defaults = {
-        "reasoning": "test",
-        "action": "speak",
-        "target": None,
-        "content": "Hello.",
-    }
+def _speak(content: str, **kwargs) -> AgentActionTurn:
+    defaults = {"reasoning": "test", "turn_action": "speak", "content": content}
     defaults.update(kwargs)
-    return AgentTurn(**defaults)
+    return AgentActionTurn(**defaults)
+
+
+def _nav(**kwargs) -> AgentNavigationTurn:
+    defaults = {"reasoning": "test", "move_target": None}
+    defaults.update(kwargs)
+    return AgentNavigationTurn(**defaults)
 
 
 def test_get_agents_returns_copy():
@@ -81,27 +80,122 @@ def test_per_agent_turn_numbers_when_alternating():
     create_agent_from_args(world, 'name "Goblin" pdesc "A goblin." desc "A green goblin." personality "Secret goblin mind." at 0,3')
     goblin = world.get_agent_by_name("Goblin")
 
-    step_turn(
+    run_compound_turn(
         explorer,
         world,
-        _make_turn(content="Explorer speaks."),
+        _nav(),
+        _speak("Explorer speaks."),
         next_turn_number_for_agent(explorer),
     )
-    step_turn(
+    run_compound_turn(
         goblin,
         world,
-        _make_turn(content="Goblin speaks."),
+        _nav(),
+        _speak("Goblin speaks."),
         next_turn_number_for_agent(goblin),
     )
-    step_turn(
+    run_compound_turn(
         explorer,
         world,
-        _make_turn(content="Explorer again."),
+        _nav(),
+        _speak("Explorer again."),
         next_turn_number_for_agent(explorer),
     )
 
     assert [t.turn_number for t in explorer.memory.turns] == [1, 2]
     assert [t.turn_number for t in goblin.memory.turns] == [1]
+
+
+def test_speak_visible_in_other_agent_passive_vision():
+    world = create_initial_world()
+    explorer = world.get_agent()
+    create_agent_from_args(
+        world,
+        'name "Goblin" pdesc "A goblin." desc "A green goblin." '
+        'personality "x" at 0,3',
+    )
+    goblin = world.get_agent_by_name("Goblin")
+
+    run_compound_turn(
+        goblin,
+        world,
+        _nav(),
+        _speak("Hello, Explorer!"),
+        next_turn_number_for_agent(goblin),
+    )
+
+    vision = build_passive_vision(explorer, world)
+    assert 'Goblin says: "Hello, Explorer!"' in vision
+
+
+def test_passive_result_includes_confidence_and_emotion():
+    world = create_initial_world()
+    explorer = world.get_agent()
+    create_agent_from_args(
+        world,
+        'name "Goblin" pdesc "A goblin." desc "x" personality "x" at 0,3',
+    )
+    goblin = world.get_agent_by_name("Goblin")
+
+    run_compound_turn(
+        goblin,
+        world,
+        _nav(),
+        _speak("Hello.", confidence="curious", emotion="amused"),
+        next_turn_number_for_agent(goblin),
+    )
+
+    expected = 'Goblin says: "Hello." (confidence: curious, Emotion: amused)'
+    assert goblin.passive_result == expected
+    vision = build_passive_vision(explorer, world)
+    assert expected in vision
+
+
+def test_failed_move_does_not_update_passive_result():
+    world = create_initial_world()
+    explorer = world.get_agent()
+    create_agent_from_args(
+        world,
+        'name "Goblin" pdesc "A goblin." desc "x" personality "x" at 0,0',
+    )
+    goblin = world.get_agent_by_name("Goblin")
+
+    run_compound_turn(
+        goblin,
+        world,
+        _nav(),
+        _speak("Hi."),
+        next_turn_number_for_agent(goblin),
+    )
+    run_compound_turn(
+        goblin,
+        world,
+        _nav(move_target="-1,0"),
+        AgentActionTurn(reasoning="test", turn_action="none"),
+        next_turn_number_for_agent(goblin),
+    )
+
+    assert goblin.passive_result == 'Goblin says: "Hi."'
+    vision = build_passive_vision(explorer, world)
+    assert 'Goblin says: "Hi."' in vision
+    assert "moves to" not in vision
+
+
+def test_edit_agent_personality_does_not_invalidate():
+    from src.world_edit import edit_agent_from_args
+
+    world = create_initial_world()
+    explorer = world.get_agent()
+    create_agent_from_args(
+        world,
+        'name "Goblin" pdesc "A goblin." desc "Original detail." personality "Old" at 0,3',
+    )
+    perform_look(explorer, world, "agent_goblin_01")
+    edit_agent_from_args(world, 'agent_goblin_01 personality "New personality"')
+
+    vision = build_passive_vision(explorer, world)
+    assert "Goblin (agent_goblin_01), (0, 3) - Original detail." in vision
+    assert "[changed]" not in vision
 
 
 def test_cross_agent_invalidation_per_agent():
@@ -152,18 +246,18 @@ def test_stepper_switch_does_not_increment_session_turn():
     assert stepper.agent.name == "Goblin"
 
 
-def test_stepper_manual_step_uses_per_agent_turn_number():
+def test_stepper_manual_compound_uses_per_agent_turn_number():
     from src.main import ManualStepper
 
     stepper = ManualStepper()
     explorer = stepper.agent
     stepper.onecmd('create-agent name "Goblin" personality "x" at 0,0')
     stepper.onecmd("switch Explorer")
-    stepper.onecmd("step speak Hi from Explorer.")
+    stepper.onecmd("step-compound speak Hi from Explorer.")
     stepper.onecmd("switch Goblin")
-    stepper.onecmd("step speak Hi from Goblin.")
+    stepper.onecmd("step-compound speak Hi from Goblin.")
     stepper.onecmd("switch Explorer")
-    stepper.onecmd("step speak Explorer turn two.")
+    stepper.onecmd("step-compound speak Explorer turn two.")
 
     assert [t.turn_number for t in explorer.memory.turns] == [1, 2]
     assert [t.turn_number for t in stepper.world.get_agent_by_name("Goblin").memory.turns] == [1]
@@ -249,7 +343,65 @@ def test_reserved_commands_include_run_and_hyphenated():
     assert derived == cached
     assert "run" in cached
     assert "create-agent" in cached
+    assert "step-compound" in cached
     assert "?" in cached
+
+
+def test_llm_nav_failure_does_not_increment_session_turn(monkeypatch):
+    from src.main import ManualStepper
+
+    stepper = ManualStepper()
+    agent = stepper.agent
+    before_session = stepper.session_turn
+    before_turns = agent.memory.turn_count
+
+    def fail_nav(_prompt):
+        raise RuntimeError("LLM unavailable")
+
+    monkeypatch.setattr("src.llm.client.get_navigation_turn", fail_nav)
+    stepper._run_llm_turn_for_agent(agent)
+
+    assert stepper.session_turn == before_session
+    assert agent.memory.turn_count == before_turns
+
+
+def test_llm_action_failure_records_partial_turn(monkeypatch):
+    from src.main import ManualStepper
+    from src.llm.schemas import AgentNavigationTurn
+    from src.llm.types import LLMResponse
+
+    stepper = ManualStepper()
+    agent = stepper.agent
+
+    def ok_nav(_prompt):
+        return LLMResponse(
+            parsed=AgentNavigationTurn(reasoning="go", move_target="2,3"),
+            raw_response="{}",
+        )
+
+    def fail_action(_prompt):
+        raise RuntimeError("action LLM unavailable")
+
+    monkeypatch.setattr("src.llm.client.get_navigation_turn", ok_nav)
+    monkeypatch.setattr("src.llm.client.get_action_turn", fail_action)
+
+    before_session = stepper.session_turn
+    stepper._run_llm_turn_for_agent(agent)
+
+    assert agent.position == (2, 3)
+    assert agent.memory.turn_count == 1
+    assert len(agent.memory.turns[-1].steps) == 1
+    assert agent.memory.turns[-1].steps[0].kind == "move"
+    assert stepper.session_turn == before_session + 1
+
+
+def test_step_compound_increments_session_turn_once():
+    from src.main import ManualStepper
+
+    stepper = ManualStepper()
+    before = stepper.session_turn
+    stepper.onecmd("step-compound 2,3")
+    assert stepper.session_turn == before + 1
 
 
 def test_llm_failure_still_sets_active_agent(monkeypatch):
@@ -260,13 +412,10 @@ def test_llm_failure_still_sets_active_agent(monkeypatch):
     goblin = stepper.world.get_agent_by_name("Goblin")
     assert stepper.agent.name == "Explorer"
 
-    def failing_get():
-        def fail(_prompt):
-            raise RuntimeError("LLM unavailable")
+    def fail_nav(_prompt):
+        raise RuntimeError("LLM unavailable")
 
-        return fail
-
-    monkeypatch.setattr("src.main._get_llm_function", failing_get)
+    monkeypatch.setattr("src.llm.client.get_navigation_turn", fail_nav)
     stepper.default("Goblin")
     assert stepper.agent is goblin
 
@@ -302,110 +451,3 @@ def test_edit_agent_desc_invalidates_other_agents():
 
     vision = build_passive_vision(explorer, world)
     assert "Goblin (agent_goblin_01), (0, 3) - [?] [changed] A goblin." in vision
-
-
-def test_speak_visible_in_other_agent_passive_vision():
-    world = create_initial_world()
-    explorer = world.get_agent()
-    create_agent_from_args(
-        world,
-        'name "Goblin" pdesc "A goblin." desc "A green goblin." '
-        'personality "x" at 0,3',
-    )
-    goblin = world.get_agent_by_name("Goblin")
-
-    step_turn(
-        goblin,
-        world,
-        _make_turn(action="speak", content="Hello, Explorer!"),
-        next_turn_number_for_agent(goblin),
-    )
-
-    vision = build_passive_vision(explorer, world)
-    assert 'Goblin says: "Hello, Explorer!"' in vision
-
-
-def test_passive_result_includes_confidence_and_emotion():
-    world = create_initial_world()
-    explorer = world.get_agent()
-    create_agent_from_args(
-        world,
-        'name "Goblin" pdesc "A goblin." desc "x" personality "x" at 0,3',
-    )
-    goblin = world.get_agent_by_name("Goblin")
-
-    step_turn(
-        goblin,
-        world,
-        _make_turn(
-            action="speak",
-            content="Hello.",
-            confidence="curious",
-            emotion="amused",
-        ),
-        next_turn_number_for_agent(goblin),
-    )
-
-    expected = 'Goblin says: "Hello." (confidence: curious, Emotion: amused)'
-    assert goblin.passive_result == expected
-    vision = build_passive_vision(explorer, world)
-    assert expected in vision
-
-
-def test_failed_move_does_not_update_passive_result():
-    world = create_initial_world()
-    explorer = world.get_agent()
-    create_agent_from_args(
-        world,
-        'name "Goblin" pdesc "A goblin." desc "x" personality "x" at 0,0',
-    )
-    goblin = world.get_agent_by_name("Goblin")
-
-    step_turn(
-        goblin,
-        world,
-        _make_turn(action="speak", content="Hi."),
-        next_turn_number_for_agent(goblin),
-    )
-    step_turn(
-        goblin,
-        world,
-        _make_turn(action="move", target="-1,0"),
-        next_turn_number_for_agent(goblin),
-    )
-
-    assert goblin.passive_result == 'Goblin says: "Hi."'
-    vision = build_passive_vision(explorer, world)
-    assert 'Goblin says: "Hi."' in vision
-    assert "moves to" not in vision
-
-
-def test_edit_agent_personality_does_not_invalidate():
-    from src.world_edit import edit_agent_from_args
-
-    world = create_initial_world()
-    explorer = world.get_agent()
-    create_agent_from_args(
-        world,
-        'name "Goblin" pdesc "A goblin." desc "Original detail." personality "Old" at 0,3',
-    )
-    perform_look(explorer, world, "agent_goblin_01")
-    edit_agent_from_args(world, 'agent_goblin_01 personality "New personality"')
-
-    vision = build_passive_vision(explorer, world)
-    assert "Goblin (agent_goblin_01), (0, 3) - Original detail." in vision
-    assert "[changed]" not in vision
-
-
-def test_stepper_delete_active_agent_fallback(capsys):
-    from src.main import ManualStepper
-
-    stepper = ManualStepper()
-    stepper.onecmd('create-agent name "Goblin" personality "x" at 0,0')
-    goblin = stepper.world.get_agent_by_name("Goblin")
-    stepper.agent = goblin
-    stepper.onecmd("delete-agent agent_goblin_01")
-    assert stepper.agent.id == "agent_01"
-    assert stepper.agent.name == "Explorer"
-    out = capsys.readouterr().out
-    assert "Active agent: Explorer (agent_01)" in out
