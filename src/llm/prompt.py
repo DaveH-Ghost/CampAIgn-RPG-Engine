@@ -5,7 +5,6 @@ Single-call prompt construction for V0.2.5 compound turns.
 """
 
 from src.agent import Agent
-from src.memory import TurnRecord
 from src.perception import (
     build_passive_vision,
     get_available_interactions,
@@ -146,25 +145,6 @@ def _get_available_block(agent: Agent, world: World) -> str:
     return "\n".join(lines)
 
 
-def _format_history(turns: list[TurnRecord]) -> str:
-    if not turns:
-        return "No previous turns yet."
-
-    lines = []
-    for t in turns:
-        lines.append(f"Turn {t.turn_number}:")
-        if t.reasoning:
-            lines.append(f"Reasoning: {t.reasoning}")
-        for step in t.steps:
-            label = step.kind
-            if step.target:
-                label += f" → {step.target}"
-            lines.append(f"  - {label}: {step.result}")
-        lines.append(f"Result: {t.result}")
-        lines.append("")
-    return "\n".join(lines).rstrip()
-
-
 def _compound_output_format() -> str:
     return (
         "Respond with ONLY a valid JSON object matching this exact structure "
@@ -201,8 +181,8 @@ def build_compound_prompt(
         "",
         _get_available_block(agent, world),
         "",
-        "Recent history:",
-        _format_history(agent.memory.get_recent_turns(10)),
+        "Memory:",
+        agent.memory.render_prompt_block(agent, world),
         "",
         "Plan your full compound turn (move, then look, then turn action).",
         "",

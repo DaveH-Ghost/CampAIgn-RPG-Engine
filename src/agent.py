@@ -1,7 +1,8 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
-from .memory import Memory, TurnRecord
+from src.memory import Memory
+from src.turn_record import TurnRecord
 
 
 @dataclass

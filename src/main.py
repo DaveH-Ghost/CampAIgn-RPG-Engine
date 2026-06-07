@@ -91,7 +91,7 @@ class ManualStepper(cmd.Cmd):
         "- 'switch <name>' : change active agent (no turn, no LLM)\n"
         "- 'list' / 'objects' / 'agents' / 'effects' : list world entities (no turn)\n"
         "- 'create-object' / 'edit-object' / 'delete-object' : edit objects (see 'effects')\n"
-        "- 'create-agent' / 'edit-agent' / 'delete-agent' : edit agents\n"
+        "- 'create-agent' / 'edit-agent' / 'delete-agent' : edit agents (see 'memory-modules')\n"
         "- 'prompt' : show the full prompt that would be sent to the LLM\n"
         "- 'fewshots on/off' : toggle few-shot examples in prompts (off by default)\n"
         "Sign updates: edit-object obj_sign_01 desc \"new text\" (pdesc for glance text)\n"
@@ -204,6 +204,7 @@ class ManualStepper(cmd.Cmd):
         print(
             f"Active agent: {self.agent.name} ({self.agent.id}) at {self.agent.position}"
         )
+        print(f"Memory module: {self.agent.memory.module_id}")
         print(f"Memory turns: {self.agent.memory.turn_count}")
         print(f"Looked at (current): {sorted(self.agent.memory.looked_at)}")
         print(f"Ever looked at: {sorted(self.agent.memory.ever_looked)}")
@@ -229,6 +230,12 @@ class ManualStepper(cmd.Cmd):
         from src.object_effects import format_effects_list
 
         print(format_effects_list())
+
+    def do_memory_modules(self, arg):
+        """List registered agent memory modules (read-only). Does not consume a turn."""
+        from src.memory_modules.registry import format_memory_modules_list
+
+        print(format_memory_modules_list())
 
     def do_agents(self, arg):
         """List all agents in the world (id, name, position, active marker). Does not consume a turn."""
@@ -277,6 +284,7 @@ class ManualStepper(cmd.Cmd):
 
         Usage:
             create-agent name "Goblin" pdesc "A short figure." desc "A grumpy goblin." personality "You are a grumpy goblin." at 0,3
+            create-agent name "Scribe" personality "Quiet." memory recent_turns at 2,2
         """
         agent, message = create_agent_from_args(self.world, arg)
         if agent is not None:
@@ -290,6 +298,8 @@ class ManualStepper(cmd.Cmd):
         Usage:
             edit-agent agent_01 desc "Updated appearance." personality "Updated personality."
             edit-agent agent_01 name "Scout" pos 2,1
+
+        Memory module cannot be changed here (set only at create-agent).
         """
         result = edit_agent_from_args(self.world, arg)
         if result.ok and result.agent is not None and result.old_name_lower:
@@ -412,7 +422,9 @@ class ManualStepper(cmd.Cmd):
     def _run_manual_compound(self, turn: AgentCompoundTurn) -> None:
         agent = self.agent
         turn_number = next_turn_number_for_agent(agent)
-        record = run_compound_turn(agent, self.world, turn, turn_number)
+        record = run_compound_turn(
+            agent, self.world, turn, turn_number, session_turn=self.session_turn + 1
+        )
         self.session_turn += 1
         log_turn(
             self.session_turn,
@@ -519,7 +531,13 @@ class ManualStepper(cmd.Cmd):
                 always_to_file=False,
             )
 
-            record = run_compound_turn(agent, self.world, compound_turn, turn_number)
+            record = run_compound_turn(
+                agent,
+                self.world,
+                compound_turn,
+                turn_number,
+                session_turn=pending_session,
+            )
             self.session_turn += 1
 
             print(f"\n--- {agent.name} turn {turn_number} (session {self.session_turn}) ---")

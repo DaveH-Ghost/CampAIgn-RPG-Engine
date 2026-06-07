@@ -54,7 +54,7 @@ def test_format_agents_list_initial_world():
     agent = world.get_agent()
     text = format_agents_list(world, agent)
     assert "Agents in world:" in text
-    assert "Explorer (agent_01) at (1, 1) (active)" in text
+    assert "Explorer (agent_01) at (1, 1) memory=recent_turns (active)" in text
 
 
 def test_format_full_list_initial_world():

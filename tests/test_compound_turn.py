@@ -203,3 +203,4 @@ def test_compound_prompt_includes_turn_fields():
     assert "move_target" in prompt
     assert "turn_action" in prompt
     assert "look_target" in prompt
+    assert "Memory:" in prompt

@@ -106,7 +106,14 @@ These changes improve experimentation while keeping the core "one structured act
 - Pre-move vision in prompt; model plans post-move look/action (5×5 tradeoff documented in changelog).
 - `pyproject.toml` → `0.2.5`; tests updated.
 
-### Planned themes (high level, after 0.2.5a)
+### 0.2.5b — Pluggable memory modules — ✅ Implemented
+- `memory_modules/` package with `MemoryModule` protocol and **`recent_turns`** default module.
+- `Memory` facade: look knowledge + `record_turn` / `record_observation` / `render_prompt_block`.
+- **`Memory:`** prompt section; witnessed other-agent `passive_result` ingested on turn commit.
+- **`create-agent memory MODULE_ID`** selects module at creation; **`edit-agent` does not support memory** (fixed for agent lifetime).
+- **`memory-modules`** command; agent listings show `memory=<id>`.
+
+### Planned themes (high level, after 0.2.5b)
 - **Persistent memory store** (database): memories with IDs, priorities, and types; serializable for save/load later.
 - **Goals and tasks** linked to memory IDs (feeds LONG_TERM_GOALS “beliefs, relationships, goals, pursuit”).
 - **Tiered memory policies** per agent archetype (`pc`, `npc`, `minion`) controlling prompt budget and consolidation depth.

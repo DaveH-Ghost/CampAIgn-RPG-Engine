@@ -131,4 +131,5 @@ def test_build_compound_prompt_sections():
     assert "compound turn" in prompt.lower()
     assert "move_target" in prompt
     assert "turn_action" in prompt
+    assert "Memory:" in prompt
     assert "Example 1: Move, look, and speak" in prompt

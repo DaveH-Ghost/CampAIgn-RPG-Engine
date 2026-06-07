@@ -11,7 +11,7 @@ from src.action_outcome import ActionOutcome
 from src.actions import do_interact, do_move, do_speak
 from src.agent import Agent
 from src.llm.schemas import AgentCompoundTurn
-from src.memory import StepKind, TurnRecord, TurnStep
+from src.memory import Memory, StepKind, TurnRecord, TurnStep
 from src.perception import perform_look as do_look
 from src.world import World
 
@@ -166,13 +166,22 @@ def commit_turn_record(
     agent: Agent,
     record: TurnRecord,
     turn: AgentCompoundTurn,
+    world: World,
+    *,
+    session_turn: int | None = None,
 ) -> TurnRecord:
     """Apply passive_result, memory, and last_action side effects."""
     passive = _pick_passive_from_steps(record.steps, turn)
     if passive:
         agent.passive_result = passive
 
-    agent.memory.add_turn(record)
+    agent.memory.record_turn(record, agent_id=agent.id)
+
+    witness_session = session_turn if session_turn is not None else record.turn_number
+    from src.observations import broadcast_actor_turn
+
+    broadcast_actor_turn(world, agent, session_turn=witness_session)
+
     agent.last_action = record.steps[-1].kind if record.steps else None
     return record
 
@@ -184,6 +193,7 @@ def run_compound_turn(
     turn_number: int,
     *,
     nav_steps: list[TurnStep] | None = None,
+    session_turn: int | None = None,
 ) -> TurnRecord:
     """
     Run a compound agent turn: move, then look/action.
@@ -196,7 +206,9 @@ def run_compound_turn(
     action_steps = execute_action_phase(agent, world, turn)
 
     record = finalize_turn_record(turn, nav_steps, action_steps, turn_number)
-    return commit_turn_record(agent, record, turn)
+    return commit_turn_record(
+        agent, record, turn, world, session_turn=session_turn
+    )
 
 
 # Checklist name alias

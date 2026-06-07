@@ -224,9 +224,7 @@ def create_initial_world() -> World:
         name="Wooden Sign",
         passive_description="A simple wooden sign on the wall.",
         description=(
-            'It reads: "This is a controlled environment. '
-            'You are the only one here. This sign may occasionally be updated '
-            'with new information. When it changes, you will be notified."'
+            'It reads: "This room is a test environment. Please interact with the world to make it more interesting."'
         ),
         position=(2, 4),
     )

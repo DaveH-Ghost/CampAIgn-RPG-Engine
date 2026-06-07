@@ -152,7 +152,10 @@ def format_agents_list(world: World, active_agent: Optional[Agent]) -> str:
     else:
         for agent in world.agents:
             marker = " (active)" if agent is active_agent else ""
-            lines.append(f"  - {agent.name} ({agent.id}) at {agent.position}{marker}")
+            lines.append(
+                f"  - {agent.name} ({agent.id}) at {agent.position}"
+                f" memory={agent.memory.module_id}{marker}"
+            )
     return "\n".join(lines)
 
 
@@ -412,7 +415,7 @@ def create_agent_from_args(world: World, arg: str) -> tuple[Optional[Agent], str
     """
     Parse and create an agent.
 
-    Usage: name "..." [pdesc "..."] [desc "..."] [personality "..."] at x,y
+    Usage: name "..." [pdesc "..."] [desc "..."] [personality "..."] [memory MODULE_ID] at x,y
     """
     tokens, err = tokenize_args(arg)
     if err:
@@ -420,11 +423,11 @@ def create_agent_from_args(world: World, arg: str) -> tuple[Optional[Agent], str
     if not tokens:
         return None, (
             'Usage: create-agent name "..." [pdesc "..."] [desc "..."] '
-            '[personality "..."] at x,y'
+            '[personality "..."] [memory MODULE_ID] at x,y'
         )
 
     fields, err = parse_field_tokens(
-        tokens, {"name", "pdesc", "desc", "personality", "at"}
+        tokens, {"name", "pdesc", "desc", "personality", "memory", "at"}
     )
     if err:
         return None, err
@@ -450,6 +453,16 @@ def create_agent_from_args(world: World, arg: str) -> tuple[Optional[Agent], str
     pdesc = fields.get("pdesc", "")
     desc = fields.get("desc", "")
     personality = fields.get("personality", "")
+    memory_module_id = fields.get("memory")
+    try:
+        memory = (
+            Memory()
+            if memory_module_id is None
+            else Memory(module_id=memory_module_id)
+        )
+    except ValueError as exc:
+        return None, str(exc)
+
     agent_id = generate_agent_id(world, fields["name"])
     agent = Agent(
         id=agent_id,
@@ -458,12 +471,15 @@ def create_agent_from_args(world: World, arg: str) -> tuple[Optional[Agent], str
         position=position,
         passive_description=pdesc,
         description=desc,
-        memory=Memory(),
+        memory=memory,
         last_action=None,
     )
     world.add_agent(agent)
+    module_note = (
+        f" memory={memory.module_id}" if memory_module_id is not None else ""
+    )
     return agent, (
-        f'Created agent {agent_id} "{fields["name"]}" at {position}. '
+        f'Created agent {agent_id} "{fields["name"]}" at {position}.{module_note} '
         f"Use 'agents' or 'list' to see all agent ids."
     )
 
@@ -473,6 +489,8 @@ def edit_agent_from_args(world: World, arg: str) -> EditAgentResult:
     Parse and edit an agent.
 
     Usage: <agent_id> [pdesc "..."] [desc "..."] [personality "..."] [name "..."] [pos x,y] ...
+
+    Memory module is set only at create-agent; edit-agent cannot change it.
     """
     tokens, err = tokenize_args(arg)
     if err:
