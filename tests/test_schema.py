@@ -31,17 +31,17 @@ from src.llm.schemas import AgentTurn, count_speak_sentences
 # =============================================================================
 
 def test_valid_move_action():
-    """A well-formed move action should parse successfully."""
+    """A well-formed coordinate move action should parse successfully."""
     data = {
-        "reasoning": "The sign is still showing [?]. I should move north to get closer to it.",
+        "reasoning": "The sign is still showing [?]. I should move to (2, 4) to get closer.",
         "action": "move",
-        "target": "north",
+        "target": "2,4",
         "confidence": "decided",
         "emotion": "focused",
     }
     turn = AgentTurn(**data)
     assert turn.action == "move"
-    assert turn.target == "north"
+    assert turn.target == "2,4"
     assert turn.reasoning.startswith("The sign is still showing")
 
 
@@ -118,16 +118,16 @@ def test_valid_speak_action_five_sentences():
 # INVALID CASES
 # =============================================================================
 
-def test_invalid_move_direction_not_cardinal():
-    """Move target must be one of north, east, south, west."""
+def test_invalid_move_cardinal_direction_rejected():
+    """Cardinal directions are not valid coordinate move targets."""
     data = {
         "reasoning": "I want to explore.",
         "action": "move",
-        "target": "northwest",  # Invalid
+        "target": "north",
     }
     with pytest.raises(ValidationError) as exc_info:
         AgentTurn(**data)
-    assert "INVALID_TARGET" in str(exc_info.value)
+    assert "ERR:" in str(exc_info.value)
 
 
 def test_invalid_reasoning_exceeds_400_chars():
@@ -135,7 +135,7 @@ def test_invalid_reasoning_exceeds_400_chars():
     data = {
         "reasoning": "This is a very long reasoning string. " * 25,  # Way over 400 chars
         "action": "move",
-        "target": "south",
+        "target": "2,3",
     }
     with pytest.raises(ValidationError) as exc_info:
         AgentTurn(**data)

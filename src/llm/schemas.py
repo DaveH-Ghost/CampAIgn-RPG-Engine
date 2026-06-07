@@ -13,7 +13,7 @@ Current V0 Scope:
 - Max 5 sentences + 280 character limit for speak content
 - Pure dialogue encouraged via prompt only (no runtime emote/action detection)
 - `reasoning` limited to 400 characters (supports prompt token budget)
-- move target uses full direction strings ("north", "east", etc.)
+- move target uses in-bounds grid coordinate strings ("x,y")
 - confidence and emotion fields are kept for now (can be removed later if problematic)
 
 Last synced from design docs: 2026-05-31
@@ -22,6 +22,8 @@ Last synced from design docs: 2026-05-31
 from pydantic import BaseModel, Field, field_validator
 from typing import Literal, Optional
 import re
+
+from src.coordinates import CoordinateParseError, parse_coordinate_target
 
 
 ActionType = Literal[
@@ -74,7 +76,7 @@ class AgentTurn(BaseModel):
         description=(
             "What the action is directed toward.\n"
             "Rules by action:\n"
-            "- move: Must be a full direction string: 'north', 'east', 'south', or 'west'\n"
+            "- move: In-bounds grid coordinate as 'x,y' (e.g. '2,3')\n"
             "- look: Use the entity ID (e.g. 'obj_ball_01', 'obj_sign_01', or 'agent_goblin_01')\n"
             "- speak: Leave empty (not used)"
         )
@@ -125,12 +127,15 @@ class AgentTurn(BaseModel):
 
         action = info.data.get("action")
 
-        if action == "move" and v:
-            valid_directions = {"north", "east", "south", "west"}
-            if v.strip().lower() not in valid_directions:
+        if action == "move":
+            if not v or not str(v).strip():
                 raise ValueError(
-                    "ERR:INVALID_TARGET: For 'move', target must be one of: north, east, south, west"
+                    "ERR:INVALID_TARGET: move requires a coordinate target 'x,y'"
                 )
+            try:
+                parse_coordinate_target(v)
+            except CoordinateParseError as exc:
+                raise ValueError(str(exc)) from exc
 
         return v
 

@@ -38,11 +38,8 @@ Context:
 You are at (1, 1).
 Ceramic Ball (obj_ball_01), (2, 2) - [?]
 Wooden Sign (obj_sign_01), (2, 4) - [?] A simple wooden sign on the wall.
-You can move in the following directions this turn:
-- north
-- east
-- south
-- west
+You are at (1, 1).
+You may move to any coordinate (x, y) where x and y are integers from 0 to 4.
 You can look at any object or other agent listed in Passive Vision (including [?] and [?] [changed] entries).
 
 Output:
@@ -61,11 +58,8 @@ Context:
 You are at (2, 3).
 Ceramic Ball (obj_ball_01), (2, 2) - A slightly worn ceramic ball. It has a few scuffs and feels light.
 Wooden Sign (obj_sign_01), (2, 4) - [?] A simple wooden sign on the wall.
-You can move in the following directions this turn:
-- north
-- east
-- south
-- west
+You are at (2, 3).
+You may move to any coordinate (x, y) where x and y are integers from 0 to 4.
 You can look at any object or other agent listed in Passive Vision (including [?] and [?] [changed] entries).
 
 Output:
@@ -78,23 +72,20 @@ Output:
   "emotion": "curious"
 }
 
-Example 3: Choosing a valid `move` direction
+Example 3: Choosing a valid coordinate `move`
 
 Context:
 You are at (2, 2).
 Ceramic Ball (obj_ball_01), (2, 2) - A slightly worn ceramic ball. It has a few scuffs and feels light.
 Wooden Sign (obj_sign_01), (2, 4) - It reads: "..."
-You can move in the following directions this turn:
-- north
-- east
-- south
-- west
+You are at (2, 2).
+You may move to any coordinate (x, y) where x and y are integers from 0 to 4.
 
 Output:
 {
-  "reasoning": "I want to get closer to the sign so I can examine it more easily. Moving north is the most direct option.",
+  "reasoning": "I want to get closer to the sign so I can examine it more easily. Moving to (2, 4) puts me on the sign's tile.",
   "action": "move",
-  "target": "north",
+  "target": "2,4",
   "content": null,
   "confidence": "certain",
   "emotion": "focused"
@@ -106,11 +97,8 @@ Context:
 You are at (1, 1).
 Ceramic Ball (obj_ball_01), (2, 2) - [?] [changed]
 Wooden Sign (obj_sign_01), (2, 4) - [?] A simple wooden sign on the wall.
-You can move in the following directions this turn:
-- north
-- east
-- south
-- west
+You are at (1, 1).
+You may move to any coordinate (x, y) where x and y are integers from 0 to 4.
 You can look at any object or other agent listed in Passive Vision (including [?] and [?] [changed] entries).
 
 Output:
@@ -134,7 +122,7 @@ def _get_system_instructions() -> str:
     return """You exist inside a small, controlled 5x5 grid room. Your coordinates range from (0,0) in the southwest corner to (4,4) in the northeast. Y increases northward.
 
 You may only perform ONE action per turn. The allowed actions are:
-- move: Move exactly one tile in a cardinal direction (north, east, south, or west). You cannot move outside the grid.
+- move: Move to any in-bounds grid coordinate (x, y). Use target "x,y" (e.g. "2,3"). You cannot move outside the grid.
 - look: Examine an object or another agent that appears in your passive vision (including entries marked with [?]). You will receive its detailed description if one exists.
 - speak: Say something out loud. Limited to a maximum of five sentences. Prefer pure verbal dialogue; avoid emotes (*smiles*), action markers (_waves_), or stage-direction asides.
 
@@ -147,31 +135,15 @@ Important rules:
 
 
 def _get_available_actions(agent: Agent, world: World) -> str:
-    """Build the exact 'Available Actions This Turn' block per the spec."""
+    """Build the exact 'Available Actions This Turn' block per the V0.2 spec."""
     x, y = agent.position
-    directions = ["north", "east", "south", "west"]
-    deltas = {
-        "north": (0, 1),
-        "east": (1, 0),
-        "south": (0, -1),
-        "west": (-1, 0),
-    }
-
-    legal = []
-    for d in directions:
-        dx, dy = deltas[d]
-        if world.is_valid_position((x + dx, y + dy)):
-            legal.append(d)
-
-    lines = []
-    if legal:
-        lines.append("You can move in the following directions this turn:")
-        for d in legal:
-            lines.append(f"- {d}")
-        lines.append("")
-
-    lines.append("You can look at any object or other agent listed in Passive Vision (including [?] and [?] [changed] entries).")
-
+    lines = [
+        f"You are at ({x}, {y}).",
+        "You may move to any coordinate (x, y) where x and y are integers from 0 to 4.",
+        "",
+        "You can look at any object or other agent listed in Passive Vision "
+        "(including [?] and [?] [changed] entries).",
+    ]
     return "\n".join(lines)
 
 
@@ -252,7 +224,7 @@ def build_prompt(agent: Agent, world: World, include_examples: bool = False) -> 
         "{\n"
         '  "reasoning": "Your private thoughts (max 400 characters).",\n'
         '  "action": "move" | "look" | "speak",\n'
-        '  "target": "north" | "obj_ball_01" | null,\n'
+        '  "target": "2,3" | "obj_ball_01" | null,\n'
         '  "content": "spoken text or null",\n'
         '  "confidence": "curious" | "certain" | ... (1-3 words),\n'
         '  "emotion": "focused" | "intrigued" | ... (1-3 words)\n'

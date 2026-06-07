@@ -1,7 +1,7 @@
 """
 main.py
 
-Entry point for manual stepping in V0.1 (per readiness checklist).
+Entry point for manual stepping in V0.2 (per readiness checklist).
 
 Supports:
 - step                  : advance one turn. For now you (the human) supply
@@ -87,9 +87,9 @@ class ManualStepper(cmd.Cmd):
     identchars = string.ascii_letters + string.digits + "_-"
 
     intro = (
-        "Realm-Fabric V0.1 Manual Stepper\n"
+        "Realm-Fabric V0.2 Manual Stepper\n"
         "Type 'help' or '?' for commands.\n"
-        "- 'step <action> ...'   : manually simulate a turn (for testing)\n"
+        "- 'step <action> ...'   : manually simulate a turn (e.g. step move 2,3)\n"
         "- 'run' : LLM turn for the active agent\n"
         "- Type an agent's name (e.g. 'Explorer') : LLM turn for that agent\n"
         "- 'switch <name>' : change active agent (no turn, no LLM)\n"
@@ -101,6 +101,7 @@ class ManualStepper(cmd.Cmd):
         "Sign updates: edit-object obj_sign_01 desc \"new text\" (pdesc for glance text)\n"
         "CLI flags: --log , --with-fewshots\n"
         "Example: Explorer\n"
+        "Example: step move 2,3\n"
         "Example: step look obj_ball_01\n"
         "Example: list\n"
         "Example: edit-object obj_sign_01 desc \"Updated sign text.\"\n"
@@ -325,7 +326,7 @@ class ManualStepper(cmd.Cmd):
         Use this for testing specific behaviors without calling the LLM.
 
         Usage:
-            step move north
+            step move 2,3
             step look obj_ball_01
             step speak This is what I say.
         """
@@ -488,7 +489,7 @@ class ManualStepper(cmd.Cmd):
 
 def main():
     """Entry point for the manual stepper (used by `uv run realm`)."""
-    parser = argparse.ArgumentParser(description="Realm-Fabric V0.1 Manual Stepper")
+    parser = argparse.ArgumentParser(description="Realm-Fabric V0.2 Manual Stepper")
     parser.add_argument(
         "--log",
         action="store_true",

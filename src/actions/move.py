@@ -1,46 +1,42 @@
 """
 move.py
 
-Implementation of the `move` action for V0.
+Coordinate move for V0.2.
+
+V0.2: parse/normalize target -> validate in-bounds -> set agent.position directly.
+No pathing, blockers, or tiles-passed-through updates yet (future pathing hooks here).
 """
 
 from src.action_outcome import ActionOutcome
 from src.agent import Agent
+from src.coordinates import CoordinateParseError, format_coordinate, parse_coordinate_target
 from src.world import World
 
 
-_DIRECTION_DELTAS = {
-    "north": (0, 1),
-    "south": (0, -1),
-    "east": (1, 0),
-    "west": (-1, 0),
-}
-
-
-def move(agent: Agent, world: World, direction: str) -> ActionOutcome:
-    """Attempt to move the agent one tile in the given direction."""
-    direction = direction.lower().strip()
-
-    if direction not in _DIRECTION_DELTAS:
+def move(agent: Agent, world: World, target: str) -> ActionOutcome:
+    """Move the agent to the parsed coordinate target."""
+    try:
+        x, y = parse_coordinate_target(target)
+    except CoordinateParseError as exc:
         return ActionOutcome(
-            result=f"You tried to move {direction}, but that is not a valid direction."
+            result=f"This action wasn't recognized, {exc}",
         )
 
-    dx, dy = _DIRECTION_DELTAS[direction]
-    current_x, current_y = agent.position
-    new_x = current_x + dx
-    new_y = current_y + dy
-    new_pos = (new_x, new_y)
+    new_pos = (x, y)
+    label = format_coordinate(x, y)
 
     if not world.is_valid_position(new_pos):
         return ActionOutcome(
-            result=(
-                f"You tried to move {direction}, but that direction is outside the room."
-            )
+            result=f"You tried to move to {label}, but that is outside the room.",
+        )
+
+    if agent.position == new_pos:
+        return ActionOutcome(
+            result=f"You are already at {label}.",
         )
 
     agent.position = new_pos
     return ActionOutcome(
-        result=f"You moved {direction} to {new_pos}.",
-        passive_result=f"{agent.name} moves {direction}.",
+        result=f"You moved to {label}.",
+        passive_result=f"{agent.name} moves to {label}.",
     )

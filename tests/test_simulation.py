@@ -93,16 +93,17 @@ def test_step_turn_preserves_reasoning_from_agent_turn():
 # =============================================================================
 
 def test_step_move_success_updates_position():
-    """Successful move should change the agent's position and produce correct result."""
+    """Successful move should update position and produce V0.2 result strings."""
     world = create_initial_world()
     agent = world.get_agent()
-    start_pos = agent.position  # (1, 1)
+    assert agent.position == (1, 1)
 
-    turn = make_turn(action="move", target="north")
+    turn = make_turn(action="move", target="2,3")
     record = step_turn(agent, world, turn, turn_number=1)
 
-    assert agent.position == (1, 2)
-    assert "You moved north to (1, 2)" in record.result
+    assert agent.position == (2, 3)
+    assert record.result == "You moved to (2, 3)."
+    assert agent.passive_result == "Explorer moves to (2, 3)."
     assert len(agent.memory.turns) == 1
 
 
@@ -110,13 +111,11 @@ def test_step_move_failure_does_not_change_position():
     """Failed move (out of bounds) must leave position unchanged."""
     world = create_initial_world()
     agent = world.get_agent()
-    # Force to north edge
-    agent.position = (1, 4)
 
-    turn = make_turn(action="move", target="north")
+    turn = make_turn(action="move", target="5,5")
     record = step_turn(agent, world, turn, turn_number=1)
 
-    assert agent.position == (1, 4)  # unchanged
+    assert agent.position == (1, 1)
     assert "outside the room" in record.result.lower()
     assert len(agent.memory.turns) == 1
     assert agent.last_action == "move"
@@ -185,8 +184,9 @@ def test_multiple_steps_accumulate_in_memory():
     world = create_initial_world()
     agent = world.get_agent()
 
-    for i in range(5):
-        turn = make_turn(action="move", target="east")
+    targets = ["2,1", "3,1", "3,2", "2,2", "1,2"]
+    for i, target in enumerate(targets):
+        turn = make_turn(action="move", target=target)
         step_turn(agent, world, turn, turn_number=i + 1)
 
     assert len(agent.memory.turns) == 5
@@ -199,7 +199,7 @@ def test_last_action_is_always_updated():
     world = create_initial_world()
     agent = world.get_agent()
 
-    turn1 = make_turn(action="move", target="east")
+    turn1 = make_turn(action="move", target="2,1")
     step_turn(agent, world, turn1, turn_number=1)
     assert agent.last_action == "move"
 
@@ -266,6 +266,7 @@ def test_build_prompt_produces_reasonable_output():
     assert "You are Explorer" in prompt
     assert "You exist inside a small, controlled 5x5 grid room" in prompt
     assert "You are at (1, 1)" in prompt  # from passive vision
+    assert "You may move to any coordinate (x, y) where x and y are integers from 0 to 4." in prompt
     assert "You can look at any object or other agent listed in Passive Vision" in prompt
     assert '"reasoning"' in prompt  # output format reminder
     assert "Example 1: Correct use of `speak`" in prompt  # few-shot present

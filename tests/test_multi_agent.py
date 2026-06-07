@@ -370,14 +370,14 @@ def test_failed_move_does_not_update_passive_result():
     step_turn(
         goblin,
         world,
-        _make_turn(action="move", target="south"),
+        _make_turn(action="move", target="-1,0"),
         next_turn_number_for_agent(goblin),
     )
 
     assert goblin.passive_result == 'Goblin says: "Hi."'
     vision = build_passive_vision(explorer, world)
     assert 'Goblin says: "Hi."' in vision
-    assert "moves south" not in vision
+    assert "moves to" not in vision
 
 
 def test_edit_agent_personality_does_not_invalidate():
