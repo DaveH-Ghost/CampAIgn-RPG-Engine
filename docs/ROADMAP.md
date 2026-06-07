@@ -113,7 +113,13 @@ These changes improve experimentation while keeping the core "one structured act
 - **`create-agent memory MODULE_ID`** selects module at creation; **`edit-agent` does not support memory** (fixed for agent lifetime).
 - **`memory-modules`** command; agent listings show `memory=<id>`.
 
-### Planned themes (high level, after 0.2.5b)
+### 0.2.5c — Salient turns memory module — ✅ Implemented
+- **`salient_turns`** module: same ingest as `recent_turns`; salience-weighted storage (50-turn cap); char-budget render (default 2500).
+- Scoring favors speak/interact, look, and witnessed turns; move-only turns evicted first; recency floor protects last 2 turns in storage.
+- **`create-agent memory salient_turns memory-budget N`** (200–8000); budget-only implies salient; **`recent_turns` remains default**.
+- Shared `formatting.py` for module render output; `tests/test_salient_turns.py`.
+
+### Planned themes (high level, after 0.2.5c)
 - **Persistent memory store** (database): memories with IDs, priorities, and types; serializable for save/load later.
 - **Goals and tasks** linked to memory IDs (feeds LONG_TERM_GOALS “beliefs, relationships, goals, pursuit”).
 - **Tiered memory policies** per agent archetype (`pc`, `npc`, `minion`) controlling prompt budget and consolidation depth.

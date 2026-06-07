@@ -208,7 +208,9 @@ def test_create_agent_unknown_memory_module_rejected():
 def test_known_module_ids_lists_recent_turns():
     from src.memory_modules.registry import known_module_ids
 
-    assert "recent_turns" in known_module_ids()
+    ids = known_module_ids()
+    assert "recent_turns" in ids
+    assert "salient_turns" in ids
 
 
 def test_format_memory_modules_list():
@@ -216,6 +218,7 @@ def test_format_memory_modules_list():
 
     text = format_memory_modules_list()
     assert "recent_turns" in text
+    assert "salient_turns" in text
 
 
 def test_agents_list_shows_memory_module():

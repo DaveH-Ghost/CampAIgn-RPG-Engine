@@ -14,6 +14,7 @@ from typing import Optional
 
 from src.agent import Agent
 from src.memory import Memory
+from src.memory_modules.registry import format_memory_module_label
 from src.object import Object
 from src.object_action import ObjectAction
 from src.object_effects import validate_effect_name
@@ -154,7 +155,7 @@ def format_agents_list(world: World, active_agent: Optional[Agent]) -> str:
             marker = " (active)" if agent is active_agent else ""
             lines.append(
                 f"  - {agent.name} ({agent.id}) at {agent.position}"
-                f" memory={agent.memory.module_id}{marker}"
+                f" {format_memory_module_label(agent.memory.module)}{marker}"
             )
     return "\n".join(lines)
 
@@ -411,11 +412,38 @@ def delete_object_by_id(world: World, object_id: str) -> str:
     return f"Deleted object {object_id}."
 
 
+def _build_agent_memory(fields: dict[str, str]) -> tuple[Optional[Memory], Optional[str]]:
+    """Construct Memory from create-agent fields (memory + optional memory-budget)."""
+    memory_module_id = fields.get("memory")
+    memory_budget_raw = fields.get("memory-budget")
+
+    if memory_budget_raw is not None and memory_module_id not in (None, "salient_turns"):
+        return None, "memory-budget is only valid with memory salient_turns."
+
+    module_config: dict[str, int] = {}
+    if memory_budget_raw is not None:
+        try:
+            module_config["char_budget"] = int(memory_budget_raw)
+        except ValueError:
+            return None, "memory-budget must be an integer."
+
+    if memory_module_id is None and memory_budget_raw is None:
+        return Memory(), None
+
+    resolved_id = memory_module_id or (
+        "salient_turns" if memory_budget_raw is not None else "recent_turns"
+    )
+    try:
+        return Memory(module_id=resolved_id, **module_config), None
+    except ValueError as exc:
+        return None, str(exc)
+
+
 def create_agent_from_args(world: World, arg: str) -> tuple[Optional[Agent], str]:
     """
     Parse and create an agent.
 
-    Usage: name "..." [pdesc "..."] [desc "..."] [personality "..."] [memory MODULE_ID] at x,y
+    Usage: name "..." [pdesc "..."] [desc "..."] [personality "..."] [memory MODULE_ID] [memory-budget N] at x,y
     """
     tokens, err = tokenize_args(arg)
     if err:
@@ -423,11 +451,11 @@ def create_agent_from_args(world: World, arg: str) -> tuple[Optional[Agent], str
     if not tokens:
         return None, (
             'Usage: create-agent name "..." [pdesc "..."] [desc "..."] '
-            '[personality "..."] [memory MODULE_ID] at x,y'
+            '[personality "..."] [memory MODULE_ID] [memory-budget N] at x,y'
         )
 
     fields, err = parse_field_tokens(
-        tokens, {"name", "pdesc", "desc", "personality", "memory", "at"}
+        tokens, {"name", "pdesc", "desc", "personality", "memory", "memory-budget", "at"}
     )
     if err:
         return None, err
@@ -453,15 +481,10 @@ def create_agent_from_args(world: World, arg: str) -> tuple[Optional[Agent], str
     pdesc = fields.get("pdesc", "")
     desc = fields.get("desc", "")
     personality = fields.get("personality", "")
-    memory_module_id = fields.get("memory")
-    try:
-        memory = (
-            Memory()
-            if memory_module_id is None
-            else Memory(module_id=memory_module_id)
-        )
-    except ValueError as exc:
-        return None, str(exc)
+    memory, mem_err = _build_agent_memory(fields)
+    if mem_err:
+        return None, mem_err
+    assert memory is not None
 
     agent_id = generate_agent_id(world, fields["name"])
     agent = Agent(
@@ -475,12 +498,10 @@ def create_agent_from_args(world: World, arg: str) -> tuple[Optional[Agent], str
         last_action=None,
     )
     world.add_agent(agent)
-    module_note = (
-        f" memory={memory.module_id}" if memory_module_id is not None else ""
-    )
+    module_note = f" {format_memory_module_label(memory.module)}"
     return agent, (
-        f'Created agent {agent_id} "{fields["name"]}" at {position}.{module_note} '
-        f"Use 'agents' or 'list' to see all agent ids."
+        f'Created agent {agent_id} "{fields["name"]}" at {position}.{module_note}'
+        f" Use 'agents' or 'list' to see all agent ids."
     )
 
 

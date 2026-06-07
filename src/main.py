@@ -204,7 +204,12 @@ class ManualStepper(cmd.Cmd):
         print(
             f"Active agent: {self.agent.name} ({self.agent.id}) at {self.agent.position}"
         )
-        print(f"Memory module: {self.agent.memory.module_id}")
+        from src.memory_modules.registry import format_memory_module_label
+        from src.memory_modules.salient_turns import SalientTurnsModule
+
+        print(format_memory_module_label(self.agent.memory.module))
+        if isinstance(self.agent.memory.module, SalientTurnsModule):
+            print(f"Memory char budget: {self.agent.memory.module.char_budget}")
         print(f"Memory turns: {self.agent.memory.turn_count}")
         print(f"Looked at (current): {sorted(self.agent.memory.looked_at)}")
         print(f"Ever looked at: {sorted(self.agent.memory.ever_looked)}")
@@ -284,7 +289,7 @@ class ManualStepper(cmd.Cmd):
 
         Usage:
             create-agent name "Goblin" pdesc "A short figure." desc "A grumpy goblin." personality "You are a grumpy goblin." at 0,3
-            create-agent name "Scribe" personality "Quiet." memory recent_turns at 2,2
+            create-agent name "Scribe" personality "Quiet." memory salient_turns memory-budget 2500 at 2,2
         """
         agent, message = create_agent_from_args(self.world, arg)
         if agent is not None:

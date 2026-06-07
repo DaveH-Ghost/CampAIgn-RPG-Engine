@@ -393,8 +393,8 @@ def test_random_move_self_moves_ball(monkeypatch):
 
     assert ball.position == (0, 4)
     assert ball.position != original
-    assert "You kick the Ceramic Ball." in record.result
-    assert explorer.passive_result == "Explorer kicks the Ceramic Ball."
+    assert "You kick the Ceramic Ball. It lands on a random tile." in record.result
+    assert explorer.passive_result == "Explorer kicks the Ceramic Ball. It lands on a random tile."
     assert world.get_object_by_id("obj_ball_01") is ball
 
 
@@ -432,4 +432,4 @@ def test_step_compound_kick_ball_moves(monkeypatch):
 
     ball = stepper.world.get_object_by_id("obj_ball_01")
     assert ball.position == (4, 0)
-    assert "You kick the Ceramic Ball." in stepper.agent.memory.turns[-1].result
+    assert "You kick the Ceramic Ball. It lands on a random tile." in stepper.agent.memory.turns[-1].result

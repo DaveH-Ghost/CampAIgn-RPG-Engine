@@ -4,40 +4,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from src.turn_record import TurnRecord, TurnStep
 from src.memory_modules.base import (
     MemoryObserveContext,
     MemoryRecordContext,
     MemoryRenderContext,
     WitnessedEvent,
 )
-
-
-def _format_step(step: TurnStep) -> str:
-    label = step.kind
-    if step.target:
-        label += f" → {step.target}"
-    return f"  - {label}: {step.result}"
-
-
-def _format_own_turn(turn: TurnRecord) -> list[str]:
-    lines = [f"Turn {turn.turn_number}:"]
-    if turn.reasoning:
-        lines.append(f"Reasoning: {turn.reasoning}")
-    for step in turn.steps:
-        lines.append(_format_step(step))
-    lines.append(f"Result: {turn.result}")
-    return lines
-
-
-def _format_witnessed_events(events: list[WitnessedEvent], heading: str) -> list[str]:
-    if not events:
-        return []
-    lines = [heading]
-    for event in events:
-        pos = f"at {event.actor_position}"
-        lines.append(f"  - {event.text} ({event.actor_name} {pos})")
-    return lines
+from src.memory_modules.formatting import (
+    format_own_turn,
+    format_witnessed_events,
+    join_lines,
+)
+from src.turn_record import TurnRecord
 
 
 @dataclass
@@ -79,13 +57,13 @@ class RecentTurnsModule:
             witnessed = self._witnessed_before[index] if index < len(self._witnessed_before) else []
             if witnessed:
                 lines.extend(
-                    _format_witnessed_events(
+                    format_witnessed_events(
                         witnessed,
                         f"Before turn {turn.turn_number}, you observed:",
                     )
                 )
                 lines.append("")
-            lines.extend(_format_own_turn(turn))
+            lines.extend(format_own_turn(turn))
             lines.append("")
 
         if self._pending:
@@ -93,9 +71,9 @@ class RecentTurnsModule:
                 heading = f"Since turn {self._turns[-1].turn_number}, you observed:"
             else:
                 heading = "You observed:"
-            lines.extend(_format_witnessed_events(self._pending, heading))
+            lines.extend(format_witnessed_events(self._pending, heading))
 
-        return "\n".join(lines).rstrip()
+        return join_lines(lines)
 
     @property
     def total_turns(self) -> int:

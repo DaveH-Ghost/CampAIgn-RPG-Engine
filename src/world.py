@@ -211,8 +211,8 @@ def create_initial_world() -> World:
             "kick": ObjectAction(
                 name="kick",
                 range=1,
-                result="You kick the {object}.",
-                passive_result="{actor} kicks the {object}.",
+                result="You kick the {object}. It lands on a random tile.",
+                passive_result="{actor} kicks the {object}. It lands on a random tile.",
                 effects=["random_move_self"],
             ),
         },
