@@ -27,7 +27,10 @@ def move(agent: Agent, world: World, target: str) -> ActionOutcome:
 
     if not world.is_valid_position(new_pos):
         return ActionOutcome(
-            result=f"You tried to move to {label}, but that is outside the room.",
+            result=(
+                "This action wasn't recognized, ERR:INVALID_COORDINATES, "
+                f"{label} is outside the room."
+            ),
         )
 
     if agent.position == new_pos:

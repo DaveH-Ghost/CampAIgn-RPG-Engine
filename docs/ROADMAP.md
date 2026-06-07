@@ -54,11 +54,11 @@ These changes improve experimentation while keeping the core "one structured act
 
 ## V0.2
 
-**Status:** 🚧 **In progress on `main`** — Sections **1–3 implemented**; Section **4 ship** (`v0.2.0` tag, final doc/version pass) pending. Authoritative spec: [v0.2-implementation-readiness-checklist.md](v0.2-implementation-readiness-checklist.md).
+**Status:** ✅ **Implemented** — tag **`v0.2.0`**; see [v0.2-implementation-readiness-checklist.md](v0.2-implementation-readiness-checklist.md).
 
 **Focus:** D&D-shaped compound turns (move anywhere, then look and take one action in the same round) and the first **declarative object interact** behaviors — without the full memory subsystem (deferred to V0.2.5). Builds on V0.1 multi-agent observation and manual control.
 
-**Agreed implementation order:** (1) coordinate-based move → (2) compound turns (two-phase LLM) → (3) custom object actions → (4) cross-cutting integration, tests, docs at ship.
+**Implementation order (complete):** (1) coordinate-based move → (2) compound turns (two-phase LLM) → (3) custom object actions → (4) cross-cutting integration and release.
 
 ### 1. Coordinate-based move — ✅ Implemented
 - **Replace** cardinal one-step move with **coordinate targeting** — canonical `"x,y"` (e.g. `2,3`); parser silently accepts `"(x,y)"` variants.
@@ -85,17 +85,17 @@ These changes improve experimentation while keeping the core "one structured act
 - Read-only **`effects`** command lists registered effect names (like `objects` / `agents`).
 - On object removal (`delete_self`, `delete-object`): purge id from all agents' `looked_at` / `ever_looked`.
 
-### 4. Cross-cutting (ship checklist — pending `v0.2.0`)
-- **`ERR:*` codes** including `INVALID_COORDINATES`, interact codes; no hard prompt truncation in V0.2.
-- Logging: `Turn N [nav]` and `Turn N [action]`; `state` shows step breakdown.
-- Tests: `test_coordinate_move.py`, `test_compound_turn.py`, `test_object_actions.py` + updates to existing suite (**152 tests** green).
-- Release **`v0.2.0`** when Section 4 ship checklist complete (`pyproject.toml` version bump, final doc pass).
+### 4. Cross-cutting (integration) — ✅ Implemented
+- **`ERR:*` codes** including `INVALID_COORDINATES`, `INVALID_JSON`, interact codes; no hard prompt truncation in V0.2.
+- Logging: `Turn N [nav]` and `Turn N [action]` with prompt char counts in file logs; `state` shows step breakdown.
+- Tests: `test_coordinate_move.py`, `test_compound_turn.py`, `test_object_actions.py`, `test_v0_2_ship.py` + updates to existing suite.
+- Release **`v0.2.0`** — `pyproject.toml` version bump, docs synced.
 
 **Explicitly out of V0.2:** memory manager, beliefs/goals database, tiered memory policies, heard-dialogue buffers, persistence — see V0.2.5. Pathing, blockers, speak targeting, relationships, automatic turn sequencing, GUI (V0.3).
 
 ## V0.2.5
 
-**Status:** Planned after V0.2 ships — checklist not yet written.
+**Status:** Planned after **V0.2** (`v0.2.0`) — checklist not yet written.
 
 **Focus:** Memory as a first-class subsystem — required before V0.3. Addresses long-term roleplay, session/campaign continuity, and future D&D scale (e.g. low-token “minion” agents vs rich PC memory).
 

@@ -57,6 +57,7 @@ def test_move_off_grid_fails_without_position_change(target):
     outcome = do_move(agent, world, target)
 
     assert agent.position == start
+    assert "ERR:INVALID_COORDINATES" in outcome.result
     assert "outside the room" in outcome.result
     assert outcome.passive_result == ""
 

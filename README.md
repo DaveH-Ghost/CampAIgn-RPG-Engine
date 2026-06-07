@@ -2,13 +2,13 @@
 
 A grid-based agent simulation framework designed around structured output and narrative roleplay.
 
-**Current Status:** **V0.1 shipped** (`v0.1.0`). **V0.2 is in progress on `main`:** Sections **1–3 implemented** (coordinate move, compound two-phase turns, declarative object interact + effect registry). **Section 4 ship** (`v0.2.0` tag, `pyproject.toml` bump) is still pending — runtime and docs below describe the current stepper unless noted.
+**Current Status:** **V0.2 shipped** (`v0.2.0`) — coordinate move, compound two-phase turns, declarative object interact, and effect registry. Builds on **V0.1** (`v0.1.0`): multi-agent passive vision, world editing, `passive_result`, agent `pdesc`/`desc`/`personality`.
 
 **Documentation:**
 
-- [V0.2 implementation checklist](docs/v0.2-implementation-readiness-checklist.md) — **authoritative V0.2 spec** (Sections 0–4 agreed; 1–3 implemented)
+- [V0.2 implementation checklist](docs/v0.2-implementation-readiness-checklist.md) — **authoritative V0.2 spec** (implemented; as-shipped reference)
 - [V0.1 implementation checklist](docs/v0.1-implementation-readiness-checklist.md) — design reference for shipped V0.1 behavior (partially superseded by V0.2)
-- [Roadmap](docs/ROADMAP.md) — version plans (V0.1 ✅, V0.2 🚧, V0.2.5, V0.3)
+- [Roadmap](docs/ROADMAP.md) — version plans (V0.1 ✅, V0.2 ✅, V0.2.5, V0.3)
 - [Long-term goals](LONG_TERM_GOALS.md) — aspirational features
 - [V0 implementation checklist](docs/v0-implementation-readiness-checklist.md) — V0 historical design reference
 - [Schema design references](docs/schemas/) — `AgentTurn` (pre-V0.2); **`AgentNavigationTurn` / `AgentActionTurn`** (V0.2 — implemented in `src/llm/schemas.py`)
@@ -26,8 +26,10 @@ A grid-based agent simulation framework designed around structured output and na
   ```
 3. Run the interactive manual tester:
   ```powershell
-   uv run python src/main.py
+   uv sync
+   uv run realm
   ```
+   Or equivalently: `uv run python src/main.py`
    Few-shot examples are disabled by default for token efficiency. Use `--with-fewshots` to include navigation and action phase examples.
    Inside the `(realm)` prompt you can:
   - `list` — overview of all agents and objects (no turn consumed)
@@ -110,10 +112,10 @@ step-compound - interact obj_ball_01 kick
 - Turn numbers in each agent's memory are **per-agent** (1, 2, 3…); `session_turn` in logs is a global session label only
 - Other agents appear in passive vision (`pdesc` + hidden `desc` until `look`); `personality` is LLM-only; agents do not see themselves
 
-### V0.2 (implemented on main — `v0.2.0` tag pending)
+### V0.2 (current runtime — `v0.2.0`)
 
-| Area | V0.1 (`v0.1.0`) | V0.2 (current runtime) |
-|------|-----------------|------------------------|
+| Area | V0.1 (`v0.1.0`) | V0.2 (`v0.2.0`) |
+|------|-----------------|-----------------|
 | Move | Cardinal one step (`north`, …) | Coordinate move to `"x,y"` on 0–4 grid |
 | LLM turn | One call, one action (`AgentTurn`) | Two calls: navigation then action (`AgentNavigationTurn` + `AgentActionTurn`) |
 | Turn shape | Move, look, or speak — one per turn | Optional move → optional one look → speak **or** object interact |
@@ -123,7 +125,7 @@ step-compound - interact obj_ball_01 kick
 
 **Unchanged:** 5×5 grid, manual human control (`switch`, `run`, typing agent names), world editing, multi-agent passive vision, V0.1-style memory (10 turns, single `passive_result`). Full memory subsystem → **V0.2.5**; GUI → **V0.3**.
 
-See [V0.2 checklist](docs/v0.2-implementation-readiness-checklist.md) for the full spec and Section 4 ship checklist.
+See [V0.2 checklist](docs/v0.2-implementation-readiness-checklist.md) for the full spec.
 
 ## Environment Variables & .env Files (Beginner Guide)
 
@@ -200,8 +202,9 @@ copy .env.example .env
 
 # Edit it (add your real OPENROUTER_API_KEY)
 
-# Then run the program - it will automatically read the .env file
-uv run python src/main.py
+# Then run the program (either form works after uv sync)
+uv run realm
+# or: uv run python src/main.py
 ```
 
 ### Without any .env file
@@ -232,7 +235,7 @@ That's the whole magic.
 
 ## Running tests
 
-Tests use [pytest](https://docs.pytest.org/) and run **without** an API key or network access. They cover V0.1 perception/editing/multi-agent behavior plus V0.2 coordinate move, compound turns, and object interact (**152 tests**).
+Tests use [pytest](https://docs.pytest.org/) and run **without** an API key or network access (**162 tests**). They cover V0.1 perception/editing/multi-agent behavior plus V0.2 coordinate move, compound turns, object interact, and ship integration checks.
 
 ### Run all tests
 
@@ -265,6 +268,7 @@ uv run pytest -x
 | File | Focus |
 |------|--------|
 | `tests/test_schema.py` | `AgentNavigationTurn` / `AgentActionTurn` Pydantic validation |
+| `tests/test_v0_2_ship.py` | Section 4 ship criteria (version, help, state, logging, ERR codes) |
 | `tests/test_coordinate_move.py` | Coordinate move parser, bounds, schema |
 | `tests/test_compound_turn.py` | Compound orchestration, `TurnRecord.steps`, step-compound parser |
 | `tests/test_object_actions.py` | Effect registry, interact range/vision, `delete_self`, ball `kick` |

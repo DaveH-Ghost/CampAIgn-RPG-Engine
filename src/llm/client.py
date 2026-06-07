@@ -9,7 +9,7 @@ from typing import Optional, Type, TypeVar
 
 from dotenv import load_dotenv
 from openai import OpenAI
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from src.llm.types import LLMResponse
 
@@ -24,6 +24,10 @@ _load_environment()
 DEFAULT_MODEL = os.getenv("OPENROUTER_MODEL", "deepseek/deepseek-v4-flash")
 
 T = TypeVar("T", bound=BaseModel)
+
+
+class LLMParseError(ValueError):
+    """Raised when LLM output is not valid JSON or fails schema validation."""
 
 
 def get_llm_client() -> OpenAI:
@@ -77,7 +81,10 @@ def get_structured_turn(
         raise RuntimeError("LLM returned empty content")
 
     content = _strip_json_wrapper(content)
-    parsed = schema.model_validate_json(content)
+    try:
+        parsed = schema.model_validate_json(content)
+    except ValidationError as exc:
+        raise LLMParseError(f"ERR:INVALID_JSON: {exc}") from exc
 
     usage = getattr(response, "usage", None)
     prompt_tokens = getattr(usage, "prompt_tokens", None) if usage else None

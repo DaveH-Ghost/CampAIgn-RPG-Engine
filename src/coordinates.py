@@ -18,7 +18,8 @@ def parse_coordinate_target(target: str) -> tuple[int, int]:
 
     Accepts "2,3", "2, 3", "(2,3)", "(2, 3)".
     Malformed targets (cardinals, wrong arity, non-integers) raise
-    CoordinateParseError with ERR:INVALID_TARGET.
+    CoordinateParseError with ERR:INVALID_TARGET. Out-of-grid moves use
+    ERR:INVALID_COORDINATES at runtime in move().
     """
     text = target.strip()
     if not text:

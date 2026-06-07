@@ -97,7 +97,7 @@ def log_turn(
     if _log_file or always_to_file:
         file_text = f"\n=== {header} ===\n"
         if prompt:
-            file_text += f"\n--- PROMPT ---\n{prompt}\n"
+            file_text += f"\n--- PROMPT ({len(prompt)} chars) ---\n{prompt}\n"
         if raw_output:
             file_text += f"\n--- RAW OUTPUT ---\n{raw_output}\n"
         if parsed_turn:
