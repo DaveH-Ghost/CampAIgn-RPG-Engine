@@ -2,13 +2,13 @@
 
 A grid-based agent simulation framework designed around structured output and narrative roleplay.
 
-**Current Status:** **V0.2 shipped** (`v0.2.0`) — coordinate move, compound two-phase turns, declarative object interact, and effect registry. Builds on **V0.1** (`v0.1.0`): multi-agent passive vision, world editing, `passive_result`, agent `pdesc`/`desc`/`personality`.
+**Current Status:** **V0.2.5** implemented in code (`0.2.5` in `pyproject.toml`; git tag pending) — single compound LLM call, pluggable memory modules (`recent_turns`, `salient_turns`, `rolling_summary`). Builds on **V0.2** (`v0.2.0`): coordinate move, compound turns, declarative object interact, and effect registry; and **V0.1** (`v0.1.0`): multi-agent passive vision, world editing, `passive_result`, agent `pdesc`/`desc`/`personality`.
 
 **Documentation:**
 
 - [V0.2 implementation checklist](docs/v0.2-implementation-readiness-checklist.md) — **authoritative V0.2 spec** (implemented; as-shipped reference)
 - [V0.1 implementation checklist](docs/v0.1-implementation-readiness-checklist.md) — design reference for shipped V0.1 behavior (partially superseded by V0.2)
-- [Roadmap](docs/ROADMAP.md) — version plans (V0.1 ✅, V0.2 ✅, V0.2.5 in progress, V0.3)
+- [Roadmap](docs/ROADMAP.md) — version plans (V0.1 ✅, V0.2 ✅, V0.2.5 ✅ in code, V0.3)
 - [V0.2.5 changelog](docs/v0.2.5-changelog.md) — incremental memory / prompt slices (0.2.5a–f)
 - [Long-term goals](LONG_TERM_GOALS.md) — aspirational features
 - [V0 implementation checklist](docs/v0-implementation-readiness-checklist.md) — V0 historical design reference
@@ -123,6 +123,7 @@ step-compound - interact obj_ball_01 kick
 - **`rolling_summary`** — verbatim detail + rolling LLM summary every **N** turns (default 10); keeps last **3** turns in detail after each summary; **background consolidation** gates the next turn until merge succeeds; optional **`memory-summary-interval`**, **`memory-summary-max`**, **`memory-summary-tail`**.
 - Module id set **only at `create-agent`**; prompt section label is **`Memory:`**.
 - **`state`** shows module-specific config; for `rolling_summary` includes consolidation state and detail turn numbers.
+- **Code layout:** `src/memory_modules/` — module implementations, `formatting/` (common / salient / summary render helpers), `consolidation_runner.py` (async merge for `rolling_summary`).
 
 ### V0.2 (current runtime — `v0.2.0`)
 
@@ -135,7 +136,7 @@ step-compound - interact obj_ball_01 kick
 | Objects | Look only | Declarative **interact** + effect registry (`delete_self`, `random_move_self`; ball `kick`) |
 | Speak limit | 280 characters | 500 characters (5 sentences unchanged) |
 
-**Unchanged:** 5×5 grid, manual human control (`switch`, `run`, typing agent names), world editing, multi-agent passive vision, V0.1-style memory (10 turns, single `passive_result`). Full memory subsystem → **V0.2.5**; GUI → **V0.3**.
+**Unchanged from V0.1:** 5×5 grid, manual human control (`switch`, `run`, typing agent names), world editing, multi-agent passive vision. Memory is pluggable per agent in **V0.2.5** (default `recent_turns`). GUI → **V0.3**.
 
 See [V0.2 checklist](docs/v0.2-implementation-readiness-checklist.md) for the full spec.
 

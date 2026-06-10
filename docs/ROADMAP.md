@@ -95,7 +95,7 @@ These changes improve experimentation while keeping the core "one structured act
 
 ## V0.2.5
 
-**Status:** **0.2.5e** implemented in code (`0.2.5`); **0.2.5f** refactor planned — see [v0.2.5-changelog.md](v0.2.5-changelog.md).
+**Status:** ✅ **All planned slices (0.2.5a–f)** implemented in code (`pyproject.toml` → `0.2.5`); git tag not yet cut — see [v0.2.5-changelog.md](v0.2.5-changelog.md).
 
 **Focus:** Memory as a first-class subsystem — required before V0.3. **Pluggable memory modules** per agent (`recent_turns`, `salient_turns`, … via `create-agent memory`) replace a separate “tiered policy” layer — e.g. a minion can use `salient_turns` with a low budget, a PC can use `recent_turns` or a richer module later.
 
@@ -116,7 +116,7 @@ These changes improve experimentation while keeping the core "one structured act
 ### 0.2.5c — Salient turns memory module — ✅ Implemented
 - **`salient_turns`** module: same ingest as `recent_turns`; salience-weighted storage (50-turn cap); char-budget render (default 2500).
 - **`create-agent memory salient_turns memory-budget N`** (200–8000); budget-only implies salient; **`recent_turns` remains default**.
-- Shared `formatting.py` for module render output; `tests/test_salient_turns.py`.
+- Shared `memory_modules/formatting/` for module render output; `tests/test_salient_turns.py`.
 - **Render/scoring refined in 0.2.5d** — step-level salience and condensed turn format (see changelog).
 
 ### 0.2.5d — Condensed memory & prompt look fixes — ✅ Implemented
@@ -130,13 +130,13 @@ These changes improve experimentation while keeping the core "one structured act
 - **`rolling_summary`:** verbatim detail (tail + turns since last consolidation) + **`Summary:`** block from periodic LLM merge.
 - Defaults: **interval 10**, **max 8000** chars, **detail tail 3** (tail kept in prompt, excluded from next merge).
 - **`create-agent memory rolling_summary`** + optional **`memory-summary-interval`** / **`memory-summary-max`** / **`memory-summary-tail`**.
-- **Background consolidation** with turn gating (`TurnGatedMemoryModule`); sync retry on failure; **`MemoryConsolidationError`** if retry fails.
+- **Background consolidation** with turn gating (`TurnGatedMemoryModule` + `ConsolidationRunner` in **0.2.5f**); sync retry on failure; **`MemoryConsolidationError`** if retry fails.
 - Extra LLM call per agent on each interval (`src/llm/memory_summary.py`, plain text); logged as **`[memory_summary]`**.
 - Facade: **`get_detail_turns()`**; **`stored_turns`** is detail buffer only for this module (summary is separate).
 
-### 0.2.5f — Memory module refactor — Planned
-- Extract **`ConsolidationRunner`** from `RollingSummaryModule` (threading/state machine).
-- Split **`formatting.py`** into common / salient / summary helpers.
+### 0.2.5f — Memory module refactor — ✅ Implemented
+- **`formatting/` package** — split `common` / `salient` / `summary` helpers; no behavior change.
+- **`ConsolidationRunner`** (`consolidation_runner.py`) — threading, state machine, snapshot wait/retry extracted from `RollingSummaryModule`; `MemoryConsolidationError` lives there (re-exported from `rolling_summary`).
 
 ### Planned themes (high level, after 0.2.5f)
 - **Persistent memory store** (database): memories with IDs, priorities, and types; serializable for save/load later.

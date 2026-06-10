@@ -25,9 +25,9 @@ These are currently out of scope. They represent the kind of experiences we even
   Integrate the agent with real Roll20 games (via Mod/API Scripts + chat bridge). Enable the agent to perceive live map state and control tokens representing D&D characters, NPCs, and enemies. The external agent handles reasoning/LLM calls; a companion Roll20 script executes token movement, sheet updates, etc. (Roll20 Pro required for the scripting side; communication constrained by the sandbox model.)
 - [ ] Agents that can create or modify objects in the world (with some form of validation or rules)
 - [ ] Richer memory systems (beliefs, relationships, long-term goals, emotional state)  
-  *(Partially addressed in **V0.2.5** — pluggable memory modules including `rolling_summary` LLM consolidation; persistent store still planned; see [ROADMAP.md](docs/ROADMAP.md).)*
+  *(**V0.2.5 shipped in code (slices a–f)** — pluggable memory modules including `rolling_summary` LLM consolidation; `formatting/` + `ConsolidationRunner` refactor. Persistent store and goals/tasks still planned; see [ROADMAP.md](docs/ROADMAP.md).)*
 - [ ] The ability for agents to develop and pursue their own goals over many turns instead of only reacting to the current situation  
-  *(Tied to **V0.2.5** goals/tasks linked to memory IDs.)*
+  *(Planned post–V0.2.5: goals/tasks linked to memory IDs; see [ROADMAP.md](docs/ROADMAP.md).)*
 
 ---
 
