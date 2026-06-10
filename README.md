@@ -2,14 +2,14 @@
 
 A grid-based agent simulation framework designed around structured output and narrative roleplay.
 
-**Current Status:** **V0.2.5** implemented in code (`0.2.5` in `pyproject.toml`; git tag pending) — single compound LLM call, pluggable memory modules (`recent_turns`, `salient_turns`, `rolling_summary`). Builds on **V0.2** (`v0.2.0`): coordinate move, compound turns, declarative object interact, and effect registry; and **V0.1** (`v0.1.0`): multi-agent passive vision, world editing, `passive_result`, agent `pdesc`/`desc`/`personality`.
+**Current Status:** **V0.2.5** release-ready (`0.2.5` in `pyproject.toml`; tag **`v0.2.5`** pending) — single compound LLM call, pluggable memory modules (`recent_turns`, `salient_turns`, `rolling_summary`), Passive Vision–first prompt. Builds on **V0.2** (`v0.2.0`): coordinate move, compound turns, declarative object interact, and effect registry; and **V0.1** (`v0.1.0`): multi-agent passive vision, world editing, `passive_result`, agent `pdesc`/`desc`/`personality`.
 
 **Documentation:**
 
 - [V0.2 implementation checklist](docs/v0.2-implementation-readiness-checklist.md) — **authoritative V0.2 spec** (implemented; as-shipped reference)
 - [V0.1 implementation checklist](docs/v0.1-implementation-readiness-checklist.md) — design reference for shipped V0.1 behavior (partially superseded by V0.2)
-- [Roadmap](docs/ROADMAP.md) — version plans (V0.1 ✅, V0.2 ✅, V0.2.5 ✅ in code, V0.3)
-- [V0.2.5 changelog](docs/v0.2.5-changelog.md) — incremental memory / prompt slices (0.2.5a–f)
+- [Roadmap](docs/ROADMAP.md) — version plans (V0.1 ✅, V0.2 ✅, V0.2.5 ✅ release-ready, V0.3)
+- [V0.2.5 changelog](docs/v0.2.5-changelog.md) — incremental memory / prompt slices (0.2.5a–g) + release checklist
 - [Long-term goals](LONG_TERM_GOALS.md) — aspirational features
 - [V0 implementation checklist](docs/v0-implementation-readiness-checklist.md) — V0 historical design reference
 - [Schema design references](docs/schemas/) — `AgentTurn` (pre-V0.2); **`AgentNavigationTurn` / `AgentActionTurn`** (V0.2 — implemented in `src/llm/schemas.py`)
@@ -31,7 +31,7 @@ A grid-based agent simulation framework designed around structured output and na
    uv run realm
   ```
    Or equivalently: `uv run python src/main.py`
-   Few-shot examples are disabled by default for token efficiency. Use `--with-fewshots` to include navigation and action phase examples.
+   Few-shot examples are disabled by default for token efficiency. Use `--with-fewshots` to include compound turn examples.
    Inside the `(realm)` prompt you can:
   - `list` — overview of all agents and objects (no turn consumed)
   - `objects` — list all objects with ids and action names (for `edit-object` / `delete-object`)
@@ -43,7 +43,7 @@ A grid-based agent simulation framework designed around structured output and na
   - `prompt` — show the compound turn prompt for the active agent
   - `step-compound …` — manual compound turn (move / look / speak / interact)
   - `step-nav` / `step-action` — debug one phase without a full turn record (see `help`)
-  - `run` — two-phase LLM turn for the **active** agent (requires OPENROUTER_API_KEY)
+  - `run` — single compound LLM turn for the **active** agent (requires OPENROUTER_API_KEY)
   - `Explorer` — (type an agent's name) to run an LLM turn for that agent
   - `switch Goblin` — change active agent for `vision` / `state` / `prompt` / manual steps / `run` without a turn or LLM call
   - `fewshots on/off` — toggle few-shot examples (OFF by default)
@@ -116,27 +116,38 @@ step-compound - interact obj_ball_01 kick
 - Turn numbers in each agent's memory are **per-agent** (1, 2, 3…); `session_turn` in logs is a global session label only
 - Other agents appear in passive vision (`pdesc` + hidden `desc` until `look`); `personality` is LLM-only; agents do not see themselves
 
-### V0.2.5 memory modules (see [changelog](docs/v0.2.5-changelog.md))
+### V0.2.5 (current — `0.2.5`)
+
+See [changelog](docs/v0.2.5-changelog.md) for slice-by-slice detail.
+
+**LLM & prompt**
+
+- **One compound LLM call** per turn (`AgentCompoundTurn`) — move, look, and speak/interact planned together; execution order unchanged (move → look → turn action).
+- Prompt order: character → **`Passive Vision:`** (position + visible entities) → rules → room → move bounds → look/interact lists → **`Memory:`**.
+- Interact failures use in-world prose in turn results (no `ERR:` in memory); validation/off-grid move still use `ERR:*` for logging/retry.
+
+**Memory modules**
 
 - **`memory-modules`** — list registered modules and valid **create-agent** flags; default is **`recent_turns`** (last 10 own turns + witnessed actions).
 - **`salient_turns`** — salience-weighted retention + char budget (`memory-budget` on create-agent).
 - **`rolling_summary`** — verbatim detail + rolling LLM summary every **N** turns (default 10); keeps last **3** turns in detail after each summary; **background consolidation** gates the next turn until merge succeeds; optional **`memory-summary-interval`**, **`memory-summary-max`**, **`memory-summary-tail`**.
-- Module id set **only at `create-agent`**; prompt section label is **`Memory:`**.
+- Module id set **only at `create-agent`**.
 - **`state`** shows module-specific config; for `rolling_summary` includes consolidation state and detail turn numbers.
 - **Code layout:** `src/memory_modules/` — module implementations, `formatting/` (common / salient / summary render helpers), `consolidation_runner.py` (async merge for `rolling_summary`).
 
-### V0.2 (current runtime — `v0.2.0`)
+### V0.2 (`v0.2.0`)
 
-| Area | V0.1 (`v0.1.0`) | V0.2 (`v0.2.0`) |
-|------|-----------------|-----------------|
-| Move | Cardinal one step (`north`, …) | Coordinate move to `"x,y"` on 0–4 grid |
-| LLM turn | One call, one action (`AgentTurn`) | Two calls: navigation then action (`AgentNavigationTurn` + `AgentActionTurn`) |
-| Turn shape | Move, look, or speak — one per turn | Optional move → optional one look → speak **or** object interact |
-| Manual step | `step move\|look\|speak` | `step-compound` (+ optional `step-nav` / `step-action`) |
-| Objects | Look only | Declarative **interact** + effect registry (`delete_self`, `random_move_self`; ball `kick`) |
-| Speak limit | 280 characters | 500 characters (5 sentences unchanged) |
+| Area | V0.1 (`v0.1.0`) | V0.2 (`v0.2.0`) | V0.2.5 (`0.2.5`) |
+|------|-----------------|-----------------|------------------|
+| Move | Cardinal one step (`north`, …) | Coordinate move to `"x,y"` on 0–4 grid | Same as V0.2 |
+| LLM turn | One call, one action (`AgentTurn`) | Two calls: nav + action | **One compound call** |
+| Memory | Fixed 10 turns on agent | Same as V0.1 | Pluggable modules (`recent_turns`, …) |
+| Turn shape | Move, look, or speak — one per turn | Optional move → optional one look → speak **or** interact | Same execution; single plan |
+| Manual step | `step move\|look\|speak` | `step-compound` (+ optional `step-nav` / `step-action`) | Same as V0.2 |
+| Objects | Look only | Declarative **interact** + effects | Same + in-world interact errors |
+| Speak limit | 280 characters | 500 characters (5 sentences unchanged) | Same as V0.2 |
 
-**Unchanged from V0.1:** 5×5 grid, manual human control (`switch`, `run`, typing agent names), world editing, multi-agent passive vision. Memory is pluggable per agent in **V0.2.5** (default `recent_turns`). GUI → **V0.3**.
+**Unchanged from V0.1:** 5×5 grid, manual human control (`switch`, `run`, typing agent names), world editing, multi-agent passive vision. GUI → **V0.3** (after V0.2.5 memory).
 
 See [V0.2 checklist](docs/v0.2-implementation-readiness-checklist.md) for the full spec.
 
@@ -248,7 +259,7 @@ That's the whole magic.
 
 ## Running tests
 
-Tests use [pytest](https://docs.pytest.org/) and run **without** an API key or network access (**231 tests**). They cover V0.1 perception/editing/multi-agent behavior plus V0.2 coordinate move, compound turns, object interact, memory modules, rolling summary, and ship integration checks.
+Tests use [pytest](https://docs.pytest.org/) and run **without** an API key or network access (**228 tests**). They cover V0.1 perception/editing/multi-agent behavior plus V0.2 coordinate move, compound turns, object interact, memory modules, and rolling summary.
 
 ### Run all tests
 
@@ -281,7 +292,9 @@ uv run pytest -x
 | File | Focus |
 |------|--------|
 | `tests/test_schema.py` | `AgentCompoundTurn` Pydantic validation |
-| `tests/test_v0_2_ship.py` | Section 4 ship criteria (version, help, state, logging, ERR codes) |
+| `tests/test_packaging.py` | `pyproject.toml` version format, `realm` console script |
+| `tests/test_stepper.py` | ManualStepper intro, help, state, compound turn logging |
+| `tests/test_llm_client.py` | LLM parse errors (`ERR:INVALID_JSON`, etc.) |
 | `tests/test_coordinate_move.py` | Coordinate move parser, bounds, schema |
 | `tests/test_compound_turn.py` | Compound orchestration, `TurnRecord.steps`, step-compound parser |
 | `tests/test_object_actions.py` | Effect registry, interact range/vision, `delete_self`, ball `kick` |

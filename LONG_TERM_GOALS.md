@@ -9,6 +9,14 @@ Treat this file like a trophy case. Checking something off here should feel like
 
 ---
 
+## Planned Goals
+
+Concrete improvements we expect to build — not current-version scope, but not distant dreams either.
+
+- [ ] **Coordinate move and target move** — Support both explicit coordinate moves (`move_target: "2,3"`) and object-target moves (move toward a named object or tile). When move gains a per-turn range and pathfinding, target move walks as close as possible; if the destination is unreachable, stop at the nearest reachable tile.
+
+---
+
 ## Dream Goals
 
 These are currently out of scope. They represent the kind of experiences we eventually want to create.
@@ -25,7 +33,7 @@ These are currently out of scope. They represent the kind of experiences we even
   Integrate the agent with real Roll20 games (via Mod/API Scripts + chat bridge). Enable the agent to perceive live map state and control tokens representing D&D characters, NPCs, and enemies. The external agent handles reasoning/LLM calls; a companion Roll20 script executes token movement, sheet updates, etc. (Roll20 Pro required for the scripting side; communication constrained by the sandbox model.)
 - [ ] Agents that can create or modify objects in the world (with some form of validation or rules)
 - [ ] Richer memory systems (beliefs, relationships, long-term goals, emotional state)  
-  *(**V0.2.5 shipped in code (slices a–f)** — pluggable memory modules including `rolling_summary` LLM consolidation; `formatting/` + `ConsolidationRunner` refactor. Persistent store and goals/tasks still planned; see [ROADMAP.md](docs/ROADMAP.md).)*
+  *(**V0.2.5 release-ready (`0.2.5`)** — pluggable memory modules including `rolling_summary` LLM consolidation; `formatting/` + `ConsolidationRunner` refactor. Persistent store and goals/tasks still planned; see [ROADMAP.md](docs/ROADMAP.md).)*
 - [ ] The ability for agents to develop and pursue their own goals over many turns instead of only reacting to the current situation  
   *(Planned post–V0.2.5: goals/tasks linked to memory IDs; see [ROADMAP.md](docs/ROADMAP.md).)*
 
@@ -46,6 +54,9 @@ This section is for goals that have actually been completed. When something move
 
 - [x] **Declarative object interact — first milestone (V0.2 Section 3, v0.2.0)**  
   Objects expose named `ObjectAction`s with Chebyshev range, `{actor}`/`{object}` templates, and a central effect registry (`delete_self`, `random_move_self`). Interact runs in the compound action phase; listed in the post-move action prompt when in range. Initial ball includes **`kick`**. Full puzzle/behavior richness remains in Dream Goals above. See [v0.2-implementation-readiness-checklist.md](docs/v0.2-implementation-readiness-checklist.md).
+
+- [x] **Pluggable memory modules (V0.2.5, `0.2.5`)**  
+  Per-agent memory modules (`recent_turns`, `salient_turns`, `rolling_summary`) with witnessed-action ingest, condensed render, salience retention, and async rolling LLM consolidation. Single compound LLM call per turn. See [v0.2.5-changelog.md](docs/v0.2.5-changelog.md).
 
 - [x] **Compound D&D-shaped agent turns (V0.2, v0.2.0)**  
   Two-phase LLM per turn (navigation then action): optional coordinate move, optional look, optional speak or object interact. `step-compound` manual parity; structured `TurnRecord.steps` for future memory ingestion. See [v0.2-implementation-readiness-checklist.md](docs/v0.2-implementation-readiness-checklist.md).

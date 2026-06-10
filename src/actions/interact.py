@@ -45,35 +45,25 @@ def interact(
     """Execute an object interaction from the action phase."""
     obj = world.get_object_by_id(target_id)
     if obj is None:
-        return ActionOutcome(
-            result=(
-                "This action wasn't recognized, ERR:UNKNOWN_INTERACT, "
-                "that object does not exist."
-            ),
-        )
+        return ActionOutcome(result="That object does not exist.")
 
     action = obj.actions.get(action_name)
     if action is None:
         return ActionOutcome(
             result=(
-                "This action wasn't recognized, ERR:UNKNOWN_INTERACT, "
-                f"'{action_name}' is not an action on {obj.name}."
+                f"'{action_name}' is not an action you can perform on {obj.name}."
             ),
         )
 
     if not is_object_in_passive_vision(agent, world, target_id):
         return ActionOutcome(
-            result=(
-                "This action wasn't recognized, ERR:INTERACT_NOT_VISIBLE, "
-                f"you cannot interact with {obj.name} from here."
-            ),
+            result=f"You can't reach {obj.name} from here.",
         )
 
     if not _in_range(agent, obj, action):
         return ActionOutcome(
             result=(
-                "This action wasn't recognized, ERR:INTERACT_OUT_OF_RANGE, "
-                f"you are too far from {obj.name} to {action_name}."
+                f"Unfortunately you are too far from {obj.name} to {action_name}."
             ),
         )
 

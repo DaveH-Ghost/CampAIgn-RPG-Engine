@@ -128,6 +128,10 @@ def test_build_compound_prompt_sections():
     prompt = build_compound_prompt(agent, world, include_examples=True)
 
     assert "You are Explorer" in prompt
+    assert "Passive Vision:" in prompt
+    assert prompt.index("Passive Vision:") < prompt.index(
+        "Each turn you may plan a **compound turn**"
+    )
     assert "compound turn" in prompt.lower()
     assert "move_target" in prompt
     assert "turn_action" in prompt

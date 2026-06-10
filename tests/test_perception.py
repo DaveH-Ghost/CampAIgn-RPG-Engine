@@ -262,6 +262,11 @@ def test_build_compound_prompt_look_rule_and_filtered_targets():
         "look: optional; a list of objects you can look at will be provided."
         in prompt
     )
+    assert "Passive Vision:" in prompt
+    assert (
+        "You need to be adjacent or on the same tile as most objects to interact with them."
+        in prompt
+    )
     assert "You can look at: obj_ball_01, obj_sign_01" in prompt
 
     perform_look(agent, world, "obj_ball_01")

@@ -88,14 +88,14 @@ These changes improve experimentation while keeping the core "one structured act
 ### 4. Cross-cutting (integration) — ✅ Implemented
 - **`ERR:*` codes** including `INVALID_COORDINATES`, `INVALID_JSON`, interact codes; no hard prompt truncation in V0.2.
 - Logging: `Turn N [nav]` and `Turn N [action]` with prompt char counts in file logs; `state` shows step breakdown.
-- Tests: `test_coordinate_move.py`, `test_compound_turn.py`, `test_object_actions.py`, `test_v0_2_ship.py` + updates to existing suite.
+- Tests: `test_coordinate_move.py`, `test_compound_turn.py`, `test_object_actions.py`, `test_stepper.py`, `test_llm_client.py`, `test_packaging.py` + updates to existing suite.
 - Release **`v0.2.0`** — `pyproject.toml` version bump, docs synced.
 
 **Explicitly out of V0.2:** memory manager, beliefs/goals database, pluggable memory modules, heard-dialogue buffers, persistence — delivered in **V0.2.5**. Pathing, blockers, speak targeting, relationships, automatic turn sequencing, GUI (V0.3).
 
 ## V0.2.5
 
-**Status:** ✅ **All planned slices (0.2.5a–f)** implemented in code (`pyproject.toml` → `0.2.5`); git tag not yet cut — see [v0.2.5-changelog.md](v0.2.5-changelog.md).
+**Status:** ✅ **Release-ready** — all slices **0.2.5a–g** implemented (`pyproject.toml` → `0.2.5`); tag **`v0.2.5`** pending — see [v0.2.5-changelog.md](v0.2.5-changelog.md) (includes ship checklist).
 
 **Focus:** Memory as a first-class subsystem — required before V0.3. **Pluggable memory modules** per agent (`recent_turns`, `salient_turns`, … via `create-agent memory`) replace a separate “tiered policy” layer — e.g. a minion can use `salient_turns` with a low budget, a PC can use `recent_turns` or a richer module later.
 
@@ -138,7 +138,13 @@ These changes improve experimentation while keeping the core "one structured act
 - **`formatting/` package** — split `common` / `salient` / `summary` helpers; no behavior change.
 - **`ConsolidationRunner`** (`consolidation_runner.py`) — threading, state machine, snapshot wait/retry extracted from `RollingSummaryModule`; `MemoryConsolidationError` lives there (re-exported from `rolling_summary`).
 
-### Planned themes (high level, after 0.2.5f)
+### 0.2.5g — Release polish — ✅ Implemented
+- **`Passive Vision:`** section first in compound prompt (after character); duplicate position line removed from move block.
+- In-world interact failure messages in turn results (no `ERR:` in memory).
+- Adjacency interact rule in prompt; few-shot examples updated.
+- [LONG_TERM_GOALS.md](../LONG_TERM_GOALS.md) **Planned Goals**: coordinate move + target move for future pathing.
+
+### Planned themes (high level, after 0.2.5g)
 - **Persistent memory store** (database): memories with IDs, priorities, and types; serializable for save/load later.
 - **Goals and tasks** linked to memory IDs (feeds LONG_TERM_GOALS “beliefs, relationships, goals, pursuit”).
 - **Richer consolidation** into the store (beyond the single rolling summary string in `rolling_summary`).
@@ -149,7 +155,7 @@ V0.2 compound turns and object interact should log in a shape that V0.2.5 can in
 
 ## V0.3
 
-**Focus:** Basic graphical user interface for visualization and direct interaction. Prepares the data model for visual rendering. **Depends on V0.2.5 memory** being in place first.
+**Focus:** Basic graphical user interface for visualization and direct interaction. Prepares the data model for visual rendering. **Depends on V0.2.5** (`0.2.5` release-ready; tag pending).
 
 - **GUI**:
   - A clickable grid view of the world.

@@ -17,6 +17,7 @@ FEW_SHOT_COMPOUND_EXAMPLES = """
 Example 1: Move, look, and speak
 
 Context:
+Passive Vision:
 You are at (1, 1).
 Ceramic Ball (obj_ball_01), (2, 2) - [?]
 You can look at: obj_ball_01, obj_sign_01
@@ -37,6 +38,7 @@ Output:
 Example 2: Stay in place and speak
 
 Context:
+Passive Vision:
 You are at (2, 2).
 You can look at: obj_ball_01, obj_sign_01
 
@@ -56,6 +58,7 @@ Output:
 Example 3: Move only
 
 Context:
+Passive Vision:
 You are at (1, 1).
 You may move to any coordinate (x, y) where x and y are integers from 0 to 4.
 
@@ -99,15 +102,14 @@ Important rules:
 - Other agents show their most recent observable action on their vision line.
 - speak: up to five sentences when turn_action is "speak".
 - interact: turn_action "interact" with target object id + action_name when listed below.
+- You need to be adjacent or on the same tile as most objects to interact with them.
 - turn_action "none": end after optional move/look without speaking or interacting.
 
 Always respond with a single, valid JSON object. Do not add any text before or after the JSON."""
 
 
-def _get_move_block(agent: Agent) -> str:
-    x, y = agent.position
+def _get_move_block() -> str:
     return (
-        f"You are at ({x}, {y}).\n"
         "You may move to any coordinate (x, y) where x and y are integers from 0 to 4."
     )
 
@@ -170,14 +172,14 @@ def build_compound_prompt(
     parts = [
         _character_block(agent),
         "",
+        "Passive Vision:",
+        build_passive_vision(agent, world),
+        "",
         _get_compound_system_instructions(),
         "",
         world.get_room_description(),
         "",
-        "Current situation:",
-        build_passive_vision(agent, world),
-        "",
-        _get_move_block(agent),
+        _get_move_block(),
         "",
         _get_available_block(agent, world),
         "",

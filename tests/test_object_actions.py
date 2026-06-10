@@ -87,7 +87,7 @@ def test_unknown_interact_wrong_action_name():
     goblin = _create_goblin(world, at="2,3")
 
     outcome = interact(goblin, world, cookie.id, "drink")
-    assert "ERR:UNKNOWN_INTERACT" in outcome.result
+    assert "'drink' is not an action you can perform on Cookie." in outcome.result
     assert world.get_object_by_id(cookie.id) is not None
 
 
@@ -179,7 +179,7 @@ def test_failed_interact_after_move_shows_move_in_passive_result():
     )
 
     assert goblin.position == (4, 3)
-    assert "ERR:INTERACT_OUT_OF_RANGE" in record.result
+    assert "Unfortunately you are too far from Cookie to eat." in record.result
     assert goblin.passive_result == "Goblin moves to (4, 3)."
     explorer = world.get_agent()
     vision = build_passive_vision(explorer, world)
@@ -245,7 +245,7 @@ def test_out_of_range_not_in_prompt_and_runtime_fails():
     assert "Object interactions available this turn:" not in prompt
 
     outcome = interact(goblin, world, cookie.id, "eat")
-    assert "ERR:INTERACT_OUT_OF_RANGE" in outcome.result
+    assert "Unfortunately you are too far from Cookie to eat." in outcome.result
     assert world.get_object_by_id(cookie.id) is not None
 
 
@@ -260,7 +260,7 @@ def test_not_visible_interact_fails(monkeypatch):
     )
 
     outcome = interact(goblin, world, cookie.id, "eat")
-    assert "ERR:INTERACT_NOT_VISIBLE" in outcome.result
+    assert "You can't reach Cookie from here." in outcome.result
 
 
 def test_objects_list_after_eat_cookie_gone():
