@@ -186,8 +186,10 @@ See [v0.3.0-changelog.md](v0.3.0-changelog.md) for slice plan (0.3.0a–e).
 
 ### V0.3.1 — Example web project — ⬜ Planned (separate tag)
 
-- Separate app (e.g. `**realm-studio`**) depending on `realm-fabric>=0.3.0`
-- Local web UI: clickable grid, tile context menu → session commands, turn log panel
+See [v0.3.1-changelog.md](v0.3.1-changelog.md). App path: **`examples/web/realm-studio`**.
+
+- FastAPI wraps `Session`; depends on `realm-fabric>=0.3.0`
+- Local web UI: **grid** with agents/objects; **right-click** create/edit/delete; turn log + passive vision; **Run turn**
 - Optional FastAPI + minimal `TestClient` integration test; engine coverage stays in pytest
 
 ### V0.3.2+ — ⬜ Planned

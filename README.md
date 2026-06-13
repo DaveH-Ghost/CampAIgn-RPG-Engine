@@ -6,7 +6,8 @@ A grid-based agent simulation framework designed around structured output and na
 
 **Documentation:**
 
-- [V0.3.0 changelog](docs/v0.3.0-changelog.md) — engine refactor (0.3.0a–e); web example in **0.3.1**
+- [V0.3.1 changelog](docs/v0.3.1-changelog.md) — example web app (`examples/web/realm-studio`); slices 0.3.1a–f
+- [V0.3.0 changelog](docs/v0.3.0-changelog.md) — engine refactor (0.3.0a–e)
 - [Roadmap](docs/ROADMAP.md) — version plans (V0.3.0 ✅ engine; V0.3.1 web example planned)
 - [V0.2.5 changelog](docs/v0.2.5-changelog.md) — memory / prompt slices (0.2.5a–g)
 - [Long-term goals](LONG_TERM_GOALS.md) — aspirational features
@@ -21,7 +22,7 @@ A grid-based agent simulation framework designed around structured output and na
 |-------|------------|
 | **`realm_fabric` package** | Public API: `Session`, `GameProfile`, `load_profile`, `PromptContext`, `AgentCompoundTurn`, snapshots |
 | **`realm` CLI** | Reference client (`ManualStepper`) for manual testing — not required for library use |
-| **Your app (0.3.1+)** | e.g. a web UI (`realm-studio`) that wraps `Session` over HTTP; custom `GameProfile` templates |
+| **Your app (0.3.1+)** | [`examples/web/realm-studio`](examples/web/realm-studio) — web UI wrapping `Session` over HTTP |
 
 Quick start for a downstream project:
 
@@ -35,7 +36,7 @@ result = session.run_compound_turn(AgentCompoundTurn(...))
 state = session.snapshot()
 ```
 
-**V0.3.1** will ship an example web project on this API. See [ROADMAP](docs/ROADMAP.md).
+**V0.3.1** adds [realm-studio](examples/web/realm-studio) on this API. **0.3.1a** is runnable: `cd examples/web/realm-studio && uv run realm-studio`. See [v0.3.1-changelog](docs/v0.3.1-changelog.md).
 
 ## Running / Testing (without LLM)
 
