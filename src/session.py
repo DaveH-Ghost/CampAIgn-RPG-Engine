@@ -14,11 +14,12 @@ from dataclasses import dataclass
 from typing import Optional
 
 from src.agent import Agent
-from src.llm.prompt import build_compound_prompt
+from src.game_profile import GameProfile, default_compound_profile
+from src.llm.prompt_context import build_prompt_context
 from src.llm.schemas import AgentCompoundTurn
 from src.memory import TurnRecord
 from src.simulation import next_turn_number_for_agent, run_compound_turn
-from src.area import Area, create_initial_area
+from src.area import Area
 from src.area_edit import (
     create_agent_from_args,
     create_object_from_args,
@@ -69,9 +70,11 @@ class Session:
         self,
         area: Area,
         *,
+        profile: GameProfile | None = None,
         active_agent_id: Optional[str] = None,
         include_examples: bool = False,
     ) -> None:
+        self.profile = profile or default_compound_profile()
         self.area = area
         self.include_examples = include_examples
         self.session_turn = 0
@@ -87,9 +90,33 @@ class Session:
         self.active_agent_id = agent.id
 
     @classmethod
-    def from_default(cls, *, include_examples: bool = False) -> Session:
-        """Create a session with the standard demo area (Explorer, ball, sign)."""
-        return cls(create_initial_area(), include_examples=include_examples)
+    def from_default(
+        cls,
+        *,
+        profile: GameProfile | None = None,
+        include_examples: bool = False,
+    ) -> Session:
+        """Create a session with the profile's default demo area."""
+        prof = profile or default_compound_profile()
+        return cls(
+            prof.create_area(),
+            profile=prof,
+            include_examples=include_examples,
+        )
+
+    @classmethod
+    def from_profile(
+        cls,
+        profile: GameProfile,
+        *,
+        include_examples: bool = False,
+    ) -> Session:
+        """Create a session from a profile's default area factory."""
+        return cls(
+            profile.create_area(),
+            profile=profile,
+            include_examples=include_examples,
+        )
 
     # ------------------------------------------------------------------
     # Agent resolution
@@ -136,9 +163,9 @@ class Session:
     def build_prompt(self, name_or_id: Optional[str] = None) -> str:
         """Build the compound-turn LLM prompt for an agent (default: active)."""
         agent = self._resolve_agent_or_active(name_or_id)
-        return build_compound_prompt(
-            agent,
-            self.area,
+        ctx = build_prompt_context(agent, self.area)
+        return self.profile.build_prompt(
+            ctx,
             include_examples=self.include_examples,
         )
 

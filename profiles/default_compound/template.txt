@@ -1,0 +1,23 @@
+{{character}}
+
+Passive Vision:
+{{passive_vision}}
+
+{{grid_description}}
+
+{{compound_rules}}
+
+{{area_description}}
+
+{{move_instructions}}
+
+{{look_and_interact}}
+
+Memory:
+{{memory}}
+
+Plan your full compound turn (move, then look, then turn action).
+
+You may speak up to five sentences. Spoken text should be things you say out loud.
+
+{{output_format}}
