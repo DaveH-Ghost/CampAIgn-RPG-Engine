@@ -86,6 +86,7 @@ def test_index_page(client):
     assert response.status_code == 200
     assert "realm-studio" in response.text
     assert 'id="grid"' in response.text
+    assert 'id="grid-viewport"' in response.text
     assert 'id="context-menu"' in response.text
     assert 'id="active-agent-select"' in response.text
     assert 'id="run-turn"' in response.text

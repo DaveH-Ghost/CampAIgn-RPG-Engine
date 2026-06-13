@@ -5,10 +5,14 @@
 body {
   font-family: system-ui, sans-serif;
   margin: 0;
-  padding: 1rem 1.5rem;
+  padding: 0.75rem 1rem 1rem;
   background: #1a1a1e;
   color: #e8e8ec;
   min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 header {
@@ -16,7 +20,8 @@ header {
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0.75rem 1.25rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
+  flex-shrink: 0;
 }
 
 h1 {
@@ -80,50 +85,88 @@ button:hover {
 }
 
 .layout {
+  flex: 1;
+  min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
   gap: 1.25rem;
-  align-items: start;
+  align-items: stretch;
 }
 
 @media (max-width: 720px) {
+  body {
+    height: auto;
+    overflow: auto;
+  }
+
   .layout {
     grid-template-columns: 1fr;
+  }
+
+  .grid-panel {
+    min-height: 50vh;
   }
 }
 
 .grid-panel {
-  overflow: auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.grid-viewport {
+  flex: 1;
+  min-height: 12rem;
+  background: #000;
+  overflow: hidden;
+  position: relative;
+  border-radius: 4px;
+}
+
+.grid-viewport.is-panning {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.grid-world {
+  position: absolute;
+  top: 0;
+  left: 0;
+  will-change: transform;
 }
 
 .grid {
+  --cell-size: 64px;
   display: grid;
-  grid-template-columns: repeat(var(--grid-cols, 5), minmax(4.5rem, 1fr));
-  gap: 4px;
-  width: 100%;
-  max-width: min(100%, calc(var(--grid-cols, 5) * 7rem));
+  grid-template-columns: repeat(var(--grid-cols, 5), var(--cell-size));
+  grid-template-rows: repeat(var(--grid-rows, 5), var(--cell-size));
+  gap: 0;
+  background: #fff;
+  border: 2px solid #fff;
+  box-sizing: content-box;
 }
 
 .tile {
   position: relative;
-  width: 100%;
-  aspect-ratio: 1;
-  min-width: 0;
-  min-height: 0;
-  padding: 0.35rem;
-  background: #252530;
-  border: 1px solid #3a3a48;
-  border-radius: 6px;
+  width: var(--cell-size);
+  height: var(--cell-size);
+  box-sizing: border-box;
+  padding: 0.2rem;
+  background: #fff;
+  border-right: 1px dashed rgba(0, 0, 0, 0.22);
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.22);
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
 .tile-coord {
-  font-size: 0.65rem;
-  color: #6a6a78;
+  display: none;
+  font-size: 0.6rem;
+  color: #888;
   line-height: 1;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.15rem;
   user-select: none;
   flex-shrink: 0;
 }
@@ -131,14 +174,14 @@ button:hover {
 .tile-stack {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.2rem;
   flex: 1;
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
   justify-content: flex-start;
   scrollbar-width: thin;
-  scrollbar-color: #4a4a58 #252530;
+  scrollbar-color: #bbb #fff;
 }
 
 .tile-stack::-webkit-scrollbar {
@@ -151,35 +194,36 @@ button:hover {
 }
 
 .chip {
-  font-size: 0.75rem;
-  padding: 0.2rem 0.4rem;
-  border-radius: 4px;
+  font-size: 0.68rem;
+  padding: 0.15rem 0.35rem;
+  border-radius: 3px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   border: 1px solid transparent;
   flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
 }
 
 .chip-agent {
-  background: #2d4a3e;
-  border-color: #3d6a54;
-  color: #c8f0d8;
+  background: #d4edda;
+  border-color: #2d6a4f;
+  color: #1b4332;
 }
 
 .chip-object {
-  background: #3a3548;
-  border-color: #524a68;
-  color: #d8d0f0;
+  background: #e8e0f4;
+  border-color: #5a4a78;
+  color: #3d2e5c;
 }
 
 .chip-active {
-  border-color: #e8c547;
-  box-shadow: 0 0 0 1px #e8c547;
+  border-color: #c9a227;
+  box-shadow: 0 0 0 2px #e8c547;
 }
 
 .chip-active-mark {
-  color: #e8c547;
+  color: #9a7b0a;
 }
 
 .meta-panel {
@@ -187,7 +231,7 @@ button:hover {
   border: 1px solid #333;
   border-radius: 6px;
   padding: 0.75rem 1rem;
-  max-height: calc(100vh - 5rem);
+  min-height: 0;
   overflow-y: auto;
 }
 

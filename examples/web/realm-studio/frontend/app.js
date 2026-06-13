@@ -1,8 +1,9 @@
 /**
- * realm-studio frontend — grid, edit menus, LLM turn, sidebar (V0.3.1b–0.3.2b).
+ * realm-studio frontend — grid, edit menus, LLM turn, sidebar (V0.3.1b–0.3.2c1).
  */
 
 import { getPrompt, getState, postTurn } from "./api.js";
+import { initGridViewport, maybeCenterGrid } from "./gridViewport.js";
 import {
   appendTurnLogEntry,
   bindPromptDebug,
@@ -22,6 +23,8 @@ import {
 } from "./ui.js";
 
 const statusEl = document.getElementById("status");
+const gridViewportEl = document.getElementById("grid-viewport");
+const gridWorldEl = document.getElementById("grid-world");
 const gridEl = document.getElementById("grid");
 const snapshotEl = document.getElementById("snapshot");
 const sessionMetaEl = document.getElementById("session-meta");
@@ -85,8 +88,10 @@ function renderGrid(data) {
   const byPos = indexEntities(agents, objects);
 
   const width = grid.max_x - grid.min_x + 1;
+  const height = grid.max_y - grid.min_y + 1;
 
   gridEl.style.setProperty("--grid-cols", String(width));
+  gridEl.style.setProperty("--grid-rows", String(height));
   gridEl.innerHTML = "";
 
   for (let y = grid.min_y; y <= grid.max_y; y++) {
@@ -116,6 +121,8 @@ function renderGrid(data) {
       gridEl.appendChild(tile);
     }
   }
+
+  maybeCenterGrid(gridEl);
 }
 
 function renderSessionMeta(data) {
@@ -230,6 +237,7 @@ initUi({
   getSnapshotFn: () => lastSnapshot,
   onStateChangedFn: refreshAfterMutation,
 });
+initGridViewport(gridViewportEl, gridWorldEl);
 bindGridContextMenu(gridEl);
 bindActiveAgentSelect(activeAgentSelect, refreshAfterMutation);
 bindEmitEventButton(emitEventBtn);

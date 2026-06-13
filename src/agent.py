@@ -57,3 +57,11 @@ class Agent:
 
     last_action: Optional[str] = None
     """The action taken on the previous turn (retained for future use)."""
+
+    appearance: str = ""
+    """
+    Client-only image path for grid visualization (e.g. ``tokens/explorer.png``).
+
+    Ignored by the simulation, passive vision, and LLM prompts. Empty means
+    no custom token image.
+    """

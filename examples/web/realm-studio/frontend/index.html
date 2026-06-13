@@ -9,7 +9,7 @@
 <body>
   <header>
     <h1>realm-studio</h1>
-    <p class="subtitle">V0.3.2b — emit area events</p>
+    <p class="subtitle">V0.3.2c1 — pannable grid viewport</p>
     <label class="active-agent-label">
       Active
       <select id="active-agent-select" aria-label="Active agent"></select>
@@ -21,7 +21,11 @@
   </header>
   <main class="layout">
     <section class="grid-panel" aria-label="Area grid">
-      <div id="grid" class="grid"></div>
+      <div id="grid-viewport" class="grid-viewport" title="Middle-click drag to pan">
+        <div id="grid-world" class="grid-world">
+          <div id="grid" class="grid"></div>
+        </div>
+      </div>
     </section>
     <aside class="meta-panel">
       <h2>Session</h2>

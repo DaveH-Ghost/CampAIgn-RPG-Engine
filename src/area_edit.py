@@ -218,7 +218,7 @@ def create_object_from_args(area: Area, arg: str) -> tuple[Optional[Object], str
     """
     Parse and create an object from command arguments.
 
-    Usage: name "..." [pdesc "..."] [desc "..."] at x,y
+    Usage: name "..." [pdesc "..."] [desc "..."] [appearance "..."] at x,y
            [action NAME range N [effect EFFECT] result "..." passive "..."]
     """
     tokens, err = tokenize_args(arg)
@@ -226,7 +226,7 @@ def create_object_from_args(area: Area, arg: str) -> tuple[Optional[Object], str
         return None, err
     if not tokens:
         return None, (
-            'Usage: create-object name "..." [pdesc "..."] [desc "..."] at x,y '
+            'Usage: create-object name "..." [pdesc "..."] [desc "..."] [appearance "..."] at x,y '
             '[action NAME range N [effect EFFECT] result "..." passive "..."]'
         )
 
@@ -236,6 +236,7 @@ def create_object_from_args(area: Area, arg: str) -> tuple[Optional[Object], str
             "name",
             "desc",
             "pdesc",
+            "appearance",
             "at",
             "action",
             "range",
@@ -266,6 +267,7 @@ def create_object_from_args(area: Area, arg: str) -> tuple[Optional[Object], str
 
     desc = fields.get("desc", "")
     pdesc = fields.get("pdesc", "")
+    appearance = fields.get("appearance", "")
     obj_id = generate_object_id(area, fields["name"])
     obj = Object(
         id=obj_id,
@@ -274,6 +276,7 @@ def create_object_from_args(area: Area, arg: str) -> tuple[Optional[Object], str
         position=position,
         passive_description=pdesc,
         actions=actions,
+        appearance=appearance,
     )
     area.add_object(obj)
     action_note = ""
@@ -334,7 +337,7 @@ def edit_object_from_args(area: Area, arg: str) -> str:
         return err
     if not tokens:
         return (
-            'Usage: edit-object <id> [pdesc "..."] [desc "..."] [name "..."] [pos x,y] ... '
+            'Usage: edit-object <id> [pdesc "..."] [desc "..."] [appearance "..."] [name "..."] [pos x,y] ... '
             '| add-action ... | remove-action <name>'
         )
 
@@ -356,11 +359,11 @@ def edit_object_from_args(area: Area, arg: str) -> str:
         if sub == "remove-action":
             return _edit_object_remove_action(obj, tokens)
 
-    fields, err = parse_field_tokens(tokens[1:], {"name", "desc", "pdesc", "pos"})
+    fields, err = parse_field_tokens(tokens[1:], {"name", "desc", "pdesc", "appearance", "pos"})
     if err:
         return err
     if not fields:
-        return "At least one field to change is required (name, pdesc, desc, or pos)."
+        return "At least one field to change is required (name, pdesc, desc, appearance, or pos)."
 
     changes: list[str] = []
 
@@ -371,6 +374,10 @@ def edit_object_from_args(area: Area, arg: str) -> str:
     if "pdesc" in fields and fields["pdesc"] != obj.passive_description:
         obj.passive_description = fields["pdesc"]
         changes.append("pdesc")
+
+    if "appearance" in fields and fields["appearance"] != obj.appearance:
+        obj.appearance = fields["appearance"]
+        changes.append("appearance")
 
     if "desc" in fields and fields["desc"] != obj.description:
         obj.description = fields["desc"]
@@ -487,14 +494,14 @@ def create_agent_from_args(area: Area, arg: str) -> tuple[Optional[Agent], str]:
     """
     Parse and create an agent.
 
-    Usage: name "..." [pdesc "..."] [desc "..."] [personality "..."] [memory MODULE_ID] [memory-budget N] [memory-summary-interval N] [memory-summary-max N] [memory-summary-tail N] at x,y
+    Usage: name "..." [pdesc "..."] [desc "..."] [appearance "..."] [personality "..."] [memory MODULE_ID] [memory-budget N] [memory-summary-interval N] [memory-summary-max N] [memory-summary-tail N] at x,y
     """
     tokens, err = tokenize_args(arg)
     if err:
         return None, err
     if not tokens:
         return None, (
-            'Usage: create-agent name "..." [pdesc "..."] [desc "..."] '
+            'Usage: create-agent name "..." [pdesc "..."] [desc "..."] [appearance "..."] '
             '[personality "..."] [memory MODULE_ID] [memory-budget N] '
             '[memory-summary-interval N] [memory-summary-max N] [memory-summary-tail N] at x,y'
         )
@@ -505,6 +512,7 @@ def create_agent_from_args(area: Area, arg: str) -> tuple[Optional[Agent], str]:
             "name",
             "pdesc",
             "desc",
+            "appearance",
             "personality",
             "memory",
             "memory-budget",
@@ -537,6 +545,7 @@ def create_agent_from_args(area: Area, arg: str) -> tuple[Optional[Agent], str]:
 
     pdesc = fields.get("pdesc", "")
     desc = fields.get("desc", "")
+    appearance = fields.get("appearance", "")
     personality = fields.get("personality", "")
     memory, mem_err = _build_agent_memory(fields)
     if mem_err:
@@ -551,6 +560,7 @@ def create_agent_from_args(area: Area, arg: str) -> tuple[Optional[Agent], str]:
         position=position,
         passive_description=pdesc,
         description=desc,
+        appearance=appearance,
         memory=memory,
         last_action=None,
     )
@@ -566,7 +576,7 @@ def edit_agent_from_args(area: Area, arg: str) -> EditAgentResult:
     """
     Parse and edit an agent.
 
-    Usage: <agent_id> [pdesc "..."] [desc "..."] [personality "..."] [name "..."] [pos x,y] ...
+    Usage: <agent_id> [pdesc "..."] [desc "..."] [appearance "..."] [personality "..."] [name "..."] [pos x,y] ...
 
     Memory module is set only at create-agent; edit-agent cannot change it.
     """
@@ -577,7 +587,7 @@ def edit_agent_from_args(area: Area, arg: str) -> EditAgentResult:
         return EditAgentResult(
             ok=False,
             message=(
-                'Usage: edit-agent <id> [pdesc "..."] [desc "..."] [personality "..."] '
+                'Usage: edit-agent <id> [pdesc "..."] [desc "..."] [appearance "..."] [personality "..."] '
                 '[name "..."] [pos x,y] ...'
             ),
         )
@@ -600,7 +610,7 @@ def edit_agent_from_args(area: Area, arg: str) -> EditAgentResult:
         )
 
     fields, err = parse_field_tokens(
-        tokens[1:], {"name", "pdesc", "desc", "personality", "pos"}
+        tokens[1:], {"name", "pdesc", "desc", "appearance", "personality", "pos"}
     )
     if err:
         return EditAgentResult(ok=False, message=err)
@@ -609,7 +619,7 @@ def edit_agent_from_args(area: Area, arg: str) -> EditAgentResult:
             ok=False,
             message=(
                 "At least one field to change is required "
-                "(name, pdesc, desc, personality, or pos)."
+                "(name, pdesc, desc, appearance, personality, or pos)."
             ),
         )
 
@@ -633,6 +643,10 @@ def edit_agent_from_args(area: Area, arg: str) -> EditAgentResult:
     if "pdesc" in fields and fields["pdesc"] != agent.passive_description:
         agent.passive_description = fields["pdesc"]
         changes.append("pdesc")
+
+    if "appearance" in fields and fields["appearance"] != agent.appearance:
+        agent.appearance = fields["appearance"]
+        changes.append("appearance")
 
     if "desc" in fields and fields["desc"] != agent.description:
         agent.description = fields["desc"]

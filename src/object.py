@@ -43,3 +43,11 @@ class Object:
 
     actions: dict[str, ObjectAction] = field(default_factory=dict)
     """Named interactions keyed by action name (unique per object)."""
+
+    appearance: str = ""
+    """
+    Client-only image path for grid visualization (e.g. ``tokens/ball.png``).
+
+    Ignored by the simulation, passive vision, and LLM prompts. Empty means
+    no custom token image.
+    """

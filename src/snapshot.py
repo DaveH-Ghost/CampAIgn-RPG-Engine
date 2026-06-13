@@ -29,6 +29,7 @@ def serialize_object(obj: Object) -> dict[str, Any]:
         "name": obj.name,
         "position": _position_list(obj.position),
         "actions": sorted(obj.actions.keys()),
+        "appearance": obj.appearance,
     }
 
 
@@ -40,6 +41,7 @@ def serialize_agent(agent: Agent, *, include_private: bool = False) -> dict[str,
         "position": _position_list(agent.position),
         "passive_result": agent.passive_result,
         "memory_module": agent.memory.module_id,
+        "appearance": agent.appearance,
     }
     if include_private:
         data["personality"] = agent.personality

@@ -24,9 +24,11 @@ def test_snapshot_default_shape():
     assert explorer["name"] == "Explorer"
     assert explorer["position"] == [1, 1]
     assert explorer["memory_module"] == "recent_turns"
+    assert explorer["appearance"] == ""
 
     ball = next(o for o in snap["objects"] if o["id"] == "obj_ball_01")
     assert ball["position"] == [2, 2]
+    assert ball["appearance"] == ""
     assert "kick" in ball["actions"]
 
 
@@ -114,6 +116,19 @@ def test_build_area_snapshot_standalone():
     assert snap["agents"][0]["id"] == "agent_01"
 
 
+def test_snapshot_appearance_round_trip():
+    session = Session.from_default()
+    session.run_command('edit-agent agent_01 appearance "tokens/explorer.png"')
+    session.run_command(
+        'create-object name "Crate" appearance "tokens/crate.png" at 3,3'
+    )
+    snap = session.snapshot()
+    explorer = snap["agents"][0]
+    assert explorer["appearance"] == "tokens/explorer.png"
+    crate = next(o for o in snap["objects"] if o["name"] == "Crate")
+    assert crate["appearance"] == "tokens/crate.png"
+
+
 def test_serialize_agent_public_fields():
     session = Session.from_default()
     agent = session.get_active_agent()
@@ -124,4 +139,5 @@ def test_serialize_agent_public_fields():
         "position",
         "passive_result",
         "memory_module",
+        "appearance",
     }

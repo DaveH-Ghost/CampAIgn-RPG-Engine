@@ -66,6 +66,40 @@ def test_format_full_list_initial_world():
     assert text.index("Agents in area:") < text.index("Objects in area:")
 
 
+def test_create_object_with_appearance():
+    area = create_initial_area()
+    obj, _ = create_object_from_args(
+        area,
+        'name "Crate" appearance "tokens/crate.png" at 0,0',
+    )
+    assert obj.appearance == "tokens/crate.png"
+
+
+def test_edit_appearance_does_not_invalidate_look():
+    area = create_initial_area()
+    agent = area.get_agent()
+    perform_look(agent, area, "obj_ball_01")
+    edit_object_from_args(area, 'obj_ball_01 appearance "tokens/ball.png"')
+    assert agent.memory.has_looked_at("obj_ball_01")
+    assert area.get_object_by_id("obj_ball_01").appearance == "tokens/ball.png"
+
+
+def test_create_agent_with_appearance():
+    area = create_initial_area()
+    agent, _ = create_agent_from_args(
+        area,
+        'name "Scout" personality "x" appearance "tokens/scout.png" at 0,0',
+    )
+    assert agent.appearance == "tokens/scout.png"
+
+
+def test_edit_agent_appearance():
+    area = create_initial_area()
+    result = edit_agent_from_args(area, 'agent_01 appearance "tokens/explorer.png"')
+    assert result.ok
+    assert area.get_agent_by_id("agent_01").appearance == "tokens/explorer.png"
+
+
 def test_create_object_with_pdesc_shows_passive_and_question_mark():
     area = create_initial_area()
     agent = area.get_agent()
