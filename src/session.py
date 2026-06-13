@@ -142,6 +142,29 @@ class Session:
             include_examples=self.include_examples,
         )
 
+    def snapshot(
+        self,
+        *,
+        include_private: bool = False,
+        include_passive_vision: bool = True,
+    ) -> dict:
+        """
+        JSON-friendly view of the session's area for web clients.
+
+        Omits ``personality`` and other LLM-only agent fields unless
+        ``include_private`` is true. Includes ``passive_vision`` for the
+        active agent by default.
+        """
+        from src.snapshot import build_area_snapshot
+
+        return build_area_snapshot(
+            self.area,
+            active_agent_id=self.active_agent_id,
+            session_turn=self.session_turn,
+            include_private=include_private,
+            include_passive_vision=include_passive_vision,
+        )
+
     # ------------------------------------------------------------------
     # Turns
     # ------------------------------------------------------------------

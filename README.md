@@ -260,7 +260,7 @@ That's the whole magic.
 
 ## Running tests
 
-Tests use [pytest](https://docs.pytest.org/) and run **without** an API key or network access (**228 tests**). They cover V0.1 perception/editing/multi-agent behavior plus V0.2 coordinate move, compound turns, object interact, memory modules, and rolling summary.
+Tests use [pytest](https://docs.pytest.org/) and run **without** an API key or network access (**258 tests**). They cover V0.1 perception/editing/multi-agent behavior plus V0.2 coordinate move, compound turns, object interact, memory modules, and rolling summary; V0.3 Session API, Area model, and snapshots.
 
 ### Run all tests
 
@@ -300,6 +300,9 @@ uv run pytest -x
 | `tests/test_compound_turn.py` | Compound orchestration, `TurnRecord.steps`, step-compound parser |
 | `tests/test_object_actions.py` | Effect registry, interact range/vision, `delete_self`, ball `kick` |
 | `tests/test_area.py` | Initial demo area, grid rules, passive vision baseline |
+| `tests/test_area_config.py` | Configurable grid bounds and `area_description` |
+| `tests/test_session.py` | Session API — turns, commands, active agent, `build_prompt` |
+| `tests/test_session_snapshot.py` | `Session.snapshot()` JSON shape, privacy, post-turn state |
 | `tests/test_simulation.py` | Compound turns, memory side effects, prompts |
 | `tests/test_perception.py` | V0.1 `[?]` / stale vision for objects and cross-agent invalidation |
 | `tests/test_area_edit.py` | Area editing commands (create/edit/delete, listings, object actions) |
