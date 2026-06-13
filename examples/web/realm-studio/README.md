@@ -4,13 +4,14 @@ Example web app for [Realm-Fabric](https://github.com/) — wraps the engine `Se
 
 **Location:** `examples/web/realm-studio` in the Realm-Fabric repo.
 
-**Status:** **0.3.1c** — grid UI + right-click create/edit/delete and active-agent switch.
+**Status:** **0.3.1d** — grid UI, right-click editing, and LLM **Run turn**.
 
 ## Prerequisites
 
 - Python ≥3.11
 - [uv](https://docs.astral.sh/uv/)
 - Realm-Fabric engine at repo root (this example uses a path dependency on `realm-fabric`)
+- **OpenRouter API key** for LLM turns (see [Environment](#environment))
 
 ## Setup
 
@@ -19,6 +20,13 @@ From this directory:
 ```powershell
 cd examples\web\realm-studio
 uv sync
+```
+
+Copy the repo root `.env.example` to `.env` (or create `.env` here) and set your key:
+
+```powershell
+copy ..\..\..\.env.example .env
+# Edit .env — set OPENROUTER_API_KEY=sk-or-...
 ```
 
 ## Run (dev server)
@@ -39,13 +47,13 @@ Alternative:
 uv run uvicorn backend.app:app --host 127.0.0.1 --port 8765 --reload
 ```
 
-## UI (0.3.1b–c)
+## UI (0.3.1b–d)
 
 - **Grid** — agents (green) and objects (purple) at snapshot positions; active agent marked with ★
 - **Right-click** empty tile → create object or agent; right-click chip → edit, delete, or **Play as** (agents)
 - **Stacked tiles** — manage menu lists entities on the cell
-- **Toolbar** — active-agent dropdown (same as Play as; no turn consumed)
-- **Refresh** — manual re-fetch; successful edits auto-refresh
+- **Toolbar** — active-agent dropdown; **Run turn ▶** calls the LLM for the active agent
+- **Refresh** — manual re-fetch; successful edits and turns auto-refresh
 
 **Note:** `realm-studio` and the terminal `realm` CLI use separate in-memory sessions — CLI edits do not appear in the browser.
 
@@ -57,8 +65,29 @@ uv run uvicorn backend.app:app --host 127.0.0.1 --port 8765 --reload
 | `GET` | `/api/state` | Engine `Session.snapshot()` |
 | `POST` | `/api/command` | `{ "line": "create-object ..." }` → `run_command` |
 | `POST` | `/api/active-agent` | `{ "name_or_id": "Explorer" }` → `set_active_agent` |
+| `POST` | `/api/turn` | LLM compound turn for active (or optional `agent_id`) agent |
 
-LLM turns arrive in **0.3.1d** (`POST /api/turn`).
+### `POST /api/turn` body
+
+```json
+{}
+```
+
+Optional fields:
+
+- `agent_id` — run for a specific agent instead of the active one
+- `include_examples` — include few-shot examples in the prompt (default: off)
+
+Response on success:
+
+```json
+{
+  "ok": true,
+  "message": "Composite result text…",
+  "snapshot": { "...": "..." },
+  "steps": [{ "kind": "speak", "result": "…", "...": "…" }]
+}
+```
 
 ## Tests
 
@@ -66,11 +95,18 @@ LLM turns arrive in **0.3.1d** (`POST /api/turn`).
 uv run pytest
 ```
 
-Uses FastAPI `TestClient` — no API key or running server required.
+Uses FastAPI `TestClient` with a mocked LLM — no API key or running server required.
 
 ## Environment
 
-**0.3.1c** does not call the LLM. For **0.3.1d**, copy `.env` with `OPENROUTER_API_KEY` to the repo root or this folder.
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `OPENROUTER_API_KEY` | For **Run turn** | OpenRouter API key ([get one](https://openrouter.ai/)) |
+| `OPENROUTER_MODEL` | No | Model override (default: `deepseek/deepseek-v4-flash`) |
+
+`python-dotenv` loads `.env` from the working directory when the server starts. Place `.env` in this folder or the repo root.
+
+Area edits (`POST /api/command`) do not call the LLM.
 
 ## Dev: test stacked objects (temporary)
 

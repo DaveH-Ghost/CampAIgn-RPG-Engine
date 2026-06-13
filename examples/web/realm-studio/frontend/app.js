@@ -1,13 +1,14 @@
 /**
- * realm-studio frontend — grid + context menus (V0.3.1b/c).
+ * realm-studio frontend — grid + context menus + LLM turn (V0.3.1b–d).
  */
 
-import { getState } from "./api.js";
+import { getState, postTurn } from "./api.js";
 import {
   bindActiveAgentSelect,
   bindGridContextMenu,
   initUi,
   renderActiveAgentSelect,
+  showToast,
 } from "./ui.js";
 
 const statusEl = document.getElementById("status");
@@ -15,8 +16,10 @@ const gridEl = document.getElementById("grid");
 const snapshotEl = document.getElementById("snapshot");
 const sessionMetaEl = document.getElementById("session-meta");
 const activeAgentSelect = document.getElementById("active-agent-select");
+const runTurnBtn = document.getElementById("run-turn");
 
 let lastSnapshot = null;
+let turnInFlight = false;
 
 function posKey(x, y) {
   return `${x},${y}`;
@@ -126,12 +129,46 @@ async function fetchState() {
   try {
     const data = await getState();
     renderState(data);
-    const active = data.agents.find((a) => a.id === data.active_agent_id);
-    statusEl.textContent = `Turn ${data.session_turn} — ${active ? active.name : data.active_agent_id}`;
+    updateStatusLine(data);
   } catch (err) {
     gridEl.innerHTML = "";
     snapshotEl.textContent = String(err);
     statusEl.textContent = "Error";
+  }
+}
+
+function updateStatusLine(data) {
+  const active = data.agents.find((a) => a.id === data.active_agent_id);
+  statusEl.textContent = `Turn ${data.session_turn} — ${active ? active.name : data.active_agent_id}`;
+}
+
+async function runTurn() {
+  if (turnInFlight) return;
+  turnInFlight = true;
+  runTurnBtn.disabled = true;
+  statusEl.textContent = "Running LLM turn…";
+  try {
+    const result = await postTurn({});
+    if (!result.ok) {
+      showToast(result.message, true);
+      statusEl.textContent = "Turn failed";
+      return;
+    }
+    if (result.snapshot) {
+      renderState(result.snapshot);
+      updateStatusLine(result.snapshot);
+    } else {
+      await fetchState();
+    }
+    const stepCount = Array.isArray(result.steps) ? result.steps.length : 0;
+    const suffix = stepCount ? ` (${stepCount} step${stepCount === 1 ? "" : "s"})` : "";
+    showToast(`${result.message}${suffix}`, false);
+  } catch (err) {
+    showToast(String(err.message || err), true);
+    statusEl.textContent = "Error";
+  } finally {
+    turnInFlight = false;
+    runTurnBtn.disabled = false;
   }
 }
 
@@ -143,4 +180,5 @@ bindGridContextMenu(gridEl);
 bindActiveAgentSelect(activeAgentSelect, fetchState);
 
 document.getElementById("refresh").addEventListener("click", fetchState);
+runTurnBtn.addEventListener("click", runTurn);
 fetchState();

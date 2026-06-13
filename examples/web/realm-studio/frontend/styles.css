@@ -49,6 +49,21 @@ button:hover {
   background: #353540;
 }
 
+.run-turn-btn {
+  border-color: #3d6a54;
+  background: #2d4a3e;
+  color: #c8f0d8;
+}
+
+.run-turn-btn:hover:not(:disabled) {
+  background: #3a5a4a;
+}
+
+.run-turn-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
 #status {
   font-size: 0.85rem;
   color: #7ec87e;

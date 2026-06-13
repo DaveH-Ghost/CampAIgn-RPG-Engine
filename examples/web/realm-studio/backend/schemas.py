@@ -9,3 +9,8 @@ class CommandRequest(BaseModel):
 
 class ActiveAgentRequest(BaseModel):
     name_or_id: str = Field(min_length=1)
+
+
+class TurnRequest(BaseModel):
+    agent_id: str | None = None
+    include_examples: bool | None = None

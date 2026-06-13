@@ -1,10 +1,13 @@
-"""realm-studio API tests (V0.3.1a–c)."""
+"""realm-studio API tests (V0.3.1a–d)."""
 
 import pytest
 from fastapi.testclient import TestClient
 
 from backend.app import create_app
-from backend.session_store import reset_session_store
+from backend.session_store import get_session_store, reset_session_store
+from src.llm.schemas import AgentCompoundTurn
+from src.llm.types import LLMResponse
+from src.session import SessionResult
 
 
 @pytest.fixture(autouse=True)
@@ -51,6 +54,65 @@ def test_index_page(client):
     assert 'id="grid"' in response.text
     assert 'id="context-menu"' in response.text
     assert 'id="active-agent-select"' in response.text
+    assert 'id="run-turn"' in response.text
+
+
+def _fake_compound_response(_prompt):
+    return LLMResponse(
+        parsed=AgentCompoundTurn(
+            reasoning="stay and speak",
+            move_target=None,
+            turn_action="speak",
+            content="Hello from the test.",
+        ),
+        raw_response="{}",
+    )
+
+
+def test_post_turn_success(client, monkeypatch):
+    monkeypatch.setattr(
+        "src.llm.client.get_compound_turn",
+        _fake_compound_response,
+    )
+
+    response = client.post("/api/turn", json={})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] is True
+    assert data["message"]
+    assert isinstance(data["steps"], list)
+    assert len(data["steps"]) >= 1
+    assert data["snapshot"]["session_turn"] == 1
+
+
+def test_post_turn_gate_blocked(client, monkeypatch):
+    def blocked(_agent_id=None):
+        return SessionResult(ok=False, message="Cannot run turn: consolidation pending.")
+
+    session = get_session_store().session
+    monkeypatch.setattr(session, "gate_agent_turn", blocked)
+
+    response = client.post("/api/turn", json={})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] is False
+    assert "consolidation" in data["message"].lower()
+
+    state = client.get("/api/state").json()
+    assert state["session_turn"] == 0
+
+
+def test_post_turn_missing_api_key(client, monkeypatch):
+    def fail_llm(_prompt):
+        raise RuntimeError("OPENROUTER_API_KEY not found.")
+
+    monkeypatch.setattr("src.llm.client.get_compound_turn", fail_llm)
+
+    response = client.post("/api/turn", json={})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] is False
+    assert "OPENROUTER_API_KEY" in data["message"]
 
 
 def test_post_command_create_object(client):

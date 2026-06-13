@@ -13,8 +13,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend.schemas import ActiveAgentRequest, CommandRequest
+from backend.schemas import ActiveAgentRequest, CommandRequest, TurnRequest
 from backend.session_store import get_session_store
+from backend.turn_runner import run_llm_turn
 
 _FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
@@ -59,6 +60,15 @@ def create_app() -> FastAPI:
         """Change the active agent without consuming a turn."""
         result = get_session_store().session.set_active_agent(body.name_or_id)
         return {"ok": result.ok, "message": result.message}
+
+    @app.post("/api/turn")
+    def post_turn(body: TurnRequest) -> dict[str, object]:
+        """Run one LLM compound turn for the active (or specified) agent."""
+        return run_llm_turn(
+            get_session_store().session,
+            agent_id=body.agent_id,
+            include_examples=body.include_examples,
+        )
 
     @app.get("/")
     def index() -> FileResponse:
