@@ -260,7 +260,7 @@ That's the whole magic.
 
 ## Running tests
 
-Tests use [pytest](https://docs.pytest.org/) and run **without** an API key or network access (**266 tests**). They cover V0.1 perception/editing/multi-agent behavior plus V0.2 coordinate move, compound turns, object interact, memory modules, and rolling summary; V0.3 Session API, Area model, snapshots, and GameProfile templates.
+Tests use [pytest](https://docs.pytest.org/) and run **without** an API key or network access (**269 tests**). They cover V0.1 perception/editing/multi-agent behavior plus V0.2 coordinate move, compound turns, object interact, memory modules, and rolling summary; V0.3 Session API, Area model, snapshots, and GameProfile templates.
 
 ### Run all tests
 

@@ -1,7 +1,7 @@
 """
 main.py
 
-Entry point for manual stepping in V0.2.5 (single LLM call per compound turn).
+Entry point for manual stepping — V0.3.0d reference CLI on ``Session``.
 
 Supports:
 - step-compound         : manually simulate one compound turn (move / look / speak)
@@ -17,24 +17,13 @@ Supports:
 Typing an agent's name (e.g. "Explorer") runs an LLM turn for that agent.
 Use switch to inspect another agent's vision/state without consuming a turn.
 
-Future: real autonomous runs, better logging, etc.
-
 Run with (from the project root):
 
-    # Easiest way (few-shots OFF by default for token efficiency)
     uv run python src/main.py
-
-    # To include few-shot examples in the compound turn prompt:
     uv run python src/main.py --with-fewshots
+    uv run realm
 
-    # After `uv sync`, you can also do:
-    # uv run realm
-    # (if the entry point was picked up)
-
-    # To use real LLM calls, copy .env.example to .env and add your OPENROUTER_API_KEY
-
-    # Inside, use 'fewshots off' to toggle at runtime too.
-
+Inside, use 'fewshots off' to toggle at runtime too.
 """
 
 import argparse
@@ -42,48 +31,29 @@ import os
 import string
 import sys
 
-# Ensure 'src' package is importable no matter how this script is launched
-# (uv run, python src/main.py, double-click, etc.)
 _project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
 import cmd
 
-from src.log_utils import close_file_logging, log_error, log_turn, setup_file_logging
-from src.area import create_initial_area
+from src.agent import Agent
 from src.compound_stepper import parse_compound_step_arg
-from src.simulation import (
-    execute_action_phase,
-    execute_nav_phase,
-    next_turn_number_for_agent,
-    run_compound_turn,
-)
+from src.game_profile import default_compound_profile
+from src.log_utils import close_file_logging, log_error, log_turn, setup_file_logging
 from src.llm.schemas import AgentCompoundTurn
-from src.llm.prompt import build_compound_prompt
 from src.perception import build_passive_vision
-from src.area_edit import (
-    create_agent_from_args,
-    create_object_from_args,
-    delete_agent_by_id,
-    delete_object_by_id,
-    edit_agent_from_args,
-    edit_object_from_args,
-    format_agents_list,
-    format_full_list,
-    format_objects_list,
-)
-
-# Lazy import for the client so you can run the manual stepper
-# without an OPENROUTER_API_KEY
+from src.session import Session
+from src.simulation import execute_action_phase, execute_nav_phase
 
 
 class ManualStepper(cmd.Cmd):
-    # Allow hyphenated commands (create-object, edit-agent, etc.)
+    """Reference CLI client — all simulation state lives on ``Session``."""
+
     identchars = string.ascii_letters + string.digits + "_-"
 
     intro = (
-        "Realm-Fabric V0.2.5 Manual Stepper\n"
+        "Realm-Fabric V0.3 Manual Stepper\n"
         "Type 'help' or '?' for commands.\n"
         "- 'step-compound ...'   : manual compound turn (e.g. step-compound 2,3 look obj_ball_01 speak Hi)\n"
         "- 'run' : LLM turn for the active agent\n"
@@ -103,53 +73,57 @@ class ManualStepper(cmd.Cmd):
     )
     prompt = "(realm) "
 
-    def __init__(self, include_examples: bool = False):
+    def __init__(
+        self,
+        include_examples: bool = False,
+        *,
+        session: Session | None = None,
+    ):
         super().__init__()
-        self.area = create_initial_area()
-        # Case-insensitive name dispatch for default() and switch
-        self.agents: dict[str, "Agent"] = {}
-        self._rebuild_agents_dict_from_world()
-        self.agent = self.area.get_agent()  # current active agent
-        self.session_turn = 0  # console/log label only; not stored in TurnRecord
-        self.include_examples = include_examples  # for prompt builder, toggleable for experiments
+        self.session = session or Session.from_profile(
+            default_compound_profile(),
+            include_examples=include_examples,
+        )
 
     # ------------------------------------------------------------------
-    # Agent dict sync (Section 3)
+    # Session delegation (backward compat for tests)
     # ------------------------------------------------------------------
 
-    def _register_agent(self, agent: "Agent") -> None:
-        """Add an agent to the name dispatch dict after create-agent."""
-        self.agents[agent.name.lower()] = agent
+    @property
+    def area(self):
+        return self.session.area
 
-    def _unregister_agent(self, agent: "Agent") -> None:
-        """Remove an agent from the dict after delete-agent."""
-        self.agents.pop(agent.name.lower(), None)
+    @property
+    def agent(self) -> Agent:
+        return self.session.get_active_agent()
 
-    def _rename_agent_in_dict(self, old_name_lower: str, agent: "Agent") -> None:
-        """Update dict keys after edit-agent name change."""
-        if old_name_lower in self.agents:
-            del self.agents[old_name_lower]
-        self.agents[agent.name.lower()] = agent
+    @agent.setter
+    def agent(self, agent: Agent) -> None:
+        self.session.active_agent_id = agent.id
 
-    def _resolve_agent_by_name(self, name: str) -> "Agent | None":
-        """Case-insensitive agent lookup via dispatch dict (rebuilds if stale)."""
-        key = name.strip().lower()
-        agent = self.agents.get(key)
-        if agent is not None:
-            return agent
-        self._rebuild_agents_dict_from_world()
-        return self.agents.get(key)
+    @property
+    def session_turn(self) -> int:
+        return self.session.session_turn
 
-    def _rebuild_agents_dict_from_world(self) -> None:
-        """Rebuild name dispatch dict from area.agents."""
-        self.agents = {a.name.lower(): a for a in self.area.agents}
+    @property
+    def include_examples(self) -> bool:
+        return self.session.include_examples
+
+    @include_examples.setter
+    def include_examples(self, value: bool) -> None:
+        self.session.include_examples = value
+
+    def _print_command(self, line: str) -> None:
+        result = self.session.run_command(line.strip())
+        print(result.message)
+
+    # ------------------------------------------------------------------
+    # Commands
+    # ------------------------------------------------------------------
 
     def do_run(self, arg):
         """
         Run an LLM turn for the currently active agent.
-
-        Same as typing the active agent's name, but does not require
-        remembering which agent is active after switch.
 
         Usage:
             run
@@ -163,8 +137,6 @@ class ManualStepper(cmd.Cmd):
         """
         Change the active agent without consuming a turn or calling the LLM.
 
-        Typing an agent's name still runs an LLM turn — switch is separate.
-
         Usage:
             switch Goblin
             switch Explorer
@@ -175,13 +147,11 @@ class ManualStepper(cmd.Cmd):
             print("Use 'agents' or 'list' to see agent names.")
             return
 
-        agent = self._resolve_agent_by_name(name)
-        if agent is None:
+        result = self.session.set_active_agent(name)
+        if not result.ok:
             print(f"Agent '{name}' not found. Use 'agents' or 'list' to see agents.")
             return
-
-        self.agent = agent
-        print(f"Active agent: {agent.name} ({agent.id}) at {agent.position}")
+        print(result.message)
 
     def do_vision(self, arg):
         """Show current passive vision."""
@@ -189,9 +159,7 @@ class ManualStepper(cmd.Cmd):
 
     def do_prompt(self, arg):
         """Show the compound turn prompt for the active agent."""
-        prompt = build_compound_prompt(
-            self.agent, self.area, include_examples=self.include_examples
-        )
+        prompt = self.session.build_prompt()
         print(
             f"[Compound turn prompt - {len(prompt)} chars] "
             f"(fewshots={'on' if self.include_examples else 'off'})\n"
@@ -200,173 +168,65 @@ class ManualStepper(cmd.Cmd):
 
     def do_state(self, arg):
         """Print basic agent and area state (for the currently active agent)."""
-        print(f"Session turns (log label): {self.session_turn}")
-        print(
-            f"Active agent: {self.agent.name} ({self.agent.id}) at {self.agent.position}"
-        )
-        from src.memory_modules.registry import format_memory_module_label
-        from src.memory_modules.rolling_summary import RollingSummaryModule
-        from src.memory_modules.salient_turns import SalientTurnsModule
-
-        print(format_memory_module_label(self.agent.memory.module))
-        if isinstance(self.agent.memory.module, SalientTurnsModule):
-            print(f"Memory char budget: {self.agent.memory.module.char_budget}")
-        if isinstance(self.agent.memory.module, RollingSummaryModule):
-            module = self.agent.memory.module
-            print(f"Memory summary interval: {module.summary_interval}")
-            print(f"Memory summary max chars: {module.max_summary_chars}")
-            print(f"Memory summary detail tail: {module.summary_tail}")
-            print(f"Memory consolidation: {module.consolidation_state}")
-            last_summarized = module.last_summarized_turn_number
-            print(
-                "Memory last summarized at turn: "
-                f"{last_summarized if last_summarized else '(never)'}"
-            )
-            detail_numbers = [t.turn_number for t in module.stored_turns]
-            print(
-                "Memory detail turns: "
-                f"{detail_numbers if detail_numbers else '(none)'}"
-            )
-            if module.summary:
-                print(f"Rolling summary length: {len(module.summary)} chars")
-        print(f"Memory own turns (total): {self.agent.memory.turn_count}")
-        print(f"Looked at (current): {sorted(self.agent.memory.looked_at)}")
-        print(f"Ever looked at: {sorted(self.agent.memory.ever_looked)}")
-        print(f"Few-shots in prompts: {'on' if self.include_examples else 'off'}")
-        if self.agent.memory.turns:
-            last = self.agent.memory.turns[-1]
-            print(f"Last turn ({last.turn_number}) steps:")
-            for step in last.steps:
-                target = f" target={step.target}" if step.target else ""
-                content = f" content={step.content!r}" if step.content else ""
-                print(f"  - {step.kind}{target}{content}: {step.result}")
-            print(f"Composite result: {last.result}")
-        print(f"passive_result: {self.agent.passive_result or '(none)'}")
-        objs = [(o.name, o.id, o.position) for o in self.area.get_objects()]
-        print(f"Objects: {objs}")
+        print(self.session.format_debug_state())
 
     def do_objects(self, arg):
-        """List all objects in the area (id, name, position, actions). Does not consume a turn."""
-        print(format_objects_list(self.area))
+        """List all objects in the area. Does not consume a turn."""
+        self._print_command("objects")
 
     def do_effects(self, arg):
-        """List registered object interaction effects (read-only). Does not consume a turn."""
-        from src.object_effects import format_effects_list
-
-        print(format_effects_list())
+        """List registered object interaction effects (read-only)."""
+        self._print_command("effects")
 
     def do_memory_modules(self, arg):
-        """List registered agent memory modules (read-only). Does not consume a turn."""
-        from src.memory_modules.registry import format_memory_modules_list
-
-        print(format_memory_modules_list())
+        """List registered agent memory modules (read-only)."""
+        self._print_command("memory-modules")
 
     def do_agents(self, arg):
-        """List all agents in the area (id, name, position, active marker). Does not consume a turn."""
-        print(format_agents_list(self.area, self.agent))
+        """List all agents in the area. Does not consume a turn."""
+        self._print_command("agents")
 
     def do_list(self, arg):
-        """List all agents and objects (same as running agents then objects). Does not consume a turn."""
-        print(format_full_list(self.area, self.agent))
+        """List all agents and objects. Does not consume a turn."""
+        self._print_command("list")
 
     def do_create_object(self, arg):
-        """
-        Create a new object in the area.
-
-        Usage:
-            create-object name "Ceramic Ball" pdesc "A ball on the floor." desc "A worn ball." at 2,2
-            create-object name "Cookie" pdesc "A cookie." desc "Tasty." at 2,2 action eat range 1 \\
-                effect delete_self result "You ate the cookie." passive "{actor} ate the cookie."
-        """
-        obj, message = create_object_from_args(self.area, arg)
-        print(message)
+        """Create a new object in the area."""
+        self._print_command(f"create-object {arg}")
 
     def do_edit_object(self, arg):
-        """
-        Edit an existing object by id.
-
-        Usage:
-            edit-object obj_ball_01 pdesc "A ball." desc "New description."
-            edit-object obj_ball_01 name "Old Ball" pos 3,3
-            edit-object obj_cookie_01 add-action eat range 1 effect delete_self result "..." passive "..."
-            edit-object obj_cookie_01 remove-action eat
-        """
-        print(edit_object_from_args(self.area, arg))
+        """Edit an existing object by id."""
+        self._print_command(f"edit-object {arg}")
 
     def do_delete_object(self, arg):
-        """
-        Delete an object by id.
-
-        Usage:
-            delete-object obj_ball_01
-        """
-        print(delete_object_by_id(self.area, arg))
+        """Delete an object by id."""
+        self._print_command(f"delete-object {arg}")
 
     def do_create_agent(self, arg):
-        """
-        Create a new agent in the area. Does not change the active agent.
-
-        Usage:
-            create-agent name "Goblin" pdesc "A short figure." desc "A grumpy goblin." personality "You are a grumpy goblin." at 0,3
-            create-agent name "Scribe" personality "Quiet." memory salient_turns memory-budget 2500 at 2,2
-            create-agent name "Archivist" personality "..." memory rolling_summary at 1,1
-            create-agent name "Archivist" personality "..." memory rolling_summary memory-summary-interval 15 memory-summary-max 5000 memory-summary-tail 3 at 1,1
-        """
-        agent, message = create_agent_from_args(self.area, arg)
-        if agent is not None:
-            self._register_agent(agent)
-        print(message)
+        """Create a new agent in the area. Does not change the active agent."""
+        self._print_command(f"create-agent {arg}")
 
     def do_edit_agent(self, arg):
-        """
-        Edit an existing agent by id.
-
-        Usage:
-            edit-agent agent_01 desc "Updated appearance." personality "Updated personality."
-            edit-agent agent_01 name "Scout" pos 2,1
-
-        Memory module cannot be changed here (set only at create-agent).
-        """
-        result = edit_agent_from_args(self.area, arg)
-        if result.ok and result.agent is not None and result.old_name_lower:
-            self._rename_agent_in_dict(result.old_name_lower, result.agent)
-        print(result.message)
+        """Edit an existing agent by id."""
+        self._print_command(f"edit-agent {arg}")
 
     def do_delete_agent(self, arg):
-        """
-        Delete an agent by id. Cannot delete the last agent.
-
-        Usage:
-            delete-agent agent_goblin_01
-        """
-        result = delete_agent_by_id(self.area, arg.strip())
-        reassigned_active = False
-        if result.ok and result.deleted_agent is not None:
-            self._unregister_agent(result.deleted_agent)
-            if self.agent.id == result.deleted_agent.id:
-                self.agent = self.area.agents[0]
-                reassigned_active = True
-        print(result.message)
-        if reassigned_active:
-            print(
-                f"Active agent: {self.agent.name} ({self.agent.id}) "
-                f"at {self.agent.position}"
-            )
+        """Delete an agent by id. Cannot delete the last agent."""
+        self._print_command(f"delete-agent {arg}")
 
     def do_fewshots(self, arg):
         """
         Toggle or show the few-shot examples setting for prompts.
-        (Default is now OFF for token efficiency.)
 
         Usage:
-            fewshots          # show current state
-            fewshots on       # enable nav + action few-shot examples
-            fewshots off      # disable
+            fewshots
+            fewshots on
+            fewshots off
         """
         arg = arg.strip().lower()
         if arg in ("on", "yes", "true", "1", "enable"):
             self.include_examples = True
-            print("Few-shot examples: ENABLED (included in navigation and action prompts)")
+            print("Few-shot examples: ENABLED (included in compound turn prompts)")
         elif arg in ("off", "no", "false", "0", "disable"):
             self.include_examples = False
             print("Few-shot examples: DISABLED (removed from prompts to save tokens)")
@@ -383,7 +243,6 @@ class ManualStepper(cmd.Cmd):
             step-compound 2,3 look obj_ball_01 speak Hello.
             step-compound - look obj_ball_01
             step-compound 2,3 interact obj_cookie_01 eat
-            step-compound 2,3
         """
         if not arg.strip():
             print(
@@ -401,35 +260,26 @@ class ManualStepper(cmd.Cmd):
 
     def do_step_nav(self, arg):
         """
-        Debug: run navigation move only.
-
-        Does not create a TurnRecord or increment session_turn. Position changes
-        persist — use step-compound for a full recorded turn.
+        Debug: run navigation move only (no TurnRecord, no session_turn increment).
 
         Usage:
             step-nav 2,3
             step-nav -
         """
-        move_target = None if arg.strip().lower() in ("-", "stay", "") else arg.strip()
-        if arg.strip().lower() in ("-", "stay"):
+        if arg.strip().lower() in ("-", "stay", ""):
             print("Staying in place (no move).")
             return
         nav = AgentCompoundTurn(
             reasoning="[manual step-nav]",
-            move_target=move_target or None,
+            move_target=arg.strip(),
             turn_action="none",
         )
-        steps = execute_nav_phase(self.agent, self.area, nav)
-        for step in steps:
+        for step in execute_nav_phase(self.agent, self.area, nav):
             print(step.result)
 
     def do_step_action(self, arg):
         """
-        Debug: run action phase only from current position.
-
-        Does not create a TurnRecord or increment session_turn. Side effects
-        (look memory, passive_result) may persist — use step-compound for a
-        full recorded turn.
+        Debug: run action phase only from current position (no TurnRecord).
 
         Usage:
             step-action look obj_ball_01
@@ -441,40 +291,30 @@ class ManualStepper(cmd.Cmd):
         except Exception as e:
             print(f"Invalid step-action: {e}")
             return
-        steps = execute_action_phase(self.agent, self.area, parsed.turn)
-        for step in steps:
+        for step in execute_action_phase(self.agent, self.area, parsed.turn):
             print(step.result)
-
-    def _gate_agent_turn(self, agent: "Agent") -> bool:
-        """Return False if the agent cannot act yet (e.g. memory consolidation)."""
-        from src.memory_modules.rolling_summary import MemoryConsolidationError
-
-        try:
-            agent.memory.ensure_ready_for_turn()
-        except MemoryConsolidationError as exc:
-            print(f"\nCannot run turn for {agent.name}: {exc}")
-            return False
-        return True
 
     def _run_manual_compound(self, turn: AgentCompoundTurn) -> None:
         agent = self.agent
-        if not self._gate_agent_turn(agent):
+        gate = self.session.gate_agent_turn()
+        if not gate.ok:
+            print(gate.message)
             return
-        turn_number = next_turn_number_for_agent(agent)
-        record = run_compound_turn(
-            agent, self.area, turn, turn_number, session_turn=self.session_turn + 1
-        )
-        self.session_turn += 1
+        turn_number = agent.memory.turn_count + 1
+        result = self.session.run_compound_turn(turn)
+        if not result.ok or result.record is None:
+            print(result.message)
+            return
         log_turn(
             self.session_turn,
             result=(
                 f"Agent: {agent.name} (turn {turn_number})\n"
-                f"Steps: {len(record.steps)}\n"
-                f"Result: {record.result}"
+                f"Steps: {len(result.record.steps)}\n"
+                f"Result: {result.record.result}"
             ),
             always_to_file=False,
         )
-        print(record.result)
+        print(result.message)
 
     def onecmd(self, line):
         """Support hyphenated commands like create-object and edit-agent."""
@@ -510,41 +350,33 @@ class ManualStepper(cmd.Cmd):
         print()
         return self.do_quit(arg)
 
-    # ------------------------------------------------------------------
-    # LLM-driven turns by typing agent name (supports future multi-agent)
-    # ------------------------------------------------------------------
-
     def default(self, line: str):
-        """
-        If the user types an agent's name (instead of a built-in command),
-        run that agent using the LLM to decide its action.
-        This is the main way to let agents "think" autonomously.
-        """
+        """Typing an agent name runs an LLM turn for that agent."""
         line = line.strip()
         if not line:
             return
 
-        agent = self._resolve_agent_by_name(line)
+        agent = self.session.get_agent(line)
         if agent is not None:
             self._run_llm_turn_for_agent(agent)
             return
 
-        # Not an agent name — let cmd.Cmd handle it (unknown command)
         super().default(line)
 
-    def _run_llm_turn_for_agent(self, agent: "Agent"):
+    def _run_llm_turn_for_agent(self, agent: Agent):
         """Single LLM call for one compound agent turn."""
         self.agent = agent
-        if not self._gate_agent_turn(agent):
+        gate = self.session.gate_agent_turn()
+        if not gate.ok:
+            print(gate.message)
             return
+
         print(f"\n=== Running LLM for {agent.name} ===")
 
         try:
             from src.llm.client import get_compound_turn
 
-            prompt = build_compound_prompt(
-                agent, self.area, include_examples=self.include_examples
-            )
+            prompt = self.session.build_prompt()
             print(
                 f"Prompt: {len(prompt)} chars "
                 f"(fewshots={'on' if self.include_examples else 'off'})"
@@ -552,8 +384,7 @@ class ManualStepper(cmd.Cmd):
             print("Calling LLM...")
             response = get_compound_turn(prompt)
             compound_turn: AgentCompoundTurn = response.parsed
-
-            turn_number = next_turn_number_for_agent(agent)
+            turn_number = agent.memory.turn_count + 1
             pending_session = self.session_turn + 1
 
             log_turn(
@@ -572,30 +403,30 @@ class ManualStepper(cmd.Cmd):
                 always_to_file=False,
             )
 
-            record = run_compound_turn(
-                agent,
-                self.area,
-                compound_turn,
-                turn_number,
-                session_turn=pending_session,
-            )
-            self.session_turn += 1
+            result = self.session.run_compound_turn(compound_turn)
+            if not result.ok or result.record is None:
+                print(result.message)
+                return
 
-            print(f"\n--- {agent.name} turn {turn_number} (session {self.session_turn}) ---")
-            for step in record.steps:
+            print(
+                f"\n--- {agent.name} turn {turn_number} "
+                f"(session {self.session_turn}) ---"
+            )
+            for step in result.record.steps:
                 print(f"  [{step.kind}] {step.result}")
-            print(f"Composite: {record.result}")
+            print(f"Composite: {result.message}")
             print()
 
         except Exception as e:
             log_error(f"LLM call failed for {agent.name}", e)
             import traceback
+
             traceback.print_exc()
 
 
 def main():
-    """Entry point for the manual stepper (used by `uv run realm`)."""
-    parser = argparse.ArgumentParser(description="Realm-Fabric V0.2.5 Manual Stepper")
+    """Entry point for the manual stepper (used by ``uv run realm``)."""
+    parser = argparse.ArgumentParser(description="Realm-Fabric V0.3 Manual Stepper")
     parser.add_argument(
         "--log",
         action="store_true",

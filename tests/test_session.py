@@ -134,6 +134,26 @@ def test_delete_active_agent_reassigns():
     assert "Active agent:" in result.message
 
 
+def test_format_debug_state_after_compound_turn():
+    session = Session.from_default()
+    session.run_compound_turn(
+        AgentCompoundTurn(
+            reasoning="move",
+            move_target="1,2",
+            turn_action="none",
+        ),
+    )
+    report = session.format_debug_state()
+    assert "Session turns (log label): 1" in report
+    assert "Last turn" in report
+    assert "passive_result:" in report
+
+
+def test_gate_agent_turn_ready_by_default():
+    session = Session.from_default()
+    assert session.gate_agent_turn().ok
+
+
 def test_web_handler_flow_create_then_turn():
     """Mirror what a FastAPI handler would do — no HTTP required."""
     session = Session.from_default()

@@ -30,6 +30,16 @@ def test_state_shows_step_breakdown_after_compound_turn(capsys):
     assert "Composite result:" in out
 
 
+def test_stepper_delegates_to_session():
+    from src.main import ManualStepper
+    from src.session import Session
+
+    stepper = ManualStepper()
+    assert isinstance(stepper.session, Session)
+    assert stepper.area is stepper.session.area
+    assert stepper.agent is stepper.session.get_active_agent()
+
+
 def test_run_logs_single_compound_phase(monkeypatch):
     from src.llm.types import LLMResponse
     from src.llm.schemas import AgentCompoundTurn

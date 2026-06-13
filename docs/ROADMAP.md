@@ -179,7 +179,7 @@ See [v0.3.0-changelog.md](v0.3.0-changelog.md) for slice plan (0.3.0a–e).
 - `**Session`** — single entry point for turns, area-edit commands, active agent, prompts (holds one `**Area**` today)
 - **JSON snapshot** — web-ready area state (agents, objects, grid; derived passive vision for active agent)
 - `**GameProfile`** — prompt templates + default area factory (SillyTavern-style customization without forking sim code); `**AgentCompoundTurn` only** — swappable schemas deferred to **V0.4**
-- **CLI refactor** — `ManualStepper` delegates to `Session` (reference client)
+- **CLI refactor** — `ManualStepper` delegates to `Session` (reference client) — ✅ **0.3.0d**
 - **Public package API** — importable engine for downstream projects
 - `**Area`** — configurable `GridBounds` + `area_description` (`create_area`, `create_initial_area`)
 - **Tests** — `tests/test_session.py`, `tests/test_area_config.py`; same pytest suite, no separate “web test” harness

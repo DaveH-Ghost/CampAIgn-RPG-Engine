@@ -192,9 +192,67 @@ class Session:
             include_passive_vision=include_passive_vision,
         )
 
+    def format_debug_state(self, name_or_id: Optional[str] = None) -> str:
+        """Human-readable agent/area debug report (CLI ``state`` command)."""
+        from src.memory_modules.registry import format_memory_module_label
+        from src.memory_modules.rolling_summary import RollingSummaryModule
+        from src.memory_modules.salient_turns import SalientTurnsModule
+
+        agent = self._resolve_agent_or_active(name_or_id)
+        lines = [
+            f"Session turns (log label): {self.session_turn}",
+            f"Active agent: {agent.name} ({agent.id}) at {agent.position}",
+            format_memory_module_label(agent.memory.module),
+        ]
+        module = agent.memory.module
+        if isinstance(module, SalientTurnsModule):
+            lines.append(f"Memory char budget: {module.char_budget}")
+        if isinstance(module, RollingSummaryModule):
+            lines.append(f"Memory summary interval: {module.summary_interval}")
+            lines.append(f"Memory summary max chars: {module.max_summary_chars}")
+            lines.append(f"Memory summary detail tail: {module.summary_tail}")
+            lines.append(f"Memory consolidation: {module.consolidation_state}")
+            last_summarized = module.last_summarized_turn_number
+            lines.append(
+                "Memory last summarized at turn: "
+                f"{last_summarized if last_summarized else '(never)'}"
+            )
+            detail_numbers = [t.turn_number for t in module.stored_turns]
+            lines.append(
+                "Memory detail turns: "
+                f"{detail_numbers if detail_numbers else '(none)'}"
+            )
+            if module.summary:
+                lines.append(f"Rolling summary length: {len(module.summary)} chars")
+        lines.extend(
+            [
+                f"Memory own turns (total): {agent.memory.turn_count}",
+                f"Looked at (current): {sorted(agent.memory.looked_at)}",
+                f"Ever looked at: {sorted(agent.memory.ever_looked)}",
+                f"Few-shots in prompts: {'on' if self.include_examples else 'off'}",
+            ]
+        )
+        if agent.memory.turns:
+            last = agent.memory.turns[-1]
+            lines.append(f"Last turn ({last.turn_number}) steps:")
+            for step in last.steps:
+                target = f" target={step.target}" if step.target else ""
+                content = f" content={step.content!r}" if step.content else ""
+                lines.append(f"  - {step.kind}{target}{content}: {step.result}")
+            lines.append(f"Composite result: {last.result}")
+        lines.append(f"passive_result: {agent.passive_result or '(none)'}")
+        objs = [(o.name, o.id, o.position) for o in self.area.get_objects()]
+        lines.append(f"Objects: {objs}")
+        return "\n".join(lines)
+
     # ------------------------------------------------------------------
     # Turns
     # ------------------------------------------------------------------
+
+    def gate_agent_turn(self, name_or_id: Optional[str] = None) -> SessionResult:
+        """Return ok=False if the agent cannot act yet (e.g. memory consolidation)."""
+        agent = self._resolve_agent_or_active(name_or_id)
+        return self._gate_agent_turn(agent)
 
     def run_compound_turn(
         self,
