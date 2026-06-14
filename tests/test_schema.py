@@ -34,6 +34,15 @@ def test_valid_compound_move():
     assert turn.move_target == "2,4"
 
 
+def test_valid_compound_move_to_entity_id():
+    turn = AgentCompoundTurn(
+        reasoning="To the ball.",
+        move_target="obj_ball_01",
+        turn_action="none",
+    )
+    assert turn.move_target == "obj_ball_01"
+
+
 def test_invalid_compound_cardinal_move():
     with pytest.raises(ValidationError) as exc_info:
         AgentCompoundTurn(

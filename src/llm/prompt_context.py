@@ -18,6 +18,7 @@ from src.perception import (
     get_available_look_targets,
 )
 from src.area import Area
+from src.move_target import format_move_instructions
 
 
 @dataclass(frozen=True)
@@ -57,14 +58,14 @@ def _character_block(agent: Agent) -> str:
 
 def _compound_turn_rules() -> str:
     return """Each turn you may plan a **compound turn** executed in this order:
-1. **Move** (optional): move to any in-bounds grid coordinate (x, y), or stay (move_target null).
+1. **Move** (optional): move to an in-bounds coordinate (x, y), an entity id (obj_* / agent_*), or stay (move_target null).
 2. **Look** (optional): examine one entity from passive vision (at most one look_target).
 3. **Turn action** (optional): speak, interact with a listed object action, or none.
 
 Important rules:
 - You plan from your **current** position and vision. Your move runs first; look and turn action happen **after** that move.
 - Only pick look/interact targets you expect to be valid after moving.
-- move: use move_target "x,y" (e.g. "2,3"), or null to stay. You cannot move outside the grid.
+- move: use move_target "x,y" (e.g. "2,3"), an entity id from the list below, or null to stay. You cannot move outside the grid.
 - look: optional; a list of objects you can look at will be provided.
 - Hidden detail is marked "[?]"; stale examined knowledge is "[?] [changed]".
 - Other agents show their most recent observable action on their vision line.
@@ -115,7 +116,7 @@ def compound_output_format() -> str:
         "(no extra text, no markdown):\n"
         "{\n"
         '  "reasoning": "Your private thoughts for the full turn (max 400 characters).",\n'
-        '  "move_target": "2,3" | null,\n'
+        '  "move_target": "2,3" | "obj_ball_01" | null,\n'
         '  "look_target": "obj_ball_01" | null,\n'
         '  "turn_action": "speak" | "interact" | "none",\n'
         '  "target": "obj_cookie_01" | null,\n'
@@ -137,7 +138,7 @@ def build_prompt_context(agent: Agent, area: Area) -> PromptContext:
         area_description=area.get_area_description(),
         grid_description=area.format_grid_description(),
         compound_rules=_compound_turn_rules(),
-        move_instructions=area.format_move_coordinate_rule(),
+        move_instructions=format_move_instructions(agent, area),
         look_and_interact=_look_and_interact_block(agent, area),
         output_format=compound_output_format(),
     )

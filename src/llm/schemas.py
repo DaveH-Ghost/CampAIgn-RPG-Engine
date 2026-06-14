@@ -9,6 +9,7 @@ from typing import Literal, Optional
 import re
 
 from src.coordinates import CoordinateParseError, parse_coordinate_target
+from src.move_target import validate_move_target_syntax
 
 
 TurnActionType = Literal["speak", "interact", "none"]
@@ -72,7 +73,7 @@ class AgentCompoundTurn(BaseModel):
     )
     move_target: Optional[str] = Field(
         default=None,
-        description='Grid coordinate as "x,y" (e.g. "2,3"), or null to stay in place.',
+        description='Grid coordinate "x,y", entity id (obj_* / agent_*), or null to stay.',
     )
     look_target: Optional[str] = Field(
         default=None,
@@ -109,10 +110,9 @@ class AgentCompoundTurn(BaseModel):
         if not str(v).strip():
             return None
         try:
-            parse_coordinate_target(v)
+            return validate_move_target_syntax(v)
         except CoordinateParseError as exc:
             raise ValueError(str(exc)) from exc
-        return v
 
     @field_validator("content")
     @classmethod
