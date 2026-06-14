@@ -1,4 +1,4 @@
-/** HTTP helpers for realm-studio API (V0.3.1c–0.3.2b). */
+/** HTTP helpers for realm-studio API (V0.3.1c–0.3.2d). */
 
 export async function getState() {
   const res = await fetch("/api/state");
@@ -80,10 +80,13 @@ export function cliQuote(value) {
   return `"${text}"`;
 }
 
-export function buildCreateObject({ name, pdesc, desc, x, y, withEat }) {
+export function buildCreateObject({ name, pdesc, desc, appearance, x, y, withEat }) {
   let line =
     `create-object name ${cliQuote(name)} pdesc ${cliQuote(pdesc)} ` +
     `desc ${cliQuote(desc)} at ${x},${y}`;
+  if (appearance) {
+    line += ` appearance ${cliQuote(appearance)}`;
+  }
   if (withEat) {
     line +=
       " action eat range 0 effect delete_self " +
@@ -92,28 +95,33 @@ export function buildCreateObject({ name, pdesc, desc, x, y, withEat }) {
   return line;
 }
 
-export function buildCreateAgent({ name, pdesc, desc, personality, x, y }) {
-  return (
+export function buildCreateAgent({ name, pdesc, desc, personality, appearance, x, y }) {
+  let line =
     `create-agent name ${cliQuote(name)} pdesc ${cliQuote(pdesc)} ` +
-    `desc ${cliQuote(desc)} personality ${cliQuote(personality)} at ${x},${y}`
-  );
+    `desc ${cliQuote(desc)} personality ${cliQuote(personality)} at ${x},${y}`;
+  if (appearance) {
+    line += ` appearance ${cliQuote(appearance)}`;
+  }
+  return line;
 }
 
-export function buildEditObject({ id, name, pdesc, desc, x, y }) {
+export function buildEditObject({ id, name, pdesc, desc, appearance, x, y }) {
   const parts = [`edit-object ${id}`];
   if (name) parts.push(`name ${cliQuote(name)}`);
   if (pdesc) parts.push(`pdesc ${cliQuote(pdesc)}`);
   if (desc) parts.push(`desc ${cliQuote(desc)}`);
+  if (appearance !== undefined) parts.push(`appearance ${cliQuote(appearance)}`);
   parts.push(`pos ${x},${y}`);
   return parts.join(" ");
 }
 
-export function buildEditAgent({ id, name, pdesc, desc, personality, x, y }) {
+export function buildEditAgent({ id, name, pdesc, desc, personality, appearance, x, y }) {
   const parts = [`edit-agent ${id}`];
   if (name) parts.push(`name ${cliQuote(name)}`);
   if (pdesc) parts.push(`pdesc ${cliQuote(pdesc)}`);
   if (desc) parts.push(`desc ${cliQuote(desc)}`);
   if (personality) parts.push(`personality ${cliQuote(personality)}`);
+  if (appearance !== undefined) parts.push(`appearance ${cliQuote(appearance)}`);
   parts.push(`pos ${x},${y}`);
   return parts.join(" ");
 }

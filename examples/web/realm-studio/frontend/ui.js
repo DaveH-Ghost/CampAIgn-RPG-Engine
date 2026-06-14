@@ -50,9 +50,9 @@ export function bindGridContextMenu(gridEl) {
     e.preventDefault();
     hideMenu();
 
-    const chip = e.target.closest(".chip");
-    if (chip) {
-      showEntityMenu(e.clientX, e.clientY, chip.dataset.kind, chip.dataset.id);
+    const marker = e.target.closest(".chip, .token");
+    if (marker) {
+      showEntityMenu(e.clientX, e.clientY, marker.dataset.kind, marker.dataset.id);
       return;
     }
 
@@ -259,6 +259,7 @@ function openModal(title, fields, onSubmit, { submitLabel = "Save" } = {}) {
     }
     input.name = field.name;
     if (field.required) input.required = true;
+    if (field.placeholder) input.placeholder = field.placeholder;
     wrap.appendChild(input);
     modalForm.appendChild(wrap);
   }
@@ -296,6 +297,12 @@ function openCreateObjectModal(x, y) {
     { name: "name", label: "Name", value: "New Object", required: true },
     { name: "pdesc", label: "Passive description", value: "An object.", type: "textarea" },
     { name: "desc", label: "Detailed description", value: "A new object.", type: "textarea" },
+    {
+      name: "appearance",
+      label: "Token image path",
+      value: "",
+      placeholder: "tokens/my-object.svg",
+    },
     { name: "x", label: "X", value: String(x), type: "number", required: true },
     { name: "y", label: "Y", value: String(y), type: "number", required: true },
     { name: "withEat", label: "Add eat action (same tile)", type: "checkbox", value: false },
@@ -304,6 +311,7 @@ function openCreateObjectModal(x, y) {
       name: data.name,
       pdesc: data.pdesc,
       desc: data.desc,
+      appearance: data.appearance,
       x: data.x,
       y: data.y,
       withEat: data.withEat,
@@ -326,6 +334,12 @@ function openCreateAgentModal(x, y) {
       value: "You are a calm agent in a small room.",
       type: "textarea",
     },
+    {
+      name: "appearance",
+      label: "Token image path",
+      value: "",
+      placeholder: "tokens/my-agent.svg",
+    },
     { name: "x", label: "X", value: String(x), type: "number", required: true },
     { name: "y", label: "Y", value: String(y), type: "number", required: true },
   ], async (data) => {
@@ -334,6 +348,7 @@ function openCreateAgentModal(x, y) {
       pdesc: data.pdesc,
       desc: data.desc,
       personality: data.personality,
+      appearance: data.appearance,
       x: data.x,
       y: data.y,
     });
@@ -349,6 +364,12 @@ function openEditObjectModal(entity) {
     { name: "name", label: "Name", value: entity.name, required: true },
     { name: "pdesc", label: "Passive description", value: "", type: "textarea" },
     { name: "desc", label: "Detailed description", value: "", type: "textarea" },
+    {
+      name: "appearance",
+      label: "Token image path",
+      value: entity.appearance ?? "",
+      placeholder: "tokens/my-object.svg",
+    },
     {
       name: "x",
       label: "X",
@@ -369,6 +390,7 @@ function openEditObjectModal(entity) {
       name: data.name,
       pdesc: data.pdesc || undefined,
       desc: data.desc || undefined,
+      appearance: data.appearance,
       x: data.x,
       y: data.y,
     });
@@ -391,6 +413,12 @@ function openEditAgentModal(entity) {
       type: "textarea",
     },
     {
+      name: "appearance",
+      label: "Token image path",
+      value: entity.appearance ?? "",
+      placeholder: "tokens/my-agent.svg",
+    },
+    {
       name: "x",
       label: "X",
       value: String(entity.position[0]),
@@ -411,6 +439,7 @@ function openEditAgentModal(entity) {
       pdesc: data.pdesc || undefined,
       desc: data.desc || undefined,
       personality: data.personality || undefined,
+      appearance: data.appearance,
       x: data.x,
       y: data.y,
     });

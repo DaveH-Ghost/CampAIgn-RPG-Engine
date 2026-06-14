@@ -342,6 +342,7 @@ def create_initial_area() -> Area:
         position=(1, 1),
         memory=Memory(),
         last_action=None,
+        appearance="tokens/explorer.svg",
     )
     area.add_agent(agent)
 
@@ -350,6 +351,7 @@ def create_initial_area() -> Area:
         name="Ceramic Ball",
         description="A slightly worn ceramic ball. It has a few scuffs and feels light.",
         position=(2, 2),
+        appearance="tokens/ball.svg",
         actions={
             "kick": ObjectAction(
                 name="kick",
@@ -370,6 +372,7 @@ def create_initial_area() -> Area:
             'It reads: "This room is a test environment. Please interact with the world to make it more interesting."'
         ),
         position=(2, 4),
+        appearance="tokens/sign.svg",
     )
     area.add_object(sign)
 

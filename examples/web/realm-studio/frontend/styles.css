@@ -226,6 +226,45 @@ button:hover {
   color: #9a7b0a;
 }
 
+.token {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-height: 0;
+  padding: 0.1rem;
+}
+
+.token-img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+.tile-stack .token-img {
+  width: 36px;
+  height: 36px;
+}
+
+.token-active {
+  border-radius: 4px;
+  box-shadow: 0 0 0 2px #e8c547;
+}
+
+.token-active-mark {
+  position: absolute;
+  top: 0;
+  right: 0;
+  font-size: 0.55rem;
+  line-height: 1;
+  color: #9a7b0a;
+  text-shadow: 0 0 2px #fff, 0 0 2px #fff;
+  pointer-events: none;
+}
+
 .meta-panel {
   background: #121216;
   border: 1px solid #333;

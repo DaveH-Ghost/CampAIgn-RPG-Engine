@@ -24,11 +24,11 @@ def test_snapshot_default_shape():
     assert explorer["name"] == "Explorer"
     assert explorer["position"] == [1, 1]
     assert explorer["memory_module"] == "recent_turns"
-    assert explorer["appearance"] == ""
+    assert explorer["appearance"] == "tokens/explorer.svg"
 
     ball = next(o for o in snap["objects"] if o["id"] == "obj_ball_01")
     assert ball["position"] == [2, 2]
-    assert ball["appearance"] == ""
+    assert ball["appearance"] == "tokens/ball.svg"
     assert "kick" in ball["actions"]
 
 

@@ -4,7 +4,7 @@ Example web app for [Realm-Fabric](https://github.com/) — wraps the engine `Se
 
 **Location:** `examples/web/realm-studio` in the Realm-Fabric repo.
 
-**Status:** **V0.3.2b** in progress — adds **Emit event…** (GM area events) on top of V0.3.1.
+**Status:** **V0.3.2d** — pannable grid, GM events, token images from `appearance` paths.
 
 ## Quick start
 
@@ -44,14 +44,27 @@ uv run uvicorn backend.app:app --host 127.0.0.1 --port 8765 --reload
 
 ## UI
 
-- **Grid** — agents (green) and objects (purple); active agent marked with ★
-- **Right-click** — create/edit/delete on tiles and entity chips; **Play as** for agents
+- **Grid** — white pannable map; entities show **token images** when `appearance` is set (else name chips); active agent ★
+- **Right-click** — create/edit/delete on tiles and tokens; **Play as** for agents
 - **Stacked tiles** — manage menu when multiple entities share a cell
 - **Toolbar** — active-agent dropdown; **Emit event…**; **Run turn ▶**
 - **Sidebar** — session meta, passive vision, recent GM events, turn log
 - **Refresh** — manual re-fetch; edits and turns auto-refresh
 
 **Note:** `realm-studio` and the terminal `realm` CLI use **separate in-memory sessions** — CLI edits do not appear in the browser.
+
+## Token images
+
+Entity `appearance` is an image path (engine field). realm-studio resolves it under `/static/` — e.g. `tokens/explorer.svg` → `/static/tokens/explorer.svg`.
+
+Bundled demo tokens live in `frontend/tokens/`. Add PNG/SVG files there and set the path in create/edit modals or via CLI:
+
+```text
+edit-agent agent_01 appearance "tokens/explorer.svg"
+create-object name "Crate" appearance "tokens/ball.svg" at 3,3
+```
+
+Empty path falls back to a name chip. Broken paths fall back at render time.
 
 ## API
 
@@ -73,7 +86,7 @@ See [v0.3.2-changelog.md](../../../docs/v0.3.2-changelog.md) for V0.3.2 slices.
 uv run pytest
 ```
 
-16 smoke/integration tests via FastAPI `TestClient` (mocked LLM — no API key or running server).
+19 smoke/integration tests via FastAPI `TestClient` (mocked LLM — no API key or running server).
 
 From repo root, engine tests remain separate:
 

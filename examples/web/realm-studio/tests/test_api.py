@@ -1,4 +1,4 @@
-"""realm-studio API tests (V0.3.1–0.3.2b)."""
+"""realm-studio API tests (V0.3.1–0.3.2d)."""
 
 import pytest
 from fastapi.testclient import TestClient
@@ -41,10 +41,13 @@ def test_state_returns_snapshot_shape(client):
 
     assert len(data["agents"]) == 1
     assert data["agents"][0]["name"] == "Explorer"
+    assert data["agents"][0]["appearance"] == "tokens/explorer.svg"
 
     object_ids = {o["id"] for o in data["objects"]}
     assert "obj_ball_01" in object_ids
     assert "obj_sign_01" in object_ids
+    ball = next(o for o in data["objects"] if o["id"] == "obj_ball_01")
+    assert ball["appearance"] == "tokens/ball.svg"
     assert data["recent_events"] == []
 
 
@@ -79,6 +82,34 @@ def test_post_event_via_state(client):
     client.post("/api/event", json={"text": "A door slams."})
     state = client.get("/api/state").json()
     assert state["recent_events"][-1]["text"] == "A door slams."
+
+
+def test_static_token_assets(client):
+    for path in (
+        "/static/tokens/explorer.svg",
+        "/static/tokens/ball.svg",
+        "/static/tokens/sign.svg",
+    ):
+        response = client.get(path)
+        assert response.status_code == 200
+        assert "svg" in response.headers.get("content-type", "").lower()
+
+
+def test_post_command_appearance(client):
+    response = client.post(
+        "/api/command",
+        json={
+            "line": (
+                'create-object name "Token Crate" appearance "tokens/ball.svg" at 3,3'
+            ),
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["ok"] is True
+
+    state = client.get("/api/state").json()
+    crate = next(o for o in state["objects"] if o["name"] == "Token Crate")
+    assert crate["appearance"] == "tokens/ball.svg"
 
 
 def test_index_page(client):

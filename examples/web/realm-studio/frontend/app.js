@@ -1,7 +1,8 @@
 /**
- * realm-studio frontend — grid, edit menus, LLM turn, sidebar (V0.3.1b–0.3.2c1).
+ * realm-studio frontend — grid, edit menus, LLM turn, sidebar (V0.3.1b–0.3.2d).
  */
 
+import { hasAppearance, resolveAppearanceUrl } from "./appearance.js";
 import { getPrompt, getState, postTurn } from "./api.js";
 import { initGridViewport, maybeCenterGrid } from "./gridViewport.js";
 import {
@@ -66,7 +67,7 @@ function indexEntities(agents, objects) {
   return byPos;
 }
 
-function createChip(entity, kind, isActive) {
+function createNameChip(entity, kind, isActive) {
   const chip = document.createElement("div");
   chip.className = `chip chip-${kind}${isActive ? " chip-active" : ""}`;
   chip.dataset.kind = kind;
@@ -81,6 +82,40 @@ function createChip(entity, kind, isActive) {
     chip.appendChild(star);
   }
   return chip;
+}
+
+function createTokenMarker(entity, kind, isActive) {
+  const token = document.createElement("div");
+  token.className = `token token-${kind}${isActive ? " token-active" : ""}`;
+  token.dataset.kind = kind;
+  token.dataset.id = entity.id;
+  token.title = `${entity.name} (${entity.id})`;
+
+  const img = document.createElement("img");
+  img.className = "token-img";
+  img.src = resolveAppearanceUrl(entity.appearance);
+  img.alt = entity.name;
+  img.draggable = false;
+  img.addEventListener("error", () => {
+    token.replaceWith(createNameChip(entity, kind, isActive));
+  });
+  token.appendChild(img);
+
+  if (isActive) {
+    const star = document.createElement("span");
+    star.className = "token-active-mark";
+    star.textContent = "★";
+    star.setAttribute("aria-label", "active agent");
+    token.appendChild(star);
+  }
+  return token;
+}
+
+function createEntityMarker(entity, kind, isActive) {
+  if (hasAppearance(entity)) {
+    return createTokenMarker(entity, kind, isActive);
+  }
+  return createNameChip(entity, kind, isActive);
 }
 
 function renderGrid(data) {
@@ -111,10 +146,10 @@ function renderGrid(data) {
 
       const at = byPos.get(posKey(x, y)) || { agents: [], objects: [] };
       for (const agent of at.agents) {
-        stack.appendChild(createChip(agent, "agent", agent.id === active_agent_id));
+        stack.appendChild(createEntityMarker(agent, "agent", agent.id === active_agent_id));
       }
       for (const object of at.objects) {
-        stack.appendChild(createChip(object, "object", false));
+        stack.appendChild(createEntityMarker(object, "object", false));
       }
 
       tile.appendChild(stack);
