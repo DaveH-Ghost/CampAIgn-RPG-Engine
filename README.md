@@ -2,14 +2,14 @@
 
 A grid-based agent simulation framework designed around structured output and narrative roleplay.
 
-**Current Status:** **V0.3.0** engine (`0.3.0` in `pyproject.toml`) + **V0.3.1** example web app [**realm-studio**](examples/web/realm-studio) (tag **`v0.3.1`** on the example milestone). Engine: `Session` API, JSON snapshots, `GameProfile`, CLI on Session, public `realm_fabric` package. Builds on **V0.2.5** (`v0.2.5`): compound LLM turns, pluggable memory, Passive Vision–first prompt.
+**Current Status:** **V0.3.0** engine (`0.3.0` in `pyproject.toml`) + **V0.3.2** example web app [**realm-studio**](examples/web/realm-studio) (tag **`v0.3.2`** on the example milestone). Engine: `Session` API, JSON snapshots, `GameProfile`, CLI on Session, GM area events, `appearance` token paths. Builds on **V0.2.5** (`v0.2.5`): compound LLM turns, pluggable memory, Passive Vision–first prompt.
 
 **Documentation:**
 
-- [V0.3.2 changelog](docs/v0.3.2-changelog.md) — GM area events, appearance tokens (planned)
+- [V0.3.2 changelog](docs/v0.3.2-changelog.md) — **realm-studio** GM events, pannable grid, token images (0.3.2a–e) ✅
 - [V0.3.1 changelog](docs/v0.3.1-changelog.md) — **realm-studio** web app (0.3.1a–f) ✅
 - [V0.3.0 changelog](docs/v0.3.0-changelog.md) — engine refactor (0.3.0a–e)
-- [Roadmap](docs/ROADMAP.md) — version plans (V0.3.0 ✅ engine; V0.3.1 ✅ web example; V0.3.2 planned)
+- [Roadmap](docs/ROADMAP.md) — version plans (V0.3.0 ✅ engine; V0.3.1 ✅ web example; V0.3.2 ✅ polish)
 - [V0.2.5 changelog](docs/v0.2.5-changelog.md) — memory / prompt slices (0.2.5a–g)
 - [Long-term goals](LONG_TERM_GOALS.md) — aspirational features
 - [V0 implementation checklist](docs/v0-implementation-readiness-checklist.md) — V0 historical design reference
@@ -23,7 +23,7 @@ A grid-based agent simulation framework designed around structured output and na
 |-------|------------|
 | **`realm_fabric` package** | Public API: `Session`, `GameProfile`, `load_profile`, `PromptContext`, `AgentCompoundTurn`, snapshots |
 | **`realm` CLI** | Reference client (`ManualStepper`) for manual testing — not required for library use |
-| **[realm-studio](examples/web/realm-studio)** | Example web UI (V0.3.1) — grid, right-click edit, LLM **Run turn** over HTTP |
+| **[realm-studio](examples/web/realm-studio)** | Example web UI (V0.3.2) — pannable grid, token images, GM **Emit event**, right-click edit, LLM **Run turn** over HTTP |
 
 Quick start for a downstream project:
 
@@ -37,7 +37,7 @@ result = session.run_compound_turn(AgentCompoundTurn(...))
 state = session.snapshot()
 ```
 
-**V0.3.1** ships [realm-studio](examples/web/realm-studio) on this API:
+**V0.3.2** ships [realm-studio](examples/web/realm-studio) on this API:
 
 ```powershell
 cd examples\web\realm-studio
@@ -45,7 +45,7 @@ uv sync
 uv run realm-studio
 ```
 
-Grid + right-click create/edit/delete + **Run turn** (needs `OPENROUTER_API_KEY`). See [realm-studio README](examples/web/realm-studio/README.md) and [v0.3.1-changelog](docs/v0.3.1-changelog.md).
+Pannable grid with token images, right-click create/edit/delete, **Emit event…** (GM narration), and **Run turn** (needs `OPENROUTER_API_KEY`). See [realm-studio README](examples/web/realm-studio/README.md) and [v0.3.2-changelog](docs/v0.3.2-changelog.md).
 
 ## Running / Testing (without LLM)
 
@@ -91,17 +91,18 @@ list
 objects
 agents
 effects
-create-object name "Crate" pdesc "A crate." desc "A wooden crate." at 0,0
+create-object name "Crate" pdesc "A crate." desc "A wooden crate." appearance "tokens/crate.svg" at 0,0
 create-object name "Cookie" pdesc "A cookie." desc "Tasty." at 2,2 action eat range 1 effect delete_self result "You ate the cookie." passive "{actor} ate the cookie."
 edit-object obj_sign_01 pdesc "A sign on the wall." desc "Updated sign text."
-edit-object obj_ball_01 pos 3,3
+edit-object obj_ball_01 appearance "tokens/ball.svg" pos 3,3
 edit-object obj_cookie_01 add-action smell range 1 result "Nice smell." passive "{actor} smells it."
 edit-object obj_cookie_01 remove-action smell
 delete-object obj_crate_01
-create-agent name "Goblin" pdesc "A short figure." desc "A grumpy goblin." personality "You are a grumpy goblin." at 0,3
+create-agent name "Goblin" pdesc "A short figure." desc "A grumpy goblin." personality "You are a grumpy goblin." appearance "tokens/goblin.svg" at 0,3
 create-agent name "Archivist" personality "You remember everything." memory rolling_summary memory-summary-interval 15 memory-summary-tail 3 at 1,1
 create-agent name "Scribe" personality "Quiet." memory salient_turns memory-budget 2500 at 2,2
-edit-agent agent_01 desc "Updated appearance."
+edit-agent agent_01 desc "Updated detailed description."
+edit-agent agent_01 appearance "tokens/explorer.svg"
 edit-agent agent_01 personality "Updated LLM personality."
 edit-agent agent_01 name "Scout"
 delete-agent agent_goblin_01
@@ -119,7 +120,17 @@ The old V0 `sign` command is removed. Update the sign with:
 edit-object obj_sign_01 pdesc "A sign on the wall." desc "This is new text."
 ```
 
-Objects and agents share **`pdesc`** (glance) and **`desc`** (detailed, hidden behind `[?]` until `look`). Agents also have **`personality`** — private LLM prompt text only, never shown in vision or revealed by `look`. Other agents appear in passive vision; you do not see yourself. Stale examined knowledge shows as `[?] [changed] {pdesc}`.
+Objects and agents share **`pdesc`** (glance) and **`desc`** (detailed, hidden behind `[?]` until `look`). Agents also have **`personality`** — private LLM prompt text only, never shown in vision or revealed by `look`. Optional **`appearance`** is a client-only image path (realm-studio token art); the engine ignores it for gameplay. Other agents appear in passive vision; you do not see yourself. Stale examined knowledge shows as `[?] [changed] {pdesc}`.
+
+### GM area events (V0.3.2)
+
+Broadcast narrator/world text to every agent's memory without consuming a turn:
+
+```
+emit-event "Thunder rumbles overhead."
+```
+
+Events appear in agent **Memory:** on the next turn; realm-studio shows a **Recent events** sidebar and **Emit event…** button. Passive vision stays static (events are memory-only).
 
 ### Multi-agent (V0.1 Section 3)
 
@@ -292,9 +303,16 @@ That's the whole magic.
 
 ## Running tests
 
-Tests use [pytest](https://docs.pytest.org/) and run **without** an API key or network access (**274 tests**). They cover V0.1 perception/editing/multi-agent behavior plus V0.2 coordinate move, compound turns, object interact, memory modules, and rolling summary; V0.3 Session API, Area model, snapshots, and GameProfile templates.
+Tests use [pytest](https://docs.pytest.org/) and run **without** an API key or network access. There are **two separate pytest projects**:
 
-### Run all tests
+| Suite | Where to run | Count | What it covers |
+|-------|----------------|-------|----------------|
+| **Engine** | Repo root (`uv run pytest`) | **287** | `tests/` — perception, editing, Session API, snapshots, area events, `appearance`, etc. |
+| **realm-studio** | `examples/web/realm-studio` (`uv run pytest`) | **19** | `tests/test_api.py` — FastAPI `TestClient` HTTP smoke (health, state, command, event, turn, static tokens) |
+
+Root `pyproject.toml` sets `testpaths = ["tests"]` only. The example app has its own `pyproject.toml` and does **not** get picked up when you run pytest from the repo root.
+
+### Run engine tests
 
 From the project folder:
 
@@ -303,6 +321,16 @@ uv run pytest
 ```
 
 By default this runs quietly (`-q` is set in `pyproject.toml`). You should see a final `passed` summary when everything is green.
+
+### Run realm-studio tests
+
+```powershell
+cd examples\web\realm-studio
+uv sync
+uv run pytest
+```
+
+See [realm-studio README](examples/web/realm-studio/README.md#tests) for details. `test_api.py` mocks the LLM — no running server or API key required.
 
 ### Useful variants
 
@@ -338,7 +366,8 @@ uv run pytest -x
 | `tests/test_game_profile.py` | `GameProfile`, `PromptTemplate`, default profile parity |
 | `tests/test_simulation.py` | Compound turns, memory side effects, prompts |
 | `tests/test_perception.py` | V0.1 `[?]` / stale vision for objects and cross-agent invalidation |
-| `tests/test_area_edit.py` | Area editing commands (create/edit/delete, listings, object actions) |
+| `tests/test_area_edit.py` | Area editing commands (create/edit/delete, listings, object actions, `appearance`) |
+| `tests/test_area_events.py` | GM area events (`emit_area_event`, memory ingest, snapshot `recent_events`) |
 | `tests/test_multi_agent.py` | Multi-agent stepper (`switch`, `run`, agent vision, `passive_result`, LLM mocks) |
 | `tests/test_memory_modules.py` | Pluggable memory modules, registry, witnesses, `get_detail_turns` |
 | `tests/test_salient_turns.py` | Salience scoring, char budget, fragment render |

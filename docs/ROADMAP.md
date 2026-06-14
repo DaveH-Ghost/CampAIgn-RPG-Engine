@@ -190,14 +190,16 @@ See [v0.3.1-changelog.md](v0.3.1-changelog.md). App path: **`examples/web/realm-
 
 - FastAPI wraps `Session`; depends on `realm-fabric>=0.3.0`
 - Local web UI: **grid** with agents/objects; **right-click** create/edit/delete; passive vision + turn log; **Run turn**
-- 13 FastAPI `TestClient` smoke/integration tests; engine coverage stays in root pytest
+- **19** FastAPI `TestClient` smoke/integration tests (V0.3.2); engine coverage stays in root pytest
 
-### V0.3.2 — realm-studio polish (events + appearance) — ⬜ Planned
+### V0.3.2 — realm-studio polish (events + appearance) — ✅ Implemented (tag **`v0.3.2`**)
 
 See [v0.3.2-changelog.md](v0.3.2-changelog.md).
 
-- **Area-wide GM events** — `Session.emit_area_event`; passive vision + memory for all agents; realm-studio **Emit event** button
-- **`appearance`** — optional visual token on `Agent` / `Object`; grid icons in realm-studio
+- **Area-wide GM events** — `Session.emit_area_event`; memory for all agents; realm-studio **Emit event…** + **Recent events** sidebar
+- **Pannable grid viewport** — white map on black canvas (0.3.2c1)
+- **`appearance`** — client-only image path on `Agent` / `Object`; token images on grid (0.3.2c2–d)
+- **Tests** — root **287** pytest; realm-studio **19** API tests
 - **Not in 0.3.2:** multiplayer (moved to [LONG_TERM_GOALS.md](../LONG_TERM_GOALS.md))
 
 Larger items (Roll20 integration, full strategy turn models, lorebooks, etc.) remain in [LONG_TERM_GOALS.md](../LONG_TERM_GOALS.md).

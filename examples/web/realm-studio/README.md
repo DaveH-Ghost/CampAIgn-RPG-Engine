@@ -4,7 +4,7 @@ Example web app for [Realm-Fabric](https://github.com/) — wraps the engine `Se
 
 **Location:** `examples/web/realm-studio` in the Realm-Fabric repo.
 
-**Status:** **V0.3.2d** — pannable grid, GM events, token images from `appearance` paths.
+**Status:** **V0.3.2** complete — tag **`v0.3.2`** on the example milestone. Pannable grid, GM **Emit event…**, token images from `appearance` paths.
 
 ## Quick start
 
@@ -78,7 +78,7 @@ Empty path falls back to a name chip. Broken paths fall back at render time.
 | `POST` | `/api/event` | `{ "text": "..." }` → `emit_area_event` (no turn consumed) |
 | `GET` | `/api/prompt` | Build compound prompt (debug) |
 
-See [v0.3.2-changelog.md](../../../docs/v0.3.2-changelog.md) for V0.3.2 slices.
+See [v0.3.2-changelog.md](../../../docs/v0.3.2-changelog.md) for the full V0.3.2 release notes.
 
 ## Tests
 
@@ -86,7 +86,7 @@ See [v0.3.2-changelog.md](../../../docs/v0.3.2-changelog.md) for V0.3.2 slices.
 uv run pytest
 ```
 
-19 smoke/integration tests via FastAPI `TestClient` (mocked LLM — no API key or running server).
+19 smoke/integration tests in `tests/test_api.py` via FastAPI `TestClient` (mocked LLM — no API key or running server).
 
 From repo root, engine tests remain separate:
 
@@ -115,4 +115,4 @@ Adds 10 objects on tile **(3, 3)** to test scrollbars. Omit for the normal demo 
 
 ## What's next
 
-**V0.3.2** (planned): GM **area events** and grid **appearance** — see [v0.3.2-changelog](docs/v0.3.2-changelog.md).
+**V0.4** — multi-area sessions — see [ROADMAP.md](../../../docs/ROADMAP.md).
