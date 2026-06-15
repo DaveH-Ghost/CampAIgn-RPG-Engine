@@ -16,6 +16,7 @@ import {
   postEvent,
 } from "./api.js";
 import { activeAreaView, asArray, normalizeSnapshot } from "./snapshot.js";
+import { initObjectActions, openManageObjectActionsModal } from "./objectActions.js";
 
 let menuEl;
 let modalBackdrop;
@@ -36,6 +37,17 @@ export function initUi({ getSnapshotFn, onStateChangedFn }) {
   modalForm = document.getElementById("modal-form");
   modalError = document.getElementById("modal-error");
   toastEl = document.getElementById("toast");
+
+  initObjectActions({
+    getSnapshotFn: getSnapshot,
+    onStateChangedFn: onStateChanged,
+    showToastFn: showToast,
+    modalTitleEl: modalTitle,
+    modalFormEl: modalForm,
+    modalErrorEl: modalError,
+    modalBackdropEl: modalBackdrop,
+    closeModal,
+  });
 
   document.getElementById("modal-cancel").addEventListener("click", closeModal);
   document.getElementById("modal-backdrop").addEventListener("click", (e) => {
@@ -188,6 +200,7 @@ function showEntityMenu(x, y, kind, id) {
   } else {
     showMenu(x, y, [
       { label: "Edit…", action: () => openEditObjectModal(entity) },
+      { label: "Manage actions…", action: () => openManageObjectActionsModal(entity) },
       {
         label: "Delete",
         action: () => runDelete(`delete-object ${entity.id}`, entity.name),

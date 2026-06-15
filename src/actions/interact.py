@@ -3,37 +3,36 @@ interact.py
 
 Declarative object interactions for V0.2 Section 3.
 
-Result/passive templates support ``{actor}``, ``{object}``, ``{start}``, and
-``{end}`` — object position before and after effects run (same value if nothing moved).
+Result/passive templates support placeholders documented in
+``src.interact_templates`` (e.g. ``{actor}``, ``{object}``, ``{object_start}``).
 """
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from src.action_outcome import ActionOutcome
 from src.agent import Agent
-from src.coordinates import format_coordinate
 from src.grid import chebyshev_distance
+from src.interact_templates import InteractTemplateContext, format_interact_template
 from src.object import Object
 from src.object_action import ObjectAction
-from src.object_effects import apply_effects
+from src.object_effects import EffectContext, apply_effects
 from src.perception import is_object_in_passive_vision
 from src.area import Area
 
+if TYPE_CHECKING:
+    from src.session import Session
 
-def _format_template(
-    template: str,
-    *,
-    actor: str,
-    object_name: str,
-    start_position: tuple[int, int],
-    end_position: tuple[int, int],
+
+def _resolve_agent_area(
+    session: Session | None,
+    agent_id: str,
+    fallback: str | None,
 ) -> str:
-    start = format_coordinate(*start_position)
-    end = format_coordinate(*end_position)
-    return (
-        template.replace("{actor}", actor)
-        .replace("{object}", object_name)
-        .replace("{start}", start)
-        .replace("{end}", end)
-    )
+    if session is not None:
+        return session.agent_area.get(agent_id) or fallback or ""
+    return fallback or ""
 
 
 def interact(
@@ -41,6 +40,9 @@ def interact(
     area: Area,
     target_id: str,
     action_name: str,
+    *,
+    session: Session | None = None,
+    source_area_id: str | None = None,
 ) -> ActionOutcome:
     """Execute an object interaction from the action phase."""
     obj = area.get_object_by_id(target_id)
@@ -67,20 +69,36 @@ def interact(
             ),
         )
 
-    start_position = obj.position
-    if action.effects:
-        apply_effects(area, agent, obj, list(action.effects))
-    end_position = obj.position
+    object_area = source_area_id or ""
+    actor_start_area = _resolve_agent_area(session, agent.id, source_area_id)
+    object_start = obj.position
+    actor_start = agent.position
 
-    template_kwargs = {
-        "actor": agent.name,
-        "object_name": obj.name,
-        "start_position": start_position,
-        "end_position": end_position,
-    }
+    if action.effects:
+        ctx = EffectContext(
+            area=area,
+            session=session,
+            source_area_id=source_area_id,
+        )
+        effect_err = apply_effects(ctx, agent, obj, list(action.effects))
+        if effect_err:
+            return ActionOutcome(result=effect_err)
+
+    template_ctx = InteractTemplateContext(
+        actor=agent.name,
+        object_name=obj.name,
+        object_start=object_start,
+        object_end=obj.position,
+        actor_start=actor_start,
+        actor_end=agent.position,
+        object_start_area=object_area,
+        object_end_area=object_area,
+        actor_start_area=actor_start_area,
+        actor_end_area=_resolve_agent_area(session, agent.id, source_area_id),
+    )
     return ActionOutcome(
-        result=_format_template(action.result, **template_kwargs),
-        passive_result=_format_template(action.passive_result, **template_kwargs),
+        result=format_interact_template(action.result, template_ctx),
+        passive_result=format_interact_template(action.passive_result, template_ctx),
     )
 
 

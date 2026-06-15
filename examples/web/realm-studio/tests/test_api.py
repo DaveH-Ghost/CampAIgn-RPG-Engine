@@ -39,6 +39,17 @@ def test_health(client):
     assert response.json() == {"ok": True}
 
 
+def test_interact_template_vars(client):
+    response = client.get("/api/interact-template-vars")
+    assert response.status_code == 200
+    data = response.json()
+    names = {item["name"] for item in data["vars"]}
+    assert "actor" in names
+    assert "object_start" in names
+    assert "actor_end_area" in names
+    assert "{actor}" in data["vars"][0]["placeholder"]
+
+
 def test_state_returns_multi_area_snapshot(client):
     response = client.get("/api/state")
     assert response.status_code == 200
@@ -64,6 +75,10 @@ def test_state_returns_multi_area_snapshot(client):
     object_ids = {o["id"] for o in room_objects}
     assert "obj_ball_01" in object_ids
     assert "obj_sign_01" in object_ids
+    ball = next(o for o in room_objects if o["id"] == "obj_ball_01")
+    assert "kick" in ball["actions"]
+    assert ball["actions_detail"]["kick"]["range"] == 1
+    assert ball["actions_detail"]["kick"]["effects"][0]["name"] == "random_move_self"
     assert isinstance(_room(data)["objects"], list)
     assert isinstance(_room(data)["recent_events"], list)
     assert isinstance(_active_block(data)["objects"], list)

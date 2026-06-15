@@ -38,6 +38,8 @@ def test_snapshot_default_shape():
     assert ball["position"] == [2, 2]
     assert ball["appearance"] == "tokens/ball.svg"
     assert "kick" in ball["actions"]
+    assert ball["actions_detail"]["kick"]["range"] == 1
+    assert ball["actions_detail"]["kick"]["effects"][0]["name"] == "random_move_self"
 
 
 def test_snapshot_is_json_serializable():

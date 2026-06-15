@@ -7,6 +7,10 @@ Pipeline per agent turn:
   optional move → optional look → optional turn action (speak / interact)
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from src.action_outcome import ActionOutcome
 from src.actions import do_interact, do_move, do_speak
 from src.agent import Agent
@@ -14,6 +18,9 @@ from src.llm.schemas import AgentCompoundTurn
 from src.memory import Memory, StepKind, TurnRecord, TurnStep
 from src.perception import perform_look as do_look
 from src.area import Area
+
+if TYPE_CHECKING:
+    from src.session import Session
 
 
 def next_turn_number_for_agent(agent: Agent) -> int:
@@ -80,7 +87,12 @@ def execute_nav_phase(
 
 
 def execute_action_phase(
-    agent: Agent, area: Area, turn: AgentCompoundTurn
+    agent: Agent,
+    area: Area,
+    turn: AgentCompoundTurn,
+    *,
+    session: Session | None = None,
+    source_area_id: str | None = None,
 ) -> list[TurnStep]:
     """Run optional look and turn action from compound turn."""
     steps: list[TurnStep] = []
@@ -112,6 +124,8 @@ def execute_action_phase(
             area,
             turn.target or "",
             turn.action_name or "",
+            session=session,
+            source_area_id=source_area_id,
         )
         steps.append(
             _make_step(
@@ -194,6 +208,8 @@ def run_compound_turn(
     *,
     nav_steps: list[TurnStep] | None = None,
     session_turn: int | None = None,
+    session: Session | None = None,
+    source_area_id: str | None = None,
 ) -> TurnRecord:
     """
     Run a compound agent turn: move, then look/action.
@@ -203,7 +219,9 @@ def run_compound_turn(
     if nav_steps is None:
         nav_steps = execute_nav_phase(agent, area, turn)
 
-    action_steps = execute_action_phase(agent, area, turn)
+    action_steps = execute_action_phase(
+        agent, area, turn, session=session, source_area_id=source_area_id
+    )
 
     record = finalize_turn_record(turn, nav_steps, action_steps, turn_number)
     return commit_turn_record(

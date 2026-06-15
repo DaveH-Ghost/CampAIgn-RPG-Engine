@@ -235,3 +235,28 @@ export function buildEditArea({ id, desc, width, height }) {
 export function buildDeleteArea(id) {
   return `delete-area ${id}`;
 }
+
+export function buildAddObjectAction(objectId, {
+  name,
+  range,
+  result,
+  passive,
+  effect,
+  destArea,
+  destX,
+  destY,
+}) {
+  const parts = [`edit-object ${objectId} add-action ${name} range ${range}`];
+  if (effect && effect !== "none") {
+    parts.push(`effect ${effect}`);
+    if (effect === "move_area") {
+      parts.push(`dest-area ${destArea}`, `dest-at ${destX},${destY}`);
+    }
+  }
+  parts.push(`result ${cliQuote(result)}`, `passive ${cliQuote(passive)}`);
+  return parts.join(" ");
+}
+
+export function buildRemoveObjectAction(objectId, actionName) {
+  return `edit-object ${objectId} remove-action ${actionName}`;
+}

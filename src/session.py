@@ -430,6 +430,8 @@ class Session:
             turn,
             turn_number,
             session_turn=pending_session,
+            session=self,
+            source_area_id=self.agent_area.get(agent.id),
         )
         self.session_turn += 1
         return TurnResult(

@@ -5,6 +5,7 @@ V0.2 Section 3: declarative object interactions.
 """
 
 from src.actions.interact import interact
+from src.effect_spec import EffectSpec
 from src.llm.prompt import build_compound_prompt
 from src.llm.schemas import AgentCompoundTurn
 from src.object_effects import format_effects_list
@@ -46,6 +47,7 @@ def test_effects_command_lists_registered_effects():
     text = format_effects_list()
     assert "delete_self" in text
     assert "random_move_self" in text
+    assert "move_area" in text
     assert "Remove the interacted object" in text
     assert "different random in-bounds grid position" in text
 
@@ -135,11 +137,11 @@ def test_create_object_accepts_random_move_self_effect():
         'effect random_move_self result "It rolls." passive "{actor} rolls it."',
     )
     assert obj is not None
-    assert obj.actions["roll"].effects == ["random_move_self"]
+    assert obj.actions["roll"].effects == [EffectSpec.from_name("random_move_self")]
     assert "Created object" in msg
 
 
-def test_interact_templates_substitute_start_and_end(monkeypatch):
+def test_interact_templates_substitute_object_start_and_end(monkeypatch):
     area = create_initial_area()
     explorer = area.get_agent()
     explorer.position = (2, 3)

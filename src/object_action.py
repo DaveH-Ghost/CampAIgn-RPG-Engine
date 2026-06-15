@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass, field
 
+from src.effect_spec import EffectSpec
+
 
 @dataclass
 class ObjectAction:
@@ -11,4 +13,4 @@ class ObjectAction:
     range: int
     result: str
     passive_result: str
-    effects: list[str] = field(default_factory=list)
+    effects: list[EffectSpec] = field(default_factory=list)

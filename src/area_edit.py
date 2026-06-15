@@ -16,8 +16,9 @@ from src.agent import Agent
 from src.memory import Memory
 from src.memory_modules.registry import format_memory_module_label
 from src.object import Object
+from src.effect_spec import EffectSpec
 from src.object_action import ObjectAction
-from src.object_effects import validate_effect_name
+from src.object_effects import validate_effect_params
 from src.stepper_commands import (
     agent_name_conflicts_with_commands,
     reserved_agent_name_message,
@@ -179,6 +180,33 @@ def format_full_list(area: Area, active_agent: Optional[Agent]) -> str:
     return f"{format_agents_list(area, active_agent)}\n\n{format_objects_list(area)}"
 
 
+def parse_effects_from_fields(
+    fields: dict[str, str],
+) -> tuple[list[EffectSpec] | None, Optional[str]]:
+    """Build effect specs from optional effect / dest-area / dest-at fields."""
+    effect_name = fields.get("effect")
+    if not effect_name:
+        if "dest-area" in fields or "dest-at" in fields:
+            return None, "dest-area and dest-at require effect move_area."
+        return [], None
+
+    params: dict[str, str] = {}
+    if effect_name == "move_area":
+        if "dest-area" not in fields:
+            return None, "move_area effect requires dest-area <area_id>."
+        if "dest-at" not in fields:
+            return None, "move_area effect requires dest-at x,y."
+        params["dest-area"] = fields["dest-area"]
+        params["dest-at"] = fields["dest-at"]
+    elif "dest-area" in fields or "dest-at" in fields:
+        return None, "dest-area and dest-at are only valid with effect move_area."
+
+    err = validate_effect_params(effect_name, params)
+    if err:
+        return None, err
+    return [EffectSpec(name=effect_name, params=params)], None
+
+
 def parse_object_action_fields(
     fields: dict[str, str],
 ) -> tuple[dict[str, ObjectAction] | None, Optional[str]]:
@@ -210,13 +238,10 @@ def parse_object_action_fields(
     if not passive:
         return None, "Missing required field: passive (when action is set)"
 
-    effects: list[str] = []
-    effect_name = fields.get("effect")
-    if effect_name:
-        err = validate_effect_name(effect_name)
-        if err:
-            return None, err
-        effects = [effect_name]
+    effects, err = parse_effects_from_fields(fields)
+    if err:
+        return None, err
+    assert effects is not None
 
     action = ObjectAction(
         name=name,
@@ -255,6 +280,8 @@ def create_object_from_args(area: Area, arg: str) -> tuple[Optional[Object], str
             "action",
             "range",
             "effect",
+            "dest-area",
+            "dest-at",
             "result",
             "passive",
         },
@@ -312,7 +339,7 @@ def _edit_object_add_action(obj: Object, tokens: list[str]) -> str:
 
     action_name = tokens[2]
     fields, err = parse_field_tokens(
-        tokens[3:], {"range", "effect", "result", "passive"}
+        tokens[3:], {"range", "effect", "dest-area", "dest-at", "result", "passive"}
     )
     if err:
         return err

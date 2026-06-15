@@ -135,7 +135,7 @@ These changes improve experimentation while keeping the core "one structured act
 - `**recent_turns`:** always full composite `Result:`.
 - `**salient_turns`:** step-fragment `Result:` (speak 10 / interact 7 / look 3 / move 1); older turns drop move/look; witness blocks at speak tier in budget selection.
 - **Prompt:** look rule points at provided list; `**You can look at:`** lists `**[?]**` entities only.
-- **Interact templates:** `{start}` / `{end}` for object position before/after effects (ball kick).
+- **Interact templates:** `{object_start}` / `{object_end}` for object position before/after effects; `{actor_start}` / `{actor_end}` and area ids for cross-area transfers (ball kick, doors).
 
 ### 0.2.5e — Rolling summary memory module — ✅ Implemented
 

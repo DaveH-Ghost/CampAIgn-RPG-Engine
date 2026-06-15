@@ -13,7 +13,9 @@ from typing import Any
 
 from src.agent import Agent
 from src.area import Area
+from src.effect_spec import EffectSpec
 from src.object import Object
+from src.object_action import ObjectAction
 from src.perception import build_passive_vision
 
 DEFAULT_AREA_ID = "room"
@@ -24,6 +26,19 @@ def _position_list(position: tuple[int, int]) -> list[int]:
     return [x, y]
 
 
+def serialize_effect_spec(spec: EffectSpec) -> dict[str, Any]:
+    return {"name": spec.name, "params": dict(spec.params)}
+
+
+def serialize_object_action(action: ObjectAction) -> dict[str, Any]:
+    return {
+        "range": action.range,
+        "result": action.result,
+        "passive_result": action.passive_result,
+        "effects": [serialize_effect_spec(e) for e in action.effects],
+    }
+
+
 def serialize_object(obj: Object, *, include_private: bool = False) -> dict[str, Any]:
     """Public object fields for clients."""
     data: dict[str, Any] = {
@@ -31,6 +46,10 @@ def serialize_object(obj: Object, *, include_private: bool = False) -> dict[str,
         "name": obj.name,
         "position": _position_list(obj.position),
         "actions": sorted(obj.actions.keys()),
+        "actions_detail": {
+            name: serialize_object_action(action)
+            for name, action in sorted(obj.actions.items())
+        },
         "appearance": obj.appearance,
     }
     if include_private:

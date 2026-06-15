@@ -26,6 +26,7 @@ from backend.schemas import (
 from backend.session_store import get_session_store
 from backend.snapshot_compat import normalize_state_snapshot
 from backend.turn_runner import run_llm_turn
+from src.interact_templates import interact_template_var_help
 
 _STUDIO_DIR = Path(__file__).resolve().parent.parent
 _FRONTEND_DIR = _STUDIO_DIR / "frontend"
@@ -52,6 +53,10 @@ def create_app() -> FastAPI:
     @app.get("/api/health")
     def health() -> dict[str, bool]:
         return {"ok": True}
+
+    @app.get("/api/interact-template-vars")
+    def get_interact_template_vars() -> dict[str, object]:
+        return {"vars": interact_template_var_help()}
 
     @app.get("/api/state")
     def get_state() -> dict:
