@@ -9,7 +9,6 @@ from pydantic import ValidationError
 
 from src.llm.schemas import (
     AgentCompoundTurn,
-    MAX_SPEAK_CHARACTERS,
     count_speak_sentences,
 )
 
@@ -85,24 +84,26 @@ def test_count_speak_sentences_ellipsis():
     assert count_speak_sentences("Hi! Wait... really?") == 2
 
 
-def test_speak_500_chars_allowed():
-    text = "A" * 400
+def test_speak_truncated_when_later_sentence_starts_after_budget():
+    first = "A" * 498 + ". "
+    second = "B" * 50
+    turn = AgentCompoundTurn(
+        reasoning="x",
+        turn_action="speak",
+        content=first + second,
+    )
+    assert turn.content == "A" * 498 + "."
+    assert "B" not in turn.content
+
+
+def test_speak_single_long_sentence_not_cut_mid_sentence():
+    text = "A" * 501
     turn = AgentCompoundTurn(reasoning="x", turn_action="speak", content=text)
-    assert len(turn.content) == 400
+    assert len(turn.content) == 501
 
 
-def test_speak_over_500_chars_rejected():
-    with pytest.raises(ValidationError) as exc_info:
-        AgentCompoundTurn(
-            reasoning="x",
-            turn_action="speak",
-            content="A" * 501,
-        )
-    assert "CONTENT_TOO_LONG" in str(exc_info.value)
-    assert str(MAX_SPEAK_CHARACTERS) in str(exc_info.value)
-
-
-def test_reasoning_too_long():
-    with pytest.raises(ValidationError) as exc_info:
-        AgentCompoundTurn(reasoning="x" * 401, turn_action="none")
-    assert "REASONING_TOO_LONG" in str(exc_info.value)
+def test_reasoning_truncated_drops_late_sentences():
+    first = "a" * 398 + ". "
+    second = "b" * 100
+    turn = AgentCompoundTurn(reasoning=first + second, turn_action="none")
+    assert turn.reasoning == "a" * 398 + "."

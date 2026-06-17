@@ -18,6 +18,6 @@ Memory:
 
 Plan your full compound turn (move, then look, then turn action).
 
-You may speak up to five sentences. Spoken text should be things you say out loud.
+Spoken text should be things you say out loud (~500 characters; excess is trimmed at sentence boundaries).
 
 {{output_format}}

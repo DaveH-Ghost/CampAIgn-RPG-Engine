@@ -2,37 +2,35 @@
 LLM structured output schemas — V0.2.5 single-call compound turns.
 
 One AgentCompoundTurn per agent turn: optional move, then optional look, then turn action.
+V0.4.1a: reasoning and speak content are truncated at sentence boundaries.
 """
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Literal, Optional
-import re
 
 from src.coordinates import CoordinateParseError, parse_coordinate_target
+from src.llm.text_truncation import (
+    REASONING_MAX_CHARS,
+    SPEAK_MAX_CHARS,
+    count_sentences,
+    truncate_at_sentence_boundary,
+)
 from src.move_target import validate_move_target_syntax
 
 
 TurnActionType = Literal["speak", "interact", "none"]
 
-MAX_SPEAK_SENTENCES = 5
-MAX_SPEAK_CHARACTERS = 500
+MAX_SPEAK_CHARACTERS = SPEAK_MAX_CHARS
+MAX_REASONING_CHARACTERS = REASONING_MAX_CHARS
 
 
 def count_speak_sentences(text: str) -> int:
     """Count sentences; ellipsis runs are not sentence boundaries."""
-    normalized = re.sub(r"\.{2,}", "\u2026", text.strip())
-    parts = [s.strip() for s in re.split(r"[.!?]+\s*", normalized) if s.strip()]
-    return len(parts)
+    return count_sentences(text)
 
 
-def _validate_reasoning(v: str) -> str:
-    text = v.strip()
-    if len(text) > 400:
-        raise ValueError(
-            "ERR:REASONING_TOO_LONG: reasoning must be 400 characters or fewer "
-            f"(current length: {len(text)})."
-        )
-    return v
+def _truncate_reasoning(v: str) -> str:
+    return truncate_at_sentence_boundary(v, REASONING_MAX_CHARS)
 
 
 def _validate_short_optional(v: Optional[str]) -> Optional[str]:
@@ -45,31 +43,23 @@ def _validate_short_optional(v: Optional[str]) -> Optional[str]:
     return v
 
 
-def _validate_speak_content(v: Optional[str]) -> Optional[str]:
+def _truncate_speak_content(v: Optional[str]) -> Optional[str]:
     if v is None:
         return v
     text = v.strip()
     if not text:
         return v
-    sentence_count = count_speak_sentences(text)
-    if sentence_count > MAX_SPEAK_SENTENCES:
-        raise ValueError(
-            f"ERR:CONTENT_TOO_LONG: speak is limited to a maximum of {MAX_SPEAK_SENTENCES} sentences "
-            f"(you used {sentence_count})."
-        )
-    if len(text) > MAX_SPEAK_CHARACTERS:
-        raise ValueError(
-            f"ERR:CONTENT_TOO_LONG: speak content is limited to {MAX_SPEAK_CHARACTERS} characters "
-            f"(you used {len(text)})."
-        )
-    return v
+    return truncate_at_sentence_boundary(text, SPEAK_MAX_CHARS)
 
 
 class AgentCompoundTurn(BaseModel):
     """Structured output for one compound agent turn (move → look → turn action)."""
 
     reasoning: str = Field(
-        description="Private thoughts for the full turn (max 400 characters)."
+        description=(
+            "Private thoughts for the full turn (aim for ~400 characters; "
+            "longer text is trimmed at sentence boundaries)."
+        ),
     )
     move_target: Optional[str] = Field(
         default=None,
@@ -92,7 +82,10 @@ class AgentCompoundTurn(BaseModel):
     )
     content: Optional[str] = Field(
         default=None,
-        description="Speak dialogue when turn_action is speak.",
+        description=(
+            "Speak dialogue when turn_action is speak (aim for ~500 characters; "
+            "longer text is trimmed at sentence boundaries)."
+        ),
     )
     confidence: Optional[str] = Field(default=None, description="1-3 words.")
     emotion: Optional[str] = Field(default=None, description="1-3 words.")
@@ -100,7 +93,7 @@ class AgentCompoundTurn(BaseModel):
     @field_validator("reasoning")
     @classmethod
     def validate_reasoning(cls, v: str) -> str:
-        return _validate_reasoning(v)
+        return _truncate_reasoning(v)
 
     @field_validator("move_target")
     @classmethod
@@ -117,7 +110,7 @@ class AgentCompoundTurn(BaseModel):
     @field_validator("content")
     @classmethod
     def validate_content(cls, v: Optional[str]) -> Optional[str]:
-        return _validate_speak_content(v)
+        return _truncate_speak_content(v)
 
     @field_validator("confidence", "emotion")
     @classmethod

@@ -69,7 +69,7 @@ Important rules:
 - look: optional; a list of objects you can look at will be provided.
 - Hidden detail is marked "[?]"; stale examined knowledge is "[?] [changed]".
 - Other agents show their most recent observable action on their vision line.
-- speak: up to five sentences when turn_action is "speak".
+- speak: dialogue when turn_action is "speak" (aim for ~500 characters; longer text is trimmed at sentence boundaries).
 - interact: turn_action "interact" with target object id + action_name when listed below.
 - You need to be adjacent or on the same tile as most objects to interact with them.
 - turn_action "none": end after optional move/look without speaking or interacting.
@@ -115,13 +115,13 @@ def compound_output_format() -> str:
         "Respond with ONLY a valid JSON object matching this exact structure "
         "(no extra text, no markdown):\n"
         "{\n"
-        '  "reasoning": "Your private thoughts for the full turn (max 400 characters).",\n'
+        '  "reasoning": "Your private thoughts (~400 characters; trimmed at sentence boundaries if longer).",\n'
         '  "move_target": "2,3" | "obj_ball_01" | null,\n'
         '  "look_target": "obj_ball_01" | null,\n'
         '  "turn_action": "speak" | "interact" | "none",\n'
         '  "target": "obj_cookie_01" | null,\n'
         '  "action_name": "eat" | null,\n'
-        '  "content": "spoken text or null",\n'
+        '  "content": "spoken text (~500 characters; trimmed at sentence boundaries if longer) or null",\n'
         '  "confidence": "curious" | "certain" | ... (1-3 words),\n'
         '  "emotion": "focused" | "calm" | ... (1-3 words)\n'
         "}"
