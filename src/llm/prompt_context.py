@@ -12,13 +12,17 @@ one reference assembly; game projects can ignore it and compose their own.
 from dataclasses import dataclass
 
 from src.agent import Agent
+from src.area import Area
+from src.move_target import (
+    format_move_instructions,
+    normalize_move_instructions_options,
+)
 from src.perception import (
     build_passive_vision,
     get_available_interactions,
     get_available_look_targets,
+    normalize_passive_vision_options,
 )
-from src.area import Area
-from src.move_target import format_move_instructions
 
 
 @dataclass(frozen=True)
@@ -38,6 +42,9 @@ class PromptContext:
     """
 
     character: str
+    character_name: str
+    character_personality: str
+    character_description: str
     passive_vision: str
     memory: str
     area_description: str
@@ -48,12 +55,128 @@ class PromptContext:
     output_format: str
 
 
-def _character_block(agent: Agent) -> str:
-    return (
-        f"You are {agent.name}.\n"
-        f"Your personality: {agent.personality}\n\n"
-        f"Your detailed description: {agent.description}"
+DEFAULT_CHARACTER_OPTIONS: dict[str, bool] = {
+    "include_name": True,
+    "include_personality": True,
+    "include_description": True,
+}
+
+
+def normalize_character_options(
+    options: dict[str, object] | None,
+) -> dict[str, bool]:
+    """Merge *options* with defaults for character slot rendering."""
+    merged = dict(DEFAULT_CHARACTER_OPTIONS)
+    if options:
+        for key in DEFAULT_CHARACTER_OPTIONS:
+            if key in options:
+                merged[key] = bool(options[key])
+    return merged
+
+
+def _join_character_parts(parts: list[str]) -> str:
+    if not parts:
+        return ""
+    if len(parts) == 1:
+        return parts[0]
+    result = parts[0]
+    for segment in parts[1:]:
+        if segment.startswith("Your detailed description:"):
+            result += "\n\n" + segment
+        else:
+            result += "\n" + segment
+    return result
+
+
+def character_block(
+    agent: Agent,
+    *,
+    include_name: bool = True,
+    include_personality: bool = True,
+    include_description: bool = True,
+) -> str:
+    """Render the character slot with optional field toggles."""
+    opts = normalize_character_options(
+        {
+            "include_name": include_name,
+            "include_personality": include_personality,
+            "include_description": include_description,
+        }
     )
+    parts: list[str] = []
+    if opts["include_name"]:
+        parts.append(f"You are {agent.name}.")
+    if opts["include_personality"]:
+        parts.append(f"Your personality: {agent.personality}")
+    if opts["include_description"]:
+        parts.append(f"Your detailed description: {agent.description}")
+    return _join_character_parts(parts)
+
+
+def render_character_slot(
+    ctx: PromptContext,
+    options: dict[str, object] | None = None,
+) -> str:
+    """Render character slot lines from context parts and block options."""
+    opts = normalize_character_options(options)
+    parts: list[str] = []
+    if opts["include_name"]:
+        parts.append(ctx.character_name)
+    if opts["include_personality"]:
+        parts.append(ctx.character_personality)
+    if opts["include_description"]:
+        parts.append(ctx.character_description)
+    return _join_character_parts(parts)
+
+
+def render_passive_vision_slot(
+    ctx: PromptContext,
+    options: dict[str, object] | None = None,
+    *,
+    agent: Agent | None = None,
+    area: Area | None = None,
+    vision_units: str = "",
+    units_per_tile: int | None = None,
+) -> str:
+    """Render passive vision with optional you-are-at / coordinate toggles."""
+    opts = normalize_passive_vision_options(options)
+    if agent is not None and area is not None:
+        return build_passive_vision(
+            agent,
+            area,
+            include_you_are_at=opts["include_you_are_at"],
+            include_entity_coordinates=opts["include_entity_coordinates"],
+            include_relative_bearing=opts["include_relative_bearing"],
+            vision_units=vision_units,
+            units_per_tile=units_per_tile,
+        )
+    return ctx.passive_vision
+
+
+def render_move_instructions_slot(
+    ctx: PromptContext,
+    options: dict[str, object] | None = None,
+    *,
+    agent: Agent | None = None,
+    area: Area | None = None,
+    vision_units: str = "",
+    units_per_tile: int | None = None,
+) -> str:
+    """Render move instructions with optional coordinate-move toggle."""
+    opts = normalize_move_instructions_options(options)
+    if agent is not None and area is not None:
+        return format_move_instructions(
+            agent,
+            area,
+            include_coordinate_moves=opts["include_coordinate_moves"],
+            vision_units=vision_units,
+            units_per_tile=units_per_tile,
+        )
+    return ctx.move_instructions
+
+
+def _character_block(agent: Agent) -> str:
+    return character_block(agent)
 
 
 def _compound_turn_rules() -> str:
@@ -133,6 +256,9 @@ def build_prompt_context(agent: Agent, area: Area) -> PromptContext:
     memory_body = agent.memory.render_prompt_block(agent, area)
     return PromptContext(
         character=_character_block(agent),
+        character_name=f"You are {agent.name}.",
+        character_personality=f"Your personality: {agent.personality}",
+        character_description=f"Your detailed description: {agent.description}",
         passive_vision=build_passive_vision(agent, area),
         memory=memory_body,
         area_description=area.get_area_description(),

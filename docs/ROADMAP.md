@@ -253,7 +253,7 @@ Larger items (Roll20 integration, full strategy turn models, lorebooks, etc.) re
 
 **Status:** ⬜ **Planned** — see [v0.4.1-changelog.md](v0.4.1-changelog.md) for slices **0.4.1a–d**.
 
-### V0.4.1 — truncation + prompt blocks — ⬜ Planned
+### V0.4.1 — truncation + prompt blocks — 🔄 In progress (0.4.1d remaining)
 
 | Slice | Theme |
 |-------|--------|

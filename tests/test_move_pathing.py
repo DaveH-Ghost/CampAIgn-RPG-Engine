@@ -126,4 +126,18 @@ def test_prompt_mentions_move_speed_when_limited():
     agent = area.get_agent()
     agent.move_speed = 2
     prompt = build_compound_prompt(agent, area)
-    assert "move speed this turn is 2" in prompt
+    assert "Your move speed this turn is 2 step(s)." in prompt
+    assert "diagonal and straight" not in prompt
+
+
+def test_move_speed_line_uses_session_units():
+    from src.move_target import format_move_speed_line
+
+    assert (
+        format_move_speed_line(2, vision_units="ft", units_per_tile=5)
+        == "Your move speed this turn is 10 ft."
+    )
+    assert (
+        format_move_speed_line(2, vision_units="", units_per_tile=None)
+        == "Your move speed this turn is 2 step(s)."
+    )

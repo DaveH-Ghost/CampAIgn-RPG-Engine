@@ -134,6 +134,8 @@ class Session:
             raise ValueError(f"Unknown active_agent_id: {active_agent_id!r}")
         self.active_agent_id = agent.id
         self._prompt_blocks: list | None = None
+        self.vision_units: str = ""
+        self.vision_units_per_tile: int | None = None
 
     @property
     def area(self) -> Area:
@@ -316,6 +318,10 @@ class Session:
             ctx,
             include_examples=self.include_examples,
             blocks=self.get_prompt_blocks(),
+            agent=agent,
+            area=area,
+            vision_units=self.vision_units,
+            units_per_tile=self.vision_units_per_tile,
         )
 
     def get_prompt_blocks(self) -> list:
@@ -342,6 +348,21 @@ class Session:
 
     def prompt_blocks_use_default(self) -> bool:
         return self._prompt_blocks is None
+
+    def set_vision_units(
+        self,
+        units: str,
+        units_per_tile: int | None,
+    ) -> str | None:
+        """Update passive-vision distance labels for realm-studio."""
+        cleaned = units.strip()
+        if cleaned and not cleaned.isalpha():
+            return "Units must contain letters only."
+        if units_per_tile is not None and units_per_tile <= 0:
+            return "Units per tile must be a positive number."
+        self.vision_units = cleaned
+        self.vision_units_per_tile = units_per_tile
+        return None
 
     def build_prompt_context_for_agent(self, name_or_id: Optional[str] = None):
         """Build ``PromptContext`` for an agent (default: active)."""

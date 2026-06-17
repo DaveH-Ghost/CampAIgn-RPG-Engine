@@ -21,15 +21,20 @@ from backend.schemas import (
     DeleteAreaRequest,
     EditAreaRequest,
     EventRequest,
+    PromptBlocksPreviewRequest,
     PromptBlocksRequest,
     TurnRequest,
+    VisionUnitsRequest,
 )
 from backend.session_store import get_session_store
 from backend.snapshot_compat import normalize_state_snapshot
 from backend.turn_runner import run_llm_turn
+from backend.vision_units_api import put_vision_units as api_put_vision_units
 from backend.prompt_api import (
+    get_prompt_block_catalog_route as api_get_prompt_block_catalog,
     get_prompt_blocks as api_get_prompt_blocks,
     get_prompt_slots as api_get_prompt_slots,
+    preview_prompt_blocks as api_preview_prompt_blocks,
     put_prompt_blocks as api_put_prompt_blocks,
     reset_prompt_blocks as api_reset_prompt_blocks,
 )
@@ -69,6 +74,14 @@ def create_app() -> FastAPI:
     def get_state() -> dict:
         snap = get_session_store().session.snapshot(include_private=True)
         return normalize_state_snapshot(snap)
+
+    @app.put("/api/vision-units")
+    def put_vision_units_route(body: VisionUnitsRequest) -> dict[str, object]:
+        return api_put_vision_units(
+            get_session_store().session,
+            units=body.units,
+            units_per_tile=body.units_per_tile,
+        )
 
     @app.post("/api/command")
     def post_command(body: CommandRequest) -> dict[str, object]:
@@ -153,13 +166,22 @@ def create_app() -> FastAPI:
         }
 
     @app.get("/api/prompt-blocks")
-    def get_prompt_blocks_route() -> dict[str, object]:
-        return api_get_prompt_blocks(get_session_store().session)
+    def get_prompt_blocks_route(agent_id: str | None = None) -> dict[str, object]:
+        return api_get_prompt_blocks(get_session_store().session, agent_id=agent_id)
 
     @app.put("/api/prompt-blocks")
     def put_prompt_blocks_route(body: PromptBlocksRequest) -> dict[str, object]:
         items = [block.model_dump() for block in body.blocks]
         return api_put_prompt_blocks(get_session_store().session, items)
+
+    @app.post("/api/prompt-blocks/preview")
+    def preview_prompt_blocks_route(body: PromptBlocksPreviewRequest) -> dict[str, object]:
+        items = [block.model_dump() for block in body.blocks]
+        return api_preview_prompt_blocks(
+            get_session_store().session,
+            items,
+            agent_id=body.agent_id,
+        )
 
     @app.post("/api/prompt-blocks/reset")
     def reset_prompt_blocks_route() -> dict[str, object]:
@@ -168,6 +190,10 @@ def create_app() -> FastAPI:
     @app.get("/api/prompt-slots")
     def get_prompt_slots_route(agent_id: str | None = None) -> dict[str, object]:
         return api_get_prompt_slots(get_session_store().session, agent_id)
+
+    @app.get("/api/prompt-block-catalog")
+    def get_prompt_block_catalog_route() -> dict[str, object]:
+        return api_get_prompt_block_catalog()
 
     @app.post("/api/event")
     def post_event(body: EventRequest) -> dict[str, object]:

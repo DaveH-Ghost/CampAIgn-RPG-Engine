@@ -136,6 +136,85 @@ export async function getPrompt(agentId) {
   return data;
 }
 
+export async function getPromptBlocks(agentId) {
+  const params = agentId ? `?agent_id=${encodeURIComponent(agentId)}` : "";
+  const res = await fetch(`/api/prompt-blocks${params}`);
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || `HTTP ${res.status}`);
+  }
+  return data;
+}
+
+export async function putPromptBlocks(blocks) {
+  const res = await fetch("/api/prompt-blocks", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ blocks }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || `HTTP ${res.status}`);
+  }
+  return data;
+}
+
+export async function resetPromptBlocks() {
+  const res = await fetch("/api/prompt-blocks/reset", { method: "POST" });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || `HTTP ${res.status}`);
+  }
+  return data;
+}
+
+export async function getPromptSlots(agentId) {
+  const params = agentId ? `?agent_id=${encodeURIComponent(agentId)}` : "";
+  const res = await fetch(`/api/prompt-slots${params}`);
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || `HTTP ${res.status}`);
+  }
+  return data;
+}
+
+export async function getPromptBlockCatalog() {
+  const res = await fetch("/api/prompt-block-catalog");
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || `HTTP ${res.status}`);
+  }
+  return data;
+}
+
+export async function putVisionUnits({ units, units_per_tile }) {
+  const res = await fetch("/api/vision-units", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ units, units_per_tile }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || `HTTP ${res.status}`);
+  }
+  return data;
+}
+
+export async function previewPromptBlocks(blocks, agentId) {
+  const body = { blocks };
+  if (agentId) body.agent_id = agentId;
+  const res = await fetch("/api/prompt-blocks/preview", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || `HTTP ${res.status}`);
+  }
+  return data;
+}
+
 /** CLI-safe double-quoted string (v1: strip embedded quotes). */
 export function cliQuote(value) {
   const text = String(value ?? "").replace(/"/g, "'");

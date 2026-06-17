@@ -4,6 +4,8 @@
 
 import { hasAppearance, resolveAppearanceUrl } from "./appearance.js";
 import { getPrompt, getState, postTurn } from "./api.js";
+import { initPromptLayout, reloadPromptLayoutIfOpen } from "./promptLayout.js";
+import { initVisionUnits, syncVisionUnitsFromSnapshot } from "./visionUnits.js";
 import { initGridViewport, maybeCenterGrid } from "./gridViewport.js";
 import {
   appendTurnLogEntry,
@@ -34,6 +36,8 @@ const gridWorldEl = document.getElementById("grid-world");
 const gridEl = document.getElementById("grid");
 const snapshotEl = document.getElementById("snapshot");
 const sessionMetaEl = document.getElementById("session-meta");
+const visionUnitsInput = document.getElementById("vision-units-input");
+const visionUnitsPerTileInput = document.getElementById("vision-units-per-tile-input");
 const passiveVisionEl = document.getElementById("passive-vision");
 const passiveVisionEmptyEl = document.getElementById("passive-vision-empty");
 const agentsElsewhereEl = document.getElementById("agents-elsewhere");
@@ -44,6 +48,21 @@ const turnLogEl = document.getElementById("turn-log");
 const turnLogEmptyEl = document.getElementById("turn-log-empty");
 const lastPromptEl = document.getElementById("last-prompt");
 const lastPromptEmptyEl = document.getElementById("last-prompt-empty");
+const promptLayoutEl = document.getElementById("prompt-layout");
+const promptLayoutStatusEl = document.getElementById("prompt-layout-status");
+const promptBlockListEl = document.getElementById("prompt-block-list");
+const promptLayoutSaveBtn = document.getElementById("prompt-layout-save");
+const promptLayoutResetBtn = document.getElementById("prompt-layout-reset");
+const promptLayoutPreviewBtn = document.getElementById("prompt-layout-preview");
+const promptLayoutPreviewEl = document.getElementById("prompt-layout-preview");
+const promptLayoutPreviewEmptyEl = document.getElementById("prompt-layout-preview-empty");
+const promptAddTypeSelect = document.getElementById("prompt-add-type");
+const promptAddVariantWrap = document.getElementById("prompt-add-variant-wrap");
+const promptAddVariantLabel = document.getElementById("prompt-add-variant-label");
+const promptAddVariantSelect = document.getElementById("prompt-add-variant");
+const promptAddContentWrap = document.getElementById("prompt-add-content-wrap");
+const promptAddContentInput = document.getElementById("prompt-add-content");
+const promptAddBtn = document.getElementById("prompt-add-btn");
 const promptDebugEl = document.getElementById("prompt-debug");
 const activeAreaSelect = document.getElementById("active-area-select");
 const createAreaBtn = document.getElementById("create-area");
@@ -214,6 +233,7 @@ function renderState(data) {
   lastSnapshot = normalizeSnapshot(data);
   renderGrid(lastSnapshot);
   renderSessionMeta(lastSnapshot);
+  syncVisionUnitsFromSnapshot(lastSnapshot);
   renderSidebarPanels(lastSnapshot);
   if (activeAreaSelect) renderActiveAreaSelect(activeAreaSelect, lastSnapshot);
   if (activeAgentSelect) renderActiveAgentSelect(activeAgentSelect, lastSnapshot);
@@ -296,14 +316,22 @@ async function refreshAfterMutation(snapshot) {
   if (snapshot) {
     renderState(snapshot);
     updateStatusLine(lastSnapshot);
+    await reloadPromptLayoutIfOpen();
     return;
   }
   await fetchState();
+  await reloadPromptLayoutIfOpen();
 }
 
 initUi({
   getSnapshotFn: () => activeAreaView(lastSnapshot),
   onStateChangedFn: refreshAfterMutation,
+});
+initVisionUnits({
+  unitsInputEl: visionUnitsInput,
+  unitsPerTileInputEl: visionUnitsPerTileInput,
+  showToastFn: showToast,
+  onUpdatedFn: refreshAfterMutation,
 });
 initGridViewport(gridViewportEl, gridWorldEl);
 bindGridContextMenu(gridEl);
@@ -316,6 +344,31 @@ bindAreaManageButtons({
 });
 bindEmitEventButton(emitEventBtn);
 bindPromptDebug(promptDebugEl, lastPromptEl, lastPromptEmptyEl, () => getPrompt());
+initPromptLayout({
+  detailsEl: promptLayoutEl,
+  listEl: promptBlockListEl,
+  statusEl: promptLayoutStatusEl,
+  previewEl: promptLayoutPreviewEl,
+  previewEmptyEl: promptLayoutPreviewEmptyEl,
+  saveBtn: promptLayoutSaveBtn,
+  resetBtn: promptLayoutResetBtn,
+  refreshPreviewBtn: promptLayoutPreviewBtn,
+  addTypeSelect: promptAddTypeSelect,
+  addVariantWrap: promptAddVariantWrap,
+  addVariantLabel: promptAddVariantLabel,
+  addVariantSelect: promptAddVariantSelect,
+  addContentWrap: promptAddContentWrap,
+  addContentInput: promptAddContentInput,
+  addBtn: promptAddBtn,
+  showToastFn: showToast,
+  getActiveAgentIdFn: () => lastSnapshot?.active_agent_id ?? null,
+  onPreviewUpdatedFn: async (prompt) => {
+    setLastPrompt(prompt);
+    if (promptDebugEl.open) {
+      renderLastPrompt(lastPromptEl, lastPromptEmptyEl);
+    }
+  },
+});
 
 document.getElementById("refresh").addEventListener("click", fetchState);
 runTurnBtn.addEventListener("click", runTurn);

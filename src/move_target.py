@@ -107,36 +107,60 @@ def format_move_towards_passive(
     )
 
 
-def format_move_entity_targets(agent: Agent, area: Area) -> str:
-    """List in-area entity ids the agent may use as move targets."""
+def format_move_speed_line(
+    move_speed: int,
+    *,
+    vision_units: str = "",
+    units_per_tile: int | None = None,
+) -> str:
+    """One-line move budget for the compound prompt."""
+    per_tile = 1 if units_per_tile is None else units_per_tile
+    value = move_speed * per_tile
+    unit_label = vision_units.strip()
+    if unit_label:
+        return f"Your move speed this turn is {value} {unit_label}."
+    return f"Your move speed this turn is {value} step(s)."
+
+
+def format_move_instructions(
+    agent: Agent,
+    area: Area,
+    *,
+    include_coordinate_moves: bool = True,
+    vision_units: str = "",
+    units_per_tile: int | None = None,
+) -> str:
+    """Move rules for the compound prompt (entity ids; optional coordinate bounds)."""
     lines: list[str] = []
-    for obj in area.get_objects():
-        x, y = obj.position
-        lines.append(f"- {obj.id} {obj.name} at ({x}, {y})")
-    for other in area.agents:
-        if other.id == agent.id:
-            continue
-        x, y = other.position
-        lines.append(f"- {other.id} {other.name} at ({x}, {y})")
-    if not lines:
-        return "Entity move targets: (none besides coordinates)"
-    return "Entity move targets (move to the entity's tile):\n" + "\n".join(lines)
-
-
-def format_move_instructions(agent: Agent, area: Area) -> str:
-    """Coordinate bounds plus entity id list for the compound prompt."""
-    coord_rule = area.format_move_coordinate_rule()
-    entity_block = format_move_entity_targets(agent, area)
-    speed_line = ""
-    if agent.move_speed is not None:
-        speed_line = (
-            f"Your move speed this turn is {agent.move_speed} step(s) "
-            "(diagonal and straight each cost 1); you may stop short of the target.\n"
-        )
-    return (
-        f"{coord_rule}\n"
-        "You may also set move_target to an entity id (obj_* or agent_*) to move "
-        "to that entity's current tile.\n"
-        f"{speed_line}"
-        f"{entity_block}"
+    if include_coordinate_moves:
+        lines.append(area.format_move_coordinate_rule())
+    lines.append(
+        "You may set move_target to an entity id (obj_* or agent_*) to move "
+        "to that entity's current tile."
     )
+    if agent.move_speed is not None:
+        lines.append(
+            format_move_speed_line(
+                agent.move_speed,
+                vision_units=vision_units,
+                units_per_tile=units_per_tile,
+            )
+        )
+    return "\n".join(lines)
+
+
+DEFAULT_MOVE_INSTRUCTIONS_OPTIONS: dict[str, bool] = {
+    "include_coordinate_moves": True,
+}
+
+
+def normalize_move_instructions_options(
+    options: dict[str, object] | None,
+) -> dict[str, bool]:
+    """Merge *options* with defaults for move_instructions slot rendering."""
+    merged = dict(DEFAULT_MOVE_INSTRUCTIONS_OPTIONS)
+    if options:
+        for key in DEFAULT_MOVE_INSTRUCTIONS_OPTIONS:
+            if key in options:
+                merged[key] = bool(options[key])
+    return merged

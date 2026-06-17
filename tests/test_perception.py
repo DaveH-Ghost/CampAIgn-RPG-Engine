@@ -25,6 +25,37 @@ def test_initial_sign_shows_passive_not_pre_marked():
     )
 
 
+def test_passive_vision_can_omit_you_are_at():
+    area = create_initial_area()
+    agent = area.get_agent()
+    vision = build_passive_vision(agent, area, include_you_are_at=False)
+    assert "You are at" not in vision
+    assert "Ceramic Ball (obj_ball_01)" in vision
+
+
+def test_passive_vision_can_omit_entity_coordinates():
+    area = create_initial_area()
+    agent = area.get_agent()
+    vision = build_passive_vision(agent, area, include_entity_coordinates=False)
+    assert "You are at (1, 1)." in vision
+    assert "Ceramic Ball (obj_ball_01), (2, 2)" not in vision
+    assert "Ceramic Ball (obj_ball_01) - [?]" in vision
+
+
+def test_passive_vision_relative_bearing():
+    area = create_initial_area()
+    agent = area.get_agent()
+    vision = build_passive_vision(
+        agent,
+        area,
+        include_relative_bearing=True,
+        vision_units="ft",
+        units_per_tile=5,
+    )
+    assert "South of you, 15 ft away" in vision
+    assert "Wooden Sign (obj_sign_01)" in vision
+
+
 def test_ball_vision_states_never_stale_current():
     """Ball: [?] initially, detailed after look, [?] [changed] after invalidate."""
     area = create_initial_area()

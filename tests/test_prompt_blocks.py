@@ -1,10 +1,12 @@
 """Prompt block model and rendering (V0.4.1b)."""
 
 from src.game_profile import default_compound_profile
+from src.area import create_initial_area
 from src.llm.prompt_context import build_prompt_context
 from src.prompt_blocks import (
     PromptBlock,
     default_prompt_blocks,
+    prompt_block_catalog,
     prompt_blocks_from_dicts,
     render_prompt_blocks,
 )
@@ -95,3 +97,152 @@ def test_put_invalid_blocks_rejected():
     session = Session.from_default()
     _, err = prompt_blocks_from_dicts([{"type": "slot"}])
     assert err is not None
+
+
+def test_character_slot_options_toggle_fields():
+    session = Session.from_default()
+    ctx = build_prompt_context(session.get_active_agent(), session.get_area_for_agent(session.get_active_agent()))
+    blocks = [
+        PromptBlock(
+            type="slot",
+            name="character",
+            options={
+                "include_name": True,
+                "include_personality": False,
+                "include_description": False,
+            },
+        )
+    ]
+    rendered = render_prompt_blocks(blocks, ctx)
+    assert rendered.startswith("You are ")
+    assert "Your personality:" not in rendered
+    assert "Your detailed description:" not in rendered
+
+
+def test_character_slot_requires_one_enabled_option():
+    _, err = prompt_blocks_from_dicts(
+        [
+            {
+                "type": "slot",
+                "name": "character",
+                "options": {
+                    "include_name": False,
+                    "include_personality": False,
+                    "include_description": False,
+                },
+            }
+        ]
+    )
+    assert err is not None
+    assert "at least" in err.lower()
+
+
+def test_prompt_block_catalog_lists_slot_settings():
+    catalog = prompt_block_catalog()
+    assert "character" in catalog["slot_settings"]
+    assert catalog["slot_settings"]["character"]["fields"]
+    assert "passive_vision" in catalog["slot_settings"]
+
+
+def test_area_format_grid_description_uses_screen_coordinates():
+    area = create_initial_area()
+    text = area.format_grid_description()
+    assert "northwest corner" in text
+    assert "southeast" in text
+    assert "Y increases southward" in text
+    assert "northward" not in text
+
+
+def test_move_instructions_slot_omits_coordinates():
+    session = Session.from_default()
+    agent = session.get_active_agent()
+    area = session.get_area_for_agent(agent)
+    ctx = build_prompt_context(agent, area)
+    blocks = [
+        PromptBlock(
+            type="slot",
+            name="move_instructions",
+            options={"include_coordinate_moves": False},
+        )
+    ]
+    rendered = render_prompt_blocks(blocks, ctx, agent=agent, area=area)
+    assert "You may move to any coordinate" not in rendered
+    assert "move_target to an entity id" in rendered
+
+
+def test_move_instructions_move_speed_with_units():
+    session = Session.from_default()
+    session.set_vision_units("ft", 5)
+    session.run_command("edit-agent agent_01 move-speed 2")
+    agent = session.get_active_agent()
+    area = session.get_area_for_agent(agent)
+    ctx = build_prompt_context(agent, area)
+    blocks = [PromptBlock(type="slot", name="move_instructions")]
+    rendered = render_prompt_blocks(
+        blocks,
+        ctx,
+        agent=agent,
+        area=area,
+        vision_units=session.vision_units,
+        units_per_tile=session.vision_units_per_tile,
+    )
+    assert "Your move speed this turn is 10 ft." in rendered
+
+
+def test_passive_vision_slot_relative_bearing():
+    session = Session.from_default()
+    session.set_vision_units("ft", 5)
+    agent = session.get_active_agent()
+    area = session.get_area_for_agent(agent)
+    ctx = build_prompt_context(agent, area)
+    blocks = [
+        PromptBlock(
+            type="slot",
+            name="passive_vision",
+            options={"include_relative_bearing": True},
+        )
+    ]
+    rendered = render_prompt_blocks(
+        blocks,
+        ctx,
+        agent=agent,
+        area=area,
+        vision_units=session.vision_units,
+        units_per_tile=session.vision_units_per_tile,
+    )
+    assert "South of you, 15 ft away" in rendered
+
+
+def test_passive_vision_slot_options():
+    session = Session.from_default()
+    agent = session.get_active_agent()
+    area = session.get_area_for_agent(agent)
+    ctx = build_prompt_context(agent, area)
+    blocks = [
+        PromptBlock(
+            type="slot",
+            name="passive_vision",
+            options={
+                "include_you_are_at": False,
+                "include_entity_coordinates": True,
+            },
+        )
+    ]
+    rendered = render_prompt_blocks(blocks, ctx, agent=agent, area=area)
+    assert "You are at" not in rendered
+    assert "Ceramic Ball (obj_ball_01), (2, 2)" in rendered
+
+
+def test_prompt_block_catalog_lists_all_types():
+    catalog = prompt_block_catalog()
+    types = {entry["type"] for entry in catalog["block_types"]}
+    assert types == {"slot", "text", "section"}
+    slot_entry = next(item for item in catalog["block_types"] if item["type"] == "slot")
+    slot_names = {opt["name"] for opt in slot_entry["options"]}
+    assert "passive_vision" in slot_names
+    assert "rules" not in slot_names
+    section_entry = next(item for item in catalog["block_types"] if item["type"] == "section")
+    section_names = {opt["name"] for opt in section_entry["options"]}
+    assert section_names == {"compound_rules", "output_format"}
+    compound = next(opt for opt in section_entry["options"] if opt["name"] == "compound_rules")
+    assert compound["default_content"]

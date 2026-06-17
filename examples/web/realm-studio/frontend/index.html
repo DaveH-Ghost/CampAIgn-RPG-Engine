@@ -20,7 +20,7 @@
 
     <h1>realm-studio</h1>
 
-    <p class="subtitle">V0.4.0 — multi-area GM grid + object actions</p>
+    <p class="subtitle">V0.4.1 — prompt layout + turn truncation</p>
 
     <label class="active-area-label">
 
@@ -76,6 +76,26 @@
 
       <dl id="session-meta" class="session-meta"></dl>
 
+      <dl id="session-vision-units" class="session-meta session-vision-units">
+
+        <dt><label for="vision-units-input">Units</label></dt>
+
+        <dd>
+
+          <input type="text" id="vision-units-input" class="session-meta-input" autocomplete="off" spellcheck="false" aria-label="Units" />
+
+        </dd>
+
+        <dt><label for="vision-units-per-tile-input">Units per tile</label></dt>
+
+        <dd>
+
+          <input type="text" id="vision-units-per-tile-input" class="session-meta-input" inputmode="numeric" autocomplete="off" aria-label="Units per tile" />
+
+        </dd>
+
+      </dl>
+
 
 
       <section class="sidebar-section" aria-label="Passive vision">
@@ -123,6 +143,62 @@
         <ol id="turn-log" class="turn-log"></ol>
 
       </section>
+
+
+
+      <details id="prompt-layout" class="sidebar-details">
+
+        <summary>Prompt layout</summary>
+
+        <p id="prompt-layout-status" class="panel-empty">Open to edit block order and static sections.</p>
+
+        <ul id="prompt-block-list" class="prompt-block-list"></ul>
+
+        <div id="prompt-layout-add" class="prompt-layout-add">
+
+          <label class="prompt-block-field">
+
+            <span>Block type</span>
+
+            <select id="prompt-add-type" aria-label="Block type to add"></select>
+
+          </label>
+
+          <label class="prompt-block-field" id="prompt-add-variant-wrap">
+
+            <span id="prompt-add-variant-label">Name</span>
+
+            <select id="prompt-add-variant" aria-label="Block name"></select>
+
+          </label>
+
+          <label class="prompt-block-field hidden" id="prompt-add-content-wrap">
+
+            <span>Initial text</span>
+
+            <textarea id="prompt-add-content" rows="2" aria-label="Initial text content"></textarea>
+
+          </label>
+
+          <button type="button" id="prompt-add-btn">Add block</button>
+
+        </div>
+
+        <div class="prompt-layout-actions">
+
+          <button type="button" id="prompt-layout-save">Save layout</button>
+
+          <button type="button" id="prompt-layout-reset">Reset to default</button>
+
+          <button type="button" id="prompt-layout-preview">Refresh preview</button>
+
+        </div>
+
+        <p id="prompt-layout-preview-empty" class="panel-empty">Preview loads when you open this panel or refresh.</p>
+
+        <pre id="prompt-layout-preview" class="panel-text panel-text-debug hidden"></pre>
+
+      </details>
 
 
 

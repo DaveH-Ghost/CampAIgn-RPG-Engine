@@ -135,11 +135,15 @@ def test_compound_nav_phase_move_to_object_id():
     assert "Ceramic Ball" in steps[0].result
 
 
-def test_prompt_lists_entity_move_targets():
+def test_prompt_move_instructions_entity_id_line():
     area = create_initial_area()
     agent = area.get_agent()
     prompt = build_compound_prompt(agent, area)
 
-    assert "Entity move targets" in prompt
-    assert "obj_ball_01 Ceramic Ball at (2, 2)" in prompt
-    assert 'move_target to an entity id' in prompt
+    assert "Entity move targets" not in prompt
+    assert "obj_ball_01 Ceramic Ball at" not in prompt
+    assert "You may move to any coordinate" in prompt
+    assert (
+        "You may set move_target to an entity id (obj_* or agent_*) to move "
+        "to that entity's current tile."
+    ) in prompt

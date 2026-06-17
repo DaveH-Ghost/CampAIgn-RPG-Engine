@@ -33,6 +33,34 @@ def _active_block(state: dict) -> dict:
     return state["areas"][state["active_area_id"]]
 
 
+def test_get_state_includes_vision_units(client):
+    response = client.get("/api/state")
+    data = response.json()
+    assert data.get("vision_units") == ""
+    assert data.get("vision_units_per_tile") is None
+
+
+def test_put_vision_units(client):
+    response = client.put(
+        "/api/vision-units",
+        json={"units": "ft", "units_per_tile": 5},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] is True
+    assert data["vision_units"] == "ft"
+    assert data["vision_units_per_tile"] == 5
+    assert data["snapshot"]["vision_units"] == "ft"
+
+
+def test_put_vision_units_rejects_invalid_units(client):
+    response = client.put(
+        "/api/vision-units",
+        json={"units": "ft5", "units_per_tile": 5},
+    )
+    assert response.json()["ok"] is False
+
+
 def test_health(client):
     response = client.get("/api/health")
     assert response.status_code == 200
@@ -287,6 +315,84 @@ def test_get_prompt_slots(client):
     assert "passive_vision" in names
     assert "memory" in names
     assert "compound_rules" in data["editable_sections"]
+
+
+def test_get_prompt_block_catalog(client):
+    response = client.get("/api/prompt-block-catalog")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] is True
+    types = {entry["type"] for entry in data["block_types"]}
+    assert types == {"slot", "text", "section"}
+    assert "character" in data["slot_settings"]
+
+
+def test_preview_prompt_blocks_character_options(client):
+    base = client.get("/api/prompt-blocks").json()["blocks"]
+    blocks = list(base)
+    blocks[0] = {
+        "type": "slot",
+        "name": "character",
+        "options": {
+            "include_name": True,
+            "include_personality": False,
+            "include_description": False,
+        },
+    }
+    response = client.post("/api/prompt-blocks/preview", json={"blocks": blocks})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] is True
+    preview = data["blocks"][0]["preview"]
+    assert preview.startswith("You are ")
+    assert "Your personality:" not in preview
+
+
+def test_preview_prompt_blocks_passive_vision_relative_bearing(client):
+    client.put("/api/vision-units", json={"units": "ft", "units_per_tile": 5})
+    base = client.get("/api/prompt-blocks").json()["blocks"]
+    blocks = list(base)
+    passive_index = next(
+        i for i, block in enumerate(blocks) if block.get("name") == "passive_vision"
+    )
+    blocks[passive_index] = {
+        "type": "slot",
+        "name": "passive_vision",
+        "options": {"include_relative_bearing": True},
+    }
+    response = client.post("/api/prompt-blocks/preview", json={"blocks": blocks})
+    preview = response.json()["blocks"][passive_index]["preview"]
+    assert "South of you, 15 ft away" in preview
+
+
+def test_preview_prompt_blocks_passive_vision_options(client):
+    base = client.get("/api/prompt-blocks").json()["blocks"]
+    blocks = list(base)
+    passive_index = next(
+        i for i, block in enumerate(blocks) if block.get("name") == "passive_vision"
+    )
+    blocks[passive_index] = {
+        "type": "slot",
+        "name": "passive_vision",
+        "options": {
+            "include_you_are_at": False,
+            "include_entity_coordinates": False,
+        },
+    }
+    response = client.post("/api/prompt-blocks/preview", json={"blocks": blocks})
+    assert response.status_code == 200
+    preview = response.json()["blocks"][passive_index]["preview"]
+    assert "You are at" not in preview
+    assert "Ceramic Ball (obj_ball_01), (2, 2)" not in preview
+    assert "Ceramic Ball (obj_ball_01)" in preview
+
+
+def test_get_prompt_blocks_includes_slot_preview(client):
+    response = client.get("/api/prompt-blocks")
+    data = response.json()
+    character = next(block for block in data["blocks"] if block.get("name") == "character")
+    assert "preview" in character
+    assert character["preview"]
 
 
 def test_post_turn_gate_blocked(client, monkeypatch):

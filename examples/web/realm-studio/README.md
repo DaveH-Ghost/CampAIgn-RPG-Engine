@@ -4,7 +4,7 @@ Example web app for [Realm-Fabric](https://github.com/) — wraps the engine `Se
 
 **Location:** `examples/web/realm-studio` in the Realm-Fabric repo.
 
-**Status:** **V0.4.0** — multi-area GM grid, object **Manage actions…** editor, Chebyshev pathing via agent `move_speed`. Tag **`v0.4.0`** when ready.
+**Status:** **V0.4.1** (in progress) — sentence-aware truncation, **Prompt layout** sidebar, prompt block API. Tag **`v0.4.1`** in 0.4.1d.
 
 ## Quick start
 
@@ -51,7 +51,7 @@ uv run uvicorn backend.app:app --host 127.0.0.1 --port 8765 --reload
 - **Manage actions…** — add/edit/remove object actions; effect picker (`delete_self`, `random_move_self`, `move_area`); **?** on result/passive fields lists template variables
 - **Stacked tiles** — manage menu when multiple entities share a cell
 - **Toolbar** — active-agent dropdown; **Emit event…**; **Run turn ▶**
-- **Sidebar** — session meta, passive vision, recent GM events, turn log
+- **Sidebar** — session meta, passive vision, recent GM events, turn log, **Prompt layout** (block reorder + section edit), last prompt debug
 - **Refresh** — manual re-fetch; edits and turns auto-refresh
 
 **Note:** `realm-studio` and the terminal `realm` CLI use **separate in-memory sessions** — CLI edits do not appear in the browser.
@@ -90,9 +90,14 @@ Set **Move speed (steps per turn)** in create/edit agent modals, or via CLI (`mo
 | `POST` | `/api/turn` | LLM compound turn (optional `agent_id`, `include_examples`) |
 | `POST` | `/api/event` | `{ "text": "..." }` → `emit_area_event` (no turn consumed) |
 | `GET` | `/api/prompt` | Build compound prompt (debug) |
+| `GET` | `/api/prompt-blocks` | Session prompt block list |
+| `PUT` | `/api/prompt-blocks` | `{ "blocks": [...] }` — reorder / edit static sections |
+| `POST` | `/api/prompt-blocks/reset` | Restore profile default blocks |
+| `GET` | `/api/prompt-slots` | Slot names + preview snippets (optional `agent_id`) |
+| `GET` | `/api/prompt-block-catalog` | Addable block types, slot/section options, section defaults |
 | `GET` | `/api/interact-template-vars` | Placeholders for object action result/passive text |
 
-See [v0.4.0-changelog.md](../../../docs/v0.4.0-changelog.md) for the full V0.4.0 release notes.
+See [v0.4.1-changelog.md](../../../docs/v0.4.1-changelog.md) for V0.4.1 release notes.
 
 ## Tests
 

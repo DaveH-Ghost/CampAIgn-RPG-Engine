@@ -15,6 +15,7 @@ Walls/room boundaries are conveyed via the separate room description from Area.
 from src.action_outcome import ActionOutcome
 from src.agent import Agent
 from src.grid import chebyshev_distance
+from src.vision_bearing import format_relative_bearing_phrase
 from src.memory import Memory
 from src.object import Object
 from src.object_action import ObjectAction
@@ -71,34 +72,119 @@ def format_agent_vision_desc(other: Agent, memory: Memory) -> str:
     )
 
 
-def build_passive_vision(agent: Agent, area: Area) -> str:
+def build_passive_vision(
+    agent: Agent,
+    area: Area,
+    *,
+    include_you_are_at: bool = True,
+    include_entity_coordinates: bool = True,
+    include_relative_bearing: bool = False,
+    vision_units: str = "",
+    units_per_tile: int | None = None,
+) -> str:
     """
     Build the passive vision block for the given agent.
 
     Format:
-    You are at (x, y).
-    {name} ({id}), {coordinates} - {description fragment}
+    You are at (x, y).  (optional)
+    {name} ({id}), {coordinates}, {bearing phrase} - {description fragment}
+    Entity coordinates apply to objects and other agents, not the you-are-at line.
     """
-    lines = [f"You are at {agent.position}."]
+    bearing_ready = (
+        include_relative_bearing
+        and units_per_tile is not None
+        and units_per_tile > 0
+    )
+    lines: list[str] = []
+    if include_you_are_at:
+        lines.append(f"You are at {agent.position}.")
+
     memory = agent.memory
 
     for obj in area.get_objects():
         desc = format_object_vision_desc(obj, memory)
-        if desc:
-            lines.append(f"{obj.name} ({obj.id}), {obj.position} - {desc}")
-        else:
-            lines.append(f"{obj.name} ({obj.id}), {obj.position}")
+        lines.append(
+            _format_passive_vision_entity_line(
+                obj.name,
+                obj.id,
+                obj.position,
+                desc,
+                observer=agent.position,
+                include_coordinates=include_entity_coordinates,
+                include_relative_bearing=bearing_ready,
+                vision_units=vision_units,
+                units_per_tile=units_per_tile,
+            )
+        )
 
     for other in area.agents:
         if other.id == agent.id:
             continue
         desc = format_agent_vision_desc(other, memory)
-        if desc:
-            lines.append(f"{other.name} ({other.id}), {other.position} - {desc}")
-        else:
-            lines.append(f"{other.name} ({other.id}), {other.position}")
+        lines.append(
+            _format_passive_vision_entity_line(
+                other.name,
+                other.id,
+                other.position,
+                desc,
+                observer=agent.position,
+                include_coordinates=include_entity_coordinates,
+                include_relative_bearing=bearing_ready,
+                vision_units=vision_units,
+                units_per_tile=units_per_tile,
+            )
+        )
 
     return "\n".join(lines)
+
+
+def _format_passive_vision_entity_line(
+    name: str,
+    entity_id: str,
+    position: tuple[int, int],
+    desc: str,
+    *,
+    observer: tuple[int, int],
+    include_coordinates: bool,
+    include_relative_bearing: bool = False,
+    vision_units: str = "",
+    units_per_tile: int | None = None,
+) -> str:
+    parts = [f"{name} ({entity_id})"]
+    if include_coordinates:
+        parts.append(f"{position}")
+    if include_relative_bearing and units_per_tile is not None:
+        bearing = format_relative_bearing_phrase(
+            observer,
+            position,
+            units=vision_units,
+            units_per_tile=units_per_tile,
+        )
+        if bearing:
+            parts.append(bearing)
+    prefix = ", ".join(parts)
+    if desc:
+        return f"{prefix} - {desc}"
+    return prefix
+
+
+DEFAULT_PASSIVE_VISION_OPTIONS: dict[str, bool] = {
+    "include_you_are_at": True,
+    "include_entity_coordinates": True,
+    "include_relative_bearing": False,
+}
+
+
+def normalize_passive_vision_options(
+    options: dict[str, object] | None,
+) -> dict[str, bool]:
+    """Merge *options* with defaults for passive vision slot rendering."""
+    merged = dict(DEFAULT_PASSIVE_VISION_OPTIONS)
+    if options:
+        for key in DEFAULT_PASSIVE_VISION_OPTIONS:
+            if key in options:
+                merged[key] = bool(options[key])
+    return merged
 
 
 def get_visible_look_target_ids(agent: Agent, area: Area) -> list[str]:

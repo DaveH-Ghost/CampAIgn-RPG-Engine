@@ -46,7 +46,18 @@ class PromptBlockItem(BaseModel):
     type: str = Field(min_length=1)
     name: str | None = None
     content: str | None = None
+    options: dict[str, object] | None = None
 
 
 class PromptBlocksRequest(BaseModel):
     blocks: list[PromptBlockItem] = Field(min_length=1)
+
+
+class PromptBlocksPreviewRequest(BaseModel):
+    blocks: list[PromptBlockItem] = Field(min_length=1)
+    agent_id: str | None = None
+
+
+class VisionUnitsRequest(BaseModel):
+    units: str = ""
+    units_per_tile: int | None = Field(default=None, ge=1)

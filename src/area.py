@@ -144,8 +144,8 @@ class Area:
         return (
             f"You exist inside a controlled {w}x{h} grid. "
             f"Your coordinates range from ({self.min_x}, {self.min_y}) in the "
-            f"southwest corner to ({self.max_x}, {self.max_y}) in the northeast. "
-            "Y increases northward."
+            f"northwest corner to ({self.max_x}, {self.max_y}) in the southeast. "
+            "X increases eastward. Y increases southward."
         )
 
     def add_agent(self, agent: Agent) -> None:

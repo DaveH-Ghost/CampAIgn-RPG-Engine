@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Type
 
 from src.area import Area, create_initial_area
+from src.agent import Agent
 from src.llm.prompt_context import PromptContext
 from src.llm.schemas import AgentCompoundTurn
 from src.prompt_template import PromptTemplate
@@ -56,6 +57,10 @@ class GameProfile:
         *,
         include_examples: bool | None = None,
         blocks: list | None = None,
+        agent: Agent | None = None,
+        area: Area | None = None,
+        vision_units: str = "",
+        units_per_tile: int | None = None,
     ) -> str:
         """Assemble the LLM prompt from engine-built context."""
         from src.prompt_blocks import render_prompt_blocks
@@ -69,7 +74,14 @@ class GameProfile:
         if use_blocks is None:
             prompt = self.template.render_context(ctx)
         else:
-            prompt = render_prompt_blocks(use_blocks, ctx)
+            prompt = render_prompt_blocks(
+                use_blocks,
+                ctx,
+                agent=agent,
+                area=area,
+                vision_units=vision_units,
+                units_per_tile=units_per_tile,
+            )
         if show_examples and self.few_shot_examples.strip():
             prompt = (
                 f"{prompt}\n\n"
