@@ -172,7 +172,7 @@ V0.2 compound turns and object interact should log in a shape that V0.2.5 can in
 
 **Focus:** **V0.3.0** — engine refactor (Session API, snapshots, GameProfile, CLI on Session). **V0.3.1** — example web project built on the engine. **V0.3.2** — realm-studio polish (GM events, appearance). **Depends on V0.2.5** (`v0.2.5`).
 
-See [v0.3.0-changelog.md](v0.3.0-changelog.md) for slice plan (0.3.0a–e). See [v0.3.1-changelog.md](v0.3.1-changelog.md) for realm-studio (0.3.1a–f). See [v0.3.2-changelog.md](v0.3.2-changelog.md) for 0.3.2 slices. See [v0.4.0-changelog.md](v0.4.0-changelog.md) for 0.4.0 slices.
+See [v0.3.0-changelog.md](v0.3.0-changelog.md) for slice plan (0.3.0a–e). See [v0.3.1-changelog.md](v0.3.1-changelog.md) for realm-studio (0.3.1a–f). See [v0.3.2-changelog.md](v0.3.2-changelog.md) for 0.3.2 slices. See [v0.4.0-changelog.md](v0.4.0-changelog.md) for 0.4.0 slices. See [v0.4.1-changelog.md](v0.4.1-changelog.md) for 0.4.1 slices.
 
 ### V0.3.0 — Engine — ✅ Implemented (`0.3.0`; superseded by **`0.4.0`**)
 
@@ -244,6 +244,27 @@ Larger items (Roll20 integration, full strategy turn models, lorebooks, etc.) re
 - Profile selects **Pydantic model + turn executor**, not just prompt prose — deferred to **V0.5+**
 
 </details>
+
+---
+
+## V0.4.1
+
+**Focus:** **LLM turn reliability** + **GM prompt layout** in realm-studio. Builds on V0.4.0.
+
+**Status:** ⬜ **Planned** — see [v0.4.1-changelog.md](v0.4.1-changelog.md) for slices **0.4.1a–d**.
+
+### V0.4.1 — truncation + prompt blocks — ⬜ Planned
+
+| Slice | Theme |
+|-------|--------|
+| **0.4.1a** | Sentence-aware truncation (`reasoning` 400, speak 500); drop 5-sentence cap |
+| **0.4.1b** | Prompt block model + session override + API |
+| **0.4.1c** | realm-studio block-list prompt editor |
+| **0.4.1d** | Release polish, tag **`v0.4.1`** |
+
+- **Truncation** — trim at sentence boundaries on parse; no mid-sentence cuts; turns do not fail on length alone
+- **Prompt blocks** — reorder `slot` / `text` / `section` blocks; edit static rules and output format in-session
+- **Deferred:** profile file export, per-agent prompts, swappable schemas → **V0.5+**
 
 ---
 

@@ -6,11 +6,12 @@ A grid-based agent simulation framework designed around structured output and na
 
 **Documentation:**
 
-- [V0.4.0 changelog](docs/v0.4.0-changelog.md) — movement, multi-area, `move_area`, object actions (**0.4.0a–e**)
+- [V0.4.1 changelog](docs/v0.4.1-changelog.md) — truncation, prompt block editor (**0.4.1a–d**, planned)
+- [V0.4.0 changelog](docs/v0.4.0-changelog.md) — movement, multi-area, `move_area`, object actions (**0.4.0a–e**) ✅
 - [V0.3.2 changelog](docs/v0.3.2-changelog.md) — **realm-studio** GM events, pannable grid, token images (0.3.2a–e) ✅
 - [V0.3.1 changelog](docs/v0.3.1-changelog.md) — **realm-studio** web app (0.3.1a–f) ✅
 - [V0.3.0 changelog](docs/v0.3.0-changelog.md) — engine refactor (0.3.0a–e)
-- [Roadmap](docs/ROADMAP.md) — version plans (**V0.4.0** ✅; V0.3.x ✅)
+- [Roadmap](docs/ROADMAP.md) — version plans (**V0.4.1** planned; **V0.4.0** ✅; V0.3.x ✅)
 - [V0.2.5 changelog](docs/v0.2.5-changelog.md) — memory / prompt slices (0.2.5a–g)
 - [Long-term goals](LONG_TERM_GOALS.md) — aspirational features
 - [V0 implementation checklist](docs/v0-implementation-readiness-checklist.md) — V0 historical design reference
