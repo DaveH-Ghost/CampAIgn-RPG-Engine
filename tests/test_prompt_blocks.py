@@ -189,6 +189,25 @@ def test_move_instructions_move_speed_with_units():
     assert "Your move speed this turn is 10 ft." in rendered
 
 
+def test_look_and_interact_action_range_with_units():
+    session = Session.from_default()
+    session.set_vision_units("ft", 5)
+    agent = session.get_active_agent()
+    agent.position = (2, 3)
+    area = session.get_area_for_agent(agent)
+    ctx = build_prompt_context(agent, area)
+    blocks = [PromptBlock(type="slot", name="look_and_interact")]
+    rendered = render_prompt_blocks(
+        blocks,
+        ctx,
+        agent=agent,
+        area=area,
+        vision_units=session.vision_units,
+        units_per_tile=session.vision_units_per_tile,
+    )
+    assert "kick obj_ball_01 (Ceramic Ball) — range 5 ft" in rendered
+
+
 def test_passive_vision_slot_relative_bearing():
     session = Session.from_default()
     session.set_vision_units("ft", 5)

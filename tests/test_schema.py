@@ -17,11 +17,23 @@ def test_valid_compound_stay_and_speak():
     turn = AgentCompoundTurn(
         reasoning="Staying put.",
         move_target=None,
-        turn_action="speak",
+        turn_action="none",
         content="Hello.",
     )
     assert turn.move_target is None
-    assert turn.turn_action == "speak"
+    assert turn.content == "Hello."
+
+
+def test_valid_compound_speak_and_interact():
+    turn = AgentCompoundTurn(
+        reasoning="Talk and act.",
+        content="Hello.",
+        turn_action="interact",
+        target="obj_cookie_01",
+        action_name="eat",
+    )
+    assert turn.content == "Hello."
+    assert turn.turn_action == "interact"
 
 
 def test_valid_compound_move():
@@ -55,10 +67,15 @@ def test_invalid_compound_cardinal_move():
 def test_valid_compound_speak():
     turn = AgentCompoundTurn(
         reasoning="Speaking.",
-        turn_action="speak",
+        turn_action="none",
         content="Hello there.",
     )
-    assert turn.turn_action == "speak"
+    assert turn.content == "Hello there."
+
+
+def test_compound_rejects_legacy_speak_turn_action():
+    with pytest.raises(ValidationError):
+        AgentCompoundTurn(reasoning="x", turn_action="speak", content="Hi")
 
 
 def test_valid_compound_look_only():
@@ -68,11 +85,6 @@ def test_valid_compound_look_only():
         turn_action="none",
     )
     assert turn.look_target == "obj_ball_01"
-
-
-def test_compound_speak_requires_content():
-    with pytest.raises(ValidationError):
-        AgentCompoundTurn(reasoning="x", turn_action="speak")
 
 
 def test_compound_interact_requires_fields():
@@ -89,7 +101,7 @@ def test_speak_truncated_when_later_sentence_starts_after_budget():
     second = "B" * 50
     turn = AgentCompoundTurn(
         reasoning="x",
-        turn_action="speak",
+        turn_action="none",
         content=first + second,
     )
     assert turn.content == "A" * 498 + "."
@@ -98,7 +110,7 @@ def test_speak_truncated_when_later_sentence_starts_after_budget():
 
 def test_speak_single_long_sentence_not_cut_mid_sentence():
     text = "A" * 501
-    turn = AgentCompoundTurn(reasoning="x", turn_action="speak", content=text)
+    turn = AgentCompoundTurn(reasoning="x", turn_action="none", content=text)
     assert len(turn.content) == 501
 
 

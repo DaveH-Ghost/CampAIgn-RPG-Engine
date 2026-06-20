@@ -72,7 +72,7 @@ def test_truncate_reasoning_drops_late_sentences():
 
 def test_truncate_speak_via_schema():
     text = "A" * 501
-    turn = AgentCompoundTurn(reasoning="ok", turn_action="speak", content=text)
+    turn = AgentCompoundTurn(reasoning="ok", turn_action="none", content=text)
     assert len(turn.content) == 501
 
 
@@ -88,7 +88,7 @@ def test_truncate_speak_many_sentences_no_sentence_cap():
 
 def test_speak_at_budget_unchanged():
     text = "A" * 400
-    turn = AgentCompoundTurn(reasoning="x", turn_action="speak", content=text)
+    turn = AgentCompoundTurn(reasoning="x", turn_action="none", content=text)
     assert len(turn.content) == 400
 
 

@@ -49,7 +49,7 @@ These plans are subject to change as we learn and discuss.
 - **Per-agent turn numbers** in `TurnRecord` (no gaps when agents alternate); `session_turn` is a console/log label only and increments after successful `step_turn`.
 - Add `World.get_agents()`, `get_agent_by_id()`, `get_agent_by_name()`; keep `get_agent()` as first agent for backward compatibility.
 - Agents share the same world grid and objects. **Other agents appear in passive vision** (`pdesc` + hidden `desc` until `look`; `personality` is LLM-only). You do not see yourself.
-- `**look`** works on other agents (`agent_*` ids) as well as objects. `**passive_result**` shows each agent's most recent observable action to others (speech, movement, examination), with optional confidence/emotion appended.
+- `**look`** works on other agents (`agent_*` ids) as well as objects. `**passive_result**` shows each agent's most recent observable action to others (speech, movement, examination, emotes).
 - No speak **targeting** (agents broadcast speech to the room), no relationships, no automatic turn sequencing, and no agent-initiated world edits.
 - Additional agents are introduced via editing commands from item 2.
 
@@ -172,7 +172,7 @@ V0.2 compound turns and object interact should log in a shape that V0.2.5 can in
 
 **Focus:** **V0.3.0** — engine refactor (Session API, snapshots, GameProfile, CLI on Session). **V0.3.1** — example web project built on the engine. **V0.3.2** — realm-studio polish (GM events, appearance). **Depends on V0.2.5** (`v0.2.5`).
 
-See [v0.3.0-changelog.md](v0.3.0-changelog.md) for slice plan (0.3.0a–e). See [v0.3.1-changelog.md](v0.3.1-changelog.md) for realm-studio (0.3.1a–f). See [v0.3.2-changelog.md](v0.3.2-changelog.md) for 0.3.2 slices. See [v0.4.0-changelog.md](v0.4.0-changelog.md) for 0.4.0 slices. See [v0.4.1-changelog.md](v0.4.1-changelog.md) for 0.4.1 slices.
+See [v0.3.0-changelog.md](v0.3.0-changelog.md) for slice plan (0.3.0a–e). See [v0.3.1-changelog.md](v0.3.1-changelog.md) for realm-studio (0.3.1a–f). See [v0.3.2-changelog.md](v0.3.2-changelog.md) for 0.3.2 slices. See [v0.4.0-changelog.md](v0.4.0-changelog.md) for 0.4.0 slices. See [v0.4.1-changelog.md](v0.4.1-changelog.md) for 0.4.1 slices. See [v0.4.2-changelog.md](v0.4.2-changelog.md) for 0.4.2 slices.
 
 ### V0.3.0 — Engine — ✅ Implemented (`0.3.0`; superseded by **`0.4.0`**)
 
@@ -188,7 +188,7 @@ See [v0.3.0-changelog.md](v0.3.0-changelog.md) for slice plan (0.3.0a–e). See 
 
 See [v0.3.1-changelog.md](v0.3.1-changelog.md). App path: **`examples/web/realm-studio`**.
 
-- FastAPI wraps `Session`; depends on `realm-fabric>=0.4.1` (path dep in dev)
+- FastAPI wraps `Session`; depends on `realm-fabric>=0.4.2` (path dep in dev)
 - Local web UI: **grid** with agents/objects; **right-click** create/edit/delete; passive vision + turn log; **Run turn**
 - **19** FastAPI `TestClient` smoke/integration tests (V0.3.2); engine coverage stays in root pytest
 
@@ -267,6 +267,29 @@ Larger items (Roll20 integration, full strategy turn models, lorebooks, etc.) re
 - **Prompt blocks** — reorder `slot` / `text` / `section` blocks; edit static rules and output format in-session
 - **Slot settings** — Character / passive vision / move-instructions ⚙ toggles; session **Units** for distance and move speed
 - **Deferred:** profile file export, per-agent prompts, swappable schemas → **V0.5+**
+
+---
+
+## V0.4.2
+
+**Focus:** **Clearer spatial prompts** and **richer compound turns**. Builds on V0.4.1.
+
+**Status:** ✅ **Complete** — see [v0.4.2-changelog.md](v0.4.2-changelog.md) for slices **0.4.2a–e**. Tag **`v0.4.2`** when ready.
+
+### V0.4.2 — emote + speak step + debug — ✅ Complete
+
+| Slice | Theme | Status |
+|-------|--------|--------|
+| **0.4.2a** | Action range labels in session units | ✅ |
+| **0.4.2b** | Speak separate from `turn_action` | ✅ |
+| **0.4.2c** | Prompt input token estimate on Run turn hover | ✅ |
+| **0.4.2d** | Emote turn action; remove confidence/emotion | ✅ |
+| **0.4.2e** | Last response debug; release polish, tag **`v0.4.2`** | ✅ |
+
+- **Compound pipeline** — move → look → speak → turn action (`interact` | `emote` | `none`)
+- **Emote** — past-tense gestures at entities or free-text targets; per-observer witness phrasing
+- **realm-studio** — input-token hover hint; **Last prompt** + **Last response** debug panels
+- **Breaking:** `"turn_action": "speak"` and `confidence` / `emotion` fields removed from compound JSON
 
 ---
 

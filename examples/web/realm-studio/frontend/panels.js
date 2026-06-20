@@ -6,6 +6,7 @@ const MAX_LOG_ENTRIES = 50;
 
 let turnLogEntries = [];
 let lastPromptText = null;
+let lastResponseText = null;
 
 export function renderPassiveVision(snapshot, visionEl, emptyEl) {
   const text = snapshot?.passive_vision?.trim();
@@ -151,5 +152,38 @@ export function bindPromptDebug(detailsEl, promptEl, emptyEl, fetchPromptFn) {
     } catch {
       renderLastPrompt(promptEl, emptyEl);
     }
+  });
+}
+
+function formatResponseText(text) {
+  const trimmed = String(text ?? "").trim();
+  if (!trimmed) return "";
+  try {
+    return JSON.stringify(JSON.parse(trimmed), null, 2);
+  } catch {
+    return trimmed;
+  }
+}
+
+export function setLastResponse(text) {
+  lastResponseText = text ?? null;
+}
+
+export function renderLastResponse(responseEl, emptyEl) {
+  if (!lastResponseText) {
+    responseEl.textContent = "";
+    responseEl.classList.add("hidden");
+    emptyEl.classList.remove("hidden");
+    return;
+  }
+  responseEl.textContent = formatResponseText(lastResponseText);
+  responseEl.classList.remove("hidden");
+  emptyEl.classList.add("hidden");
+}
+
+export function bindResponseDebug(detailsEl, responseEl, emptyEl) {
+  detailsEl.addEventListener("toggle", () => {
+    if (!detailsEl.open) return;
+    renderLastResponse(responseEl, emptyEl);
   });
 }

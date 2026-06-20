@@ -18,7 +18,7 @@ def _compound(**kwargs) -> AgentCompoundTurn:
 
 
 def _speak(content: str, **kwargs) -> AgentCompoundTurn:
-    return _compound(turn_action="speak", content=content, **kwargs)
+    return _compound(turn_action="none", content=content, **kwargs)
 
 
 def test_get_agents_returns_copy():
@@ -123,28 +123,6 @@ def test_speak_visible_in_observer_memory_not_passive_vision():
     assert "Goblin (agent_goblin_01), (0, 3) - [?] A goblin." in vision
     memory = explorer.memory.render_prompt_block(explorer, area)
     assert 'Goblin says: "Hello, Explorer!"' in memory
-
-
-def test_passive_result_includes_confidence_and_emotion():
-    area = create_initial_area()
-    explorer = area.get_agent()
-    create_agent_from_args(
-        area,
-        'name "Goblin" pdesc "A goblin." desc "x" personality "x" at 0,3',
-    )
-    goblin = area.get_agent_by_name("Goblin")
-
-    run_compound_turn(
-        goblin,
-        area,
-        _speak("Hello.", confidence="curious", emotion="amused"),
-        next_turn_number_for_agent(goblin),
-    )
-
-    expected = 'Goblin says: "Hello." (confidence: curious, Emotion: amused)'
-    assert goblin.passive_result == expected
-    vision = build_passive_vision(explorer, area)
-    assert expected not in vision
 
 
 def test_failed_move_does_not_update_passive_result():

@@ -6,6 +6,7 @@ from src.turn_record import StepKind, TurnStep
 
 STEP_SALIENCE: dict[StepKind, int] = {
     "speak": 10,
+    "emote": 10,
     "interact": 7,
     "look": 3,
     "move": 1,
@@ -29,5 +30,5 @@ def select_salient_steps(steps: list[TurnStep], *, in_recency_floor: bool) -> li
     return [
         step
         for step in steps
-        if step.result.strip() and step.kind in ("speak", "interact")
+        if step.result.strip() and step.kind in ("speak", "emote", "interact")
     ]

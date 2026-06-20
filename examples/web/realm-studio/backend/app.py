@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from src.llm.token_estimate import estimate_prompt_tokens
 
 from backend.area_api import create_area as api_create_area
 from backend.area_api import delete_area as api_delete_area
@@ -47,7 +48,7 @@ _ENGINE_SRC = _REPO_ROOT / "src"
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="realm-studio", version="0.4.0")
+    app = FastAPI(title="realm-studio", version="0.4.2")
 
     app.add_middleware(
         CORSMiddleware,
@@ -162,6 +163,7 @@ def create_app() -> FastAPI:
             "ok": True,
             "prompt": prompt,
             "length": len(prompt),
+            "prompt_tokens": estimate_prompt_tokens(prompt),
             "include_examples": session.include_examples,
         }
 

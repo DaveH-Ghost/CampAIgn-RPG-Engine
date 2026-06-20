@@ -20,7 +20,7 @@
 
     <h1>realm-studio</h1>
 
-    <p class="subtitle">V0.4.1 — prompt layout + turn truncation</p>
+    <p class="subtitle">V0.4.2 — emotes, speak step, action range units</p>
 
     <label class="active-area-label">
 
@@ -46,7 +46,10 @@
 
     <button type="button" id="emit-event" class="emit-event-btn">Emit event…</button>
 
-    <button type="button" id="run-turn" class="run-turn-btn">Run turn ▶</button>
+    <span class="run-turn-wrap">
+      <button type="button" id="run-turn" class="run-turn-btn">Run turn ▶</button>
+      <span id="run-turn-hint" class="run-turn-hint" role="tooltip"></span>
+    </span>
 
     <button type="button" id="refresh">Refresh</button>
 
@@ -209,6 +212,18 @@
         <p id="last-prompt-empty" class="panel-empty">Run a turn or open this panel to load the current prompt.</p>
 
         <pre id="last-prompt" class="panel-text panel-text-debug hidden"></pre>
+
+      </details>
+
+
+
+      <details id="response-debug" class="sidebar-details">
+
+        <summary>Last response (debug)</summary>
+
+        <p id="last-response-empty" class="panel-empty">Run a turn to load the last LLM response.</p>
+
+        <pre id="last-response" class="panel-text panel-text-debug hidden"></pre>
 
       </details>
 

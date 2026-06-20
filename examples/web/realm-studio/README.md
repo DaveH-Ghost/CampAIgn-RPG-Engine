@@ -4,7 +4,7 @@ Example web app for [Realm-Fabric](https://github.com/) — wraps the engine `Se
 
 **Location:** `examples/web/realm-studio` in the Realm-Fabric repo.
 
-**Status:** **V0.4.1** — sentence-aware truncation, **Prompt layout** sidebar (block reorder, section edit, slot ⚙), session **Units**, prompt block API. Tag **`v0.4.1`** when ready.
+**Status:** **V0.4.2** — emote turn action, speak as optional step, action ranges in session units, Run turn token hint, **Last prompt / Last response** debug panels. Tag **`v0.4.2`** when ready.
 
 ## Quick start
 
@@ -50,8 +50,8 @@ uv run uvicorn backend.app:app --host 127.0.0.1 --port 8765 --reload
 - **Right-click** — create/edit/delete on tiles and tokens; **Play as** for agents; **Manage actions…** on objects
 - **Manage actions…** — add/edit/remove object actions; effect picker (`delete_self`, `random_move_self`, `move_area`); **?** on result/passive fields lists template variables
 - **Stacked tiles** — manage menu when multiple entities share a cell
-- **Toolbar** — active-agent dropdown; **Emit event…**; **Run turn ▶**
-- **Sidebar** — session meta (**Units** / **Units per tile**), passive vision, recent GM events, turn log, **Prompt layout**, last prompt debug
+- **Toolbar** — active-agent dropdown; **Emit event…**; **Run turn ▶** (hover shows ~input token estimate)
+- **Sidebar** — session meta (**Units** / **Units per tile**), passive vision, recent GM events, turn log, **Prompt layout**, **Last prompt (debug)**, **Last response (debug)**
 - **Refresh** — manual re-fetch; edits and turns auto-refresh
 
 **Note:** `realm-studio` and the terminal `realm` CLI use **separate in-memory sessions** — CLI edits do not appear in the browser.
@@ -82,9 +82,19 @@ Open **Prompt layout** in the sidebar to edit how the compound prompt is assembl
 - **Reset to default** — restore profile block list
 - **Preview** — full rendered prompt; syncs **Last prompt (debug)** when open
 
-**Units** and **Units per tile** under Session meta enable relative bearing (`South-East of you, 10 ft away`) and move-speed lines in session units. Direction and distance requires both fields.
+**Units** and **Units per tile** under Session meta enable relative bearing (`South-East of you, 10 ft away`), move-speed lines, and **object action range** labels in session units. Direction and distance requires both fields.
 
 Changes are session-scoped (in-memory until server restart).
+
+## Compound turns (V0.4.2)
+
+Engine pipeline: **move → look → speak → turn action** (`interact` | `emote` | `none`).
+
+- **Speak** — optional dialogue via `content`; can combine with interact or emote in one turn
+- **Emote** — non-verbal gestures (`turn_action: "emote"`, past-tense `action_name`, optional `target`)
+- **Breaking:** `"turn_action": "speak"` and `confidence` / `emotion` JSON fields removed — use `content` + `"turn_action": "none"` for speech
+
+After **Run turn**, open **Last prompt (debug)** or **Last response (debug)** in the sidebar to inspect the rendered prompt and raw LLM JSON.
 
 ## Agent move speed
 
@@ -102,9 +112,9 @@ Set **Move speed (steps per turn)** in create/edit agent modals, or via CLI (`mo
 | `POST` | `/api/create-area` | Create empty area |
 | `POST` | `/api/edit-area` | Edit area description / grid size |
 | `POST` | `/api/delete-area` | Delete empty area |
-| `POST` | `/api/turn` | LLM compound turn (optional `agent_id`, `include_examples`) |
+| `POST` | `/api/turn` | LLM compound turn (optional `agent_id`, `include_examples`); returns `prompt`, `llm_response`, `steps` |
 | `POST` | `/api/event` | `{ "text": "..." }` → `emit_area_event` (no turn consumed) |
-| `GET` | `/api/prompt` | Build compound prompt (debug) |
+| `GET` | `/api/prompt` | Build compound prompt (debug); includes `prompt_tokens` estimate |
 | `GET` | `/api/prompt-blocks` | Session prompt block list |
 | `PUT` | `/api/prompt-blocks` | `{ "blocks": [...] }` — reorder / edit static sections |
 | `POST` | `/api/prompt-blocks/reset` | Restore profile default blocks |
@@ -113,7 +123,7 @@ Set **Move speed (steps per turn)** in create/edit agent modals, or via CLI (`mo
 | `PUT` | `/api/vision-units` | `{ "units": "ft", "units_per_tile": 5 }` — session distance labels |
 | `GET` | `/api/interact-template-vars` | Placeholders for object action result/passive text |
 
-See [v0.4.1-changelog.md](../../../docs/v0.4.1-changelog.md) for V0.4.1 release notes.
+See [v0.4.2-changelog.md](../../../docs/v0.4.2-changelog.md) for V0.4.2 release notes. [v0.4.1-changelog.md](../../../docs/v0.4.1-changelog.md) covers prompt layout and vision units.
 
 ## Tests
 
@@ -130,7 +140,7 @@ cd ..\..\..
 uv run pytest
 ```
 
-(386 engine tests as of 0.4.1d.)
+(396 engine tests as of 0.4.2e.)
 
 ## Environment
 

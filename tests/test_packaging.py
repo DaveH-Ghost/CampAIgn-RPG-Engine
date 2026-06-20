@@ -13,9 +13,9 @@ def _load_pyproject() -> dict:
     return tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
 
 
-def test_pyproject_version_is_0_4_1():
+def test_pyproject_version_is_0_4_2():
     version = _load_pyproject()["project"]["version"]
-    assert version == "0.4.1"
+    assert version == "0.4.2"
     assert re.fullmatch(r"\d+\.\d+\.\d+", version), version
 
 

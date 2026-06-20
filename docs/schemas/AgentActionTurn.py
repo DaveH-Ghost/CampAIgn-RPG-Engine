@@ -73,13 +73,3 @@ class AgentActionTurn(BaseModel):
             "Max 5 sentences and 500 characters in V0.2."
         ),
     )
-
-    confidence: Optional[str] = Field(
-        default=None,
-        description="1-3 words; appended to passive_result mood suffix when applicable.",
-    )
-
-    emotion: Optional[str] = Field(
-        default=None,
-        description="1-3 words; appended to passive_result mood suffix when applicable.",
-    )

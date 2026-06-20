@@ -22,6 +22,7 @@ header {
   gap: 0.75rem 1.25rem;
   margin-bottom: 0.75rem;
   flex-shrink: 0;
+  overflow: visible;
 }
 
 h1 {
@@ -52,6 +53,38 @@ button {
 
 button:hover {
   background: #353540;
+}
+
+.run-turn-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.run-turn-hint {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 6px);
+  transform: translateX(-50%);
+  padding: 0.35rem 0.55rem;
+  border-radius: 4px;
+  background: #1a1a22;
+  border: 1px solid #4a4a58;
+  color: #d8d8e0;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s ease;
+  z-index: 200;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+
+.run-turn-wrap:hover .run-turn-hint:not(:empty),
+.run-turn-wrap:focus-within .run-turn-hint:not(:empty) {
+  opacity: 1;
+  visibility: visible;
 }
 
 .run-turn-btn {

@@ -23,6 +23,7 @@ from src.perception import (
     get_available_look_targets,
     normalize_passive_vision_options,
 )
+from src.vision_bearing import format_action_range_label
 
 
 @dataclass(frozen=True)
@@ -183,54 +184,103 @@ def _compound_turn_rules() -> str:
     return """Each turn you may plan a **compound turn** executed in this order:
 1. **Move** (optional): move to an in-bounds coordinate (x, y), an entity id (obj_* / agent_*), or stay (move_target null).
 2. **Look** (optional): examine one entity from passive vision (at most one look_target).
-3. **Turn action** (optional): speak, interact with a listed object action, or none.
+3. **Speak** (optional): dialogue in content when you want to say something (content null to stay silent).
+4. **Turn action** (optional): interact with a listed object action, emote at a target, or none.
 
 Important rules:
-- You plan from your **current** position and vision. Your move runs first; look and turn action happen **after** that move.
+- You plan from your **current** position and vision. Your move runs first; look, speak, and turn action happen **after** that move.
 - Only pick look/interact targets you expect to be valid after moving.
 - move: use move_target "x,y" (e.g. "2,3"), an entity id from the list below, or null to stay. You cannot move outside the grid.
 - look: optional; a list of objects you can look at will be provided.
 - Hidden detail is marked "[?]"; stale examined knowledge is "[?] [changed]".
 - Other agents show their most recent observable action on their vision line.
-- speak: dialogue when turn_action is "speak" (aim for ~500 characters; longer text is trimmed at sentence boundaries).
+- speak: set content to your dialogue (aim for ~500 characters; longer text is trimmed at sentence boundaries). Leave content null to skip speaking.
 - interact: turn_action "interact" with target object id + action_name when listed below.
 - You need to be adjacent or on the same tile as most objects to interact with them.
-- turn_action "none": end after optional move/look without speaking or interacting.
+- emote: turn_action "emote" with target (entity id or free text) + action_name (past tense, e.g. "pointed", "smiled").
+- turn_action "none": end after optional move/look/speak without interacting or emoting.
 
 Always respond with a single, valid JSON object. Do not add any text before or after the JSON."""
 
 
-def _format_interact_block(agent: Agent, area: Area) -> str:
+def _format_interact_block(
+    agent: Agent,
+    area: Area,
+    *,
+    vision_units: str = "",
+    units_per_tile: int | None = None,
+) -> str:
     interactions = get_available_interactions(agent, area)
     if not interactions:
         return ""
     lines = ["Object interactions available this turn:"]
     for action_name, obj_id, obj, action in interactions:
-        if action.range == 0:
-            range_label = "same tile"
-        else:
-            range_label = f"range {action.range}"
+        range_label = format_action_range_label(
+            action.range,
+            vision_units=vision_units,
+            units_per_tile=units_per_tile,
+        )
         lines.append(f"- {action_name} {obj_id} ({obj.name}) — {range_label}")
     return "\n".join(lines)
 
 
-def _look_and_interact_block(agent: Agent, area: Area) -> str:
+def look_and_interact_block(
+    agent: Agent,
+    area: Area,
+    *,
+    vision_units: str = "",
+    units_per_tile: int | None = None,
+) -> str:
     targets = get_available_look_targets(agent, area)
     lines = []
     if targets:
         lines.append("You can look at: " + ", ".join(targets))
     else:
         lines.append("You can look at: (nothing visible to examine)")
-    interact_block = _format_interact_block(agent, area)
+    interact_block = _format_interact_block(
+        agent,
+        area,
+        vision_units=vision_units,
+        units_per_tile=units_per_tile,
+    )
     if interact_block:
         lines.append("")
         lines.append(interact_block)
     lines.append("")
     lines.append(
-        'Turn action: set turn_action to "speak" (with content), "interact" '
-        '(with target + action_name when available), or "none".'
+        "Emote examples (action_name is past tense): "
+        'turn_action "emote", target "obj_sign_01", action_name "pointed" → '
+        "You pointed at the Wooden Sign. / Explorer pointed at the Wooden Sign. "
+        'target "agent_goblin_01", action_name "smiled" → You smiled at Goblin.'
+    )
+    lines.append("")
+    lines.append(
+        'Speak: set content to dialogue, or null to stay silent. '
+        'Turn action: "interact" (listed object action), "emote" (target + past-tense action_name), or "none".'
     )
     return "\n".join(lines)
+
+
+def render_look_and_interact_slot(
+    ctx: PromptContext,
+    *,
+    agent: Agent | None = None,
+    area: Area | None = None,
+    vision_units: str = "",
+    units_per_tile: int | None = None,
+) -> str:
+    if agent is not None and area is not None:
+        return look_and_interact_block(
+            agent,
+            area,
+            vision_units=vision_units,
+            units_per_tile=units_per_tile,
+        )
+    return ctx.look_and_interact
+
+
+def _look_and_interact_block(agent: Agent, area: Area) -> str:
+    return look_and_interact_block(agent, area)
 
 
 def compound_output_format() -> str:
@@ -241,12 +291,10 @@ def compound_output_format() -> str:
         '  "reasoning": "Your private thoughts (~400 characters; trimmed at sentence boundaries if longer).",\n'
         '  "move_target": "2,3" | "obj_ball_01" | null,\n'
         '  "look_target": "obj_ball_01" | null,\n'
-        '  "turn_action": "speak" | "interact" | "none",\n'
-        '  "target": "obj_cookie_01" | null,\n'
-        '  "action_name": "eat" | null,\n'
-        '  "content": "spoken text (~500 characters; trimmed at sentence boundaries if longer) or null",\n'
-        '  "confidence": "curious" | "certain" | ... (1-3 words),\n'
-        '  "emotion": "focused" | "calm" | ... (1-3 words)\n'
+        '  "content": "spoken text (~500 characters; trimmed at sentence boundaries) or null",\n'
+        '  "turn_action": "interact" | "emote" | "none",\n'
+        '  "target": "obj_cookie_01" | "agent_goblin_01" | null,\n'
+        '  "action_name": "eat" | "pointed" | null\n'
         "}"
     )
 

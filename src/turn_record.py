@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Literal, Optional
 
 
-StepKind = Literal["move", "look", "speak", "interact"]
+StepKind = Literal["move", "look", "speak", "interact", "emote"]
 
 
 @dataclass

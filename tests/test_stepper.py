@@ -55,7 +55,7 @@ def test_run_logs_single_compound_phase(monkeypatch):
             parsed=AgentCompoundTurn(
                 reasoning="stay and speak",
                 move_target=None,
-                turn_action="speak",
+                turn_action="none",
                 content="Hi.",
             ),
             raw_response="{}",

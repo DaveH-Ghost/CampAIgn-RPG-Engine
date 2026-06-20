@@ -67,3 +67,28 @@ def format_relative_bearing_phrase(
     if not unit_label:
         return f"{direction} of you, {distance} away"
     return f"{direction} of you, {distance} {unit_label} away"
+
+
+def format_action_range_label(
+    range_tiles: int,
+    *,
+    vision_units: str = "",
+    units_per_tile: int | None = None,
+) -> str:
+    """
+    Prompt label for an object action Chebyshev range.
+
+    When session units and/or units per tile are set, range is shown in world
+    units (range_tiles × units_per_tile). Otherwise uses tile count.
+    """
+    if range_tiles == 0:
+        return "same tile"
+    unit_label = vision_units.strip()
+    use_units = bool(unit_label) or units_per_tile is not None
+    if not use_units:
+        return f"range {range_tiles}"
+    per_tile = 1 if units_per_tile is None else units_per_tile
+    distance = range_tiles * per_tile
+    if unit_label:
+        return f"range {distance} {unit_label}"
+    return f"range {distance}"

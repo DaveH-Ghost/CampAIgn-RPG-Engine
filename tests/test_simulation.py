@@ -98,7 +98,7 @@ def test_compound_speak_records_text():
     record = run_compound_turn(
         agent,
         area,
-        compound(turn_action="speak", content=spoken),
+        compound(turn_action="none", content=spoken),
         turn_number=1,
     )
 

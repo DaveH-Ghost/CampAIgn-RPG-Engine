@@ -18,7 +18,7 @@ from src.llm.text_truncation import (
 from src.move_target import validate_move_target_syntax
 
 
-TurnActionType = Literal["speak", "interact", "none"]
+TurnActionType = Literal["interact", "emote", "none"]
 
 MAX_SPEAK_CHARACTERS = SPEAK_MAX_CHARS
 MAX_REASONING_CHARACTERS = REASONING_MAX_CHARS
@@ -33,16 +33,6 @@ def _truncate_reasoning(v: str) -> str:
     return truncate_at_sentence_boundary(v, REASONING_MAX_CHARS)
 
 
-def _validate_short_optional(v: Optional[str]) -> Optional[str]:
-    if v is None:
-        return v
-    if len(v.strip().split()) > 3:
-        raise ValueError(
-            "ERR:INVALID_CONTENT: confidence and emotion should be short (1-3 words max)."
-        )
-    return v
-
-
 def _truncate_speak_content(v: Optional[str]) -> Optional[str]:
     if v is None:
         return v
@@ -53,7 +43,7 @@ def _truncate_speak_content(v: Optional[str]) -> Optional[str]:
 
 
 class AgentCompoundTurn(BaseModel):
-    """Structured output for one compound agent turn (move → look → turn action)."""
+    """Structured output for one compound agent turn (move → look → speak → turn action)."""
 
     reasoning: str = Field(
         description=(
@@ -70,25 +60,26 @@ class AgentCompoundTurn(BaseModel):
         description="Entity id to examine after moving, or null to skip look.",
     )
     turn_action: TurnActionType = Field(
-        description='Turn-ending action: "speak", "interact", or "none".',
+        description='Turn-ending action: "interact", "emote", or "none".',
     )
     target: Optional[str] = Field(
         default=None,
-        description="Object id when turn_action is interact.",
+        description="Object or agent id (or free text) when turn_action is interact or emote.",
     )
     action_name: Optional[str] = Field(
         default=None,
-        description='Named object action when turn_action is interact (e.g. "eat").',
+        description=(
+            'Named object action when turn_action is interact (e.g. "eat"), '
+            'or past-tense emote verb when turn_action is emote (e.g. "pointed").'
+        ),
     )
     content: Optional[str] = Field(
         default=None,
         description=(
-            "Speak dialogue when turn_action is speak (aim for ~500 characters; "
+            "Optional speak dialogue (aim for ~500 characters; "
             "longer text is trimmed at sentence boundaries)."
         ),
     )
-    confidence: Optional[str] = Field(default=None, description="1-3 words.")
-    emotion: Optional[str] = Field(default=None, description="1-3 words.")
 
     @field_validator("reasoning")
     @classmethod
@@ -112,28 +103,21 @@ class AgentCompoundTurn(BaseModel):
     def validate_content(cls, v: Optional[str]) -> Optional[str]:
         return _truncate_speak_content(v)
 
-    @field_validator("confidence", "emotion")
-    @classmethod
-    def validate_short_fields(cls, v: Optional[str]) -> Optional[str]:
-        return _validate_short_optional(v)
-
     @model_validator(mode="after")
     def validate_turn_action_fields(self) -> "AgentCompoundTurn":
-        if self.turn_action == "speak":
-            if not self.content or not str(self.content).strip():
-                raise ValueError("ERR:INVALID_TARGET: speak requires content")
-            if self.target or self.action_name:
-                raise ValueError("ERR:INVALID_TARGET: target/action_name must be empty for speak")
-        elif self.turn_action == "interact":
+        if self.turn_action == "interact":
             if not self.target or not str(self.target).strip():
                 raise ValueError("ERR:INVALID_TARGET: interact requires target object id")
             if not self.action_name or not str(self.action_name).strip():
                 raise ValueError("ERR:INVALID_TARGET: interact requires action_name")
-            if self.content:
-                raise ValueError("ERR:INVALID_TARGET: content must be empty for interact")
+        elif self.turn_action == "emote":
+            if not self.target or not str(self.target).strip():
+                raise ValueError("ERR:INVALID_TARGET: emote requires target")
+            if not self.action_name or not str(self.action_name).strip():
+                raise ValueError("ERR:INVALID_TARGET: emote requires action_name")
         elif self.turn_action == "none":
-            if self.content or self.target or self.action_name:
+            if self.target or self.action_name:
                 raise ValueError(
-                    "ERR:INVALID_TARGET: content, target, and action_name must be empty for none"
+                    "ERR:INVALID_TARGET: target and action_name must be empty for none"
                 )
         return self

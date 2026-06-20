@@ -15,6 +15,7 @@ from src.llm.prompt_context import (
     _compound_turn_rules,
     compound_output_format,
     render_character_slot,
+    render_look_and_interact_slot,
     render_move_instructions_slot,
     render_passive_vision_slot,
 )
@@ -261,6 +262,14 @@ def render_slot_block(
         return render_move_instructions_slot(
             ctx,
             block.options,
+            agent=agent,
+            area=area,
+            vision_units=vision_units,
+            units_per_tile=units_per_tile,
+        )
+    if block.name == "look_and_interact":
+        return render_look_and_interact_slot(
+            ctx,
             agent=agent,
             area=area,
             vision_units=vision_units,

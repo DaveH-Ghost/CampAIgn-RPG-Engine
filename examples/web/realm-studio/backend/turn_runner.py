@@ -71,6 +71,8 @@ def run_llm_turn(
             ),
             "steps": _serialize_steps(result.record),
             "prompt": prompt,
+            "prompt_tokens": response.prompt_tokens,
+            "llm_response": response.raw_response,
         }
     finally:
         session.include_examples = prev_include

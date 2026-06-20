@@ -26,6 +26,7 @@ def parse_compound_step_arg(arg: str) -> ParsedCompoundStep:
         2,3 look obj_ball_01 speak Hello.
         - look obj_ball_01
         2,3 interact obj_cookie_01 eat
+        emote obj_sign_01 pointed
         2,3
         stay speak Hi there.
     """
@@ -38,13 +39,15 @@ def parse_compound_step_arg(arg: str) -> ParsedCompoundStep:
     speak_content: Optional[str] = None
     interact_target: Optional[str] = None
     interact_action: Optional[str] = None
+    emote_target: Optional[str] = None
+    emote_action: Optional[str] = None
     idx = 0
 
     first = tokens[0].lower()
     if first in ("-", "stay", "null", "none"):
         move_target = None
         idx = 1
-    elif first in ("look", "speak", "interact"):
+    elif first in ("look", "speak", "interact", "emote"):
         move_target = None
     else:
         move_target = tokens[0]
@@ -71,38 +74,37 @@ def parse_compound_step_arg(arg: str) -> ParsedCompoundStep:
             interact_target = tokens[idx]
             interact_action = tokens[idx + 1]
             idx += 2
+        elif cmd == "emote":
+            idx += 1
+            if idx + 1 >= len(tokens):
+                raise ValueError("emote requires target and past-tense action name")
+            emote_target = tokens[idx]
+            emote_action = tokens[idx + 1]
+            idx += 2
         else:
             raise ValueError(f"Unknown token '{tokens[idx]}' in step-compound")
 
     if interact_target:
-        turn = AgentCompoundTurn(
-            reasoning="[manual step-compound]",
-            move_target=move_target,
-            look_target=look_target,
-            turn_action="interact",
-            target=interact_target,
-            action_name=interact_action,
-        )
-    elif speak_content:
-        turn = AgentCompoundTurn(
-            reasoning="[manual step-compound]",
-            move_target=move_target,
-            look_target=look_target,
-            turn_action="speak",
-            content=speak_content,
-        )
-    elif look_target:
-        turn = AgentCompoundTurn(
-            reasoning="[manual step-compound]",
-            move_target=move_target,
-            look_target=look_target,
-            turn_action="none",
-        )
+        turn_action = "interact"
+        target = interact_target
+        action_name = interact_action
+    elif emote_target:
+        turn_action = "emote"
+        target = emote_target
+        action_name = emote_action
     else:
-        turn = AgentCompoundTurn(
-            reasoning="[manual step-compound]",
-            move_target=move_target,
-            turn_action="none",
-        )
+        turn_action = "none"
+        target = None
+        action_name = None
+
+    turn = AgentCompoundTurn(
+        reasoning="[manual step-compound]",
+        move_target=move_target,
+        look_target=look_target,
+        content=speak_content,
+        turn_action=turn_action,
+        target=target,
+        action_name=action_name,
+    )
 
     return ParsedCompoundStep(turn=turn)

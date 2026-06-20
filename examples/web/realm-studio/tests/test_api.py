@@ -221,7 +221,8 @@ def test_index_page(client):
     assert 'id="create-area"' in response.text
     assert 'id="edit-area"' in response.text
     assert 'id="delete-area"' in response.text
-    assert 'id="agents-elsewhere"' in response.text
+    assert 'id="last-prompt"' in response.text
+    assert 'id="last-response"' in response.text
 
 
 def _fake_compound_response(_prompt):
@@ -229,7 +230,7 @@ def _fake_compound_response(_prompt):
         parsed=AgentCompoundTurn(
             reasoning="stay and speak",
             move_target=None,
-            turn_action="speak",
+            turn_action="none",
             content="Hello from the test.",
         ),
         raw_response="{}",
@@ -249,6 +250,7 @@ def test_post_turn_success(client, monkeypatch):
     assert data["snapshot"]["session_turn"] == 1
     assert "areas" in data["snapshot"]
     assert "prompt" in data
+    assert data["llm_response"] == "{}"
 
 
 def test_get_prompt(client):
@@ -257,6 +259,8 @@ def test_get_prompt(client):
     data = response.json()
     assert data["ok"] is True
     assert len(data["prompt"]) > 100
+    assert isinstance(data["prompt_tokens"], int)
+    assert data["prompt_tokens"] > 0
 
 
 def test_get_prompt_unknown_agent(client):

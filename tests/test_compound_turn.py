@@ -25,8 +25,6 @@ def compound(
     turn_action="none",
     content=None,
     reasoning="reasoning",
-    confidence=None,
-    emotion=None,
 ) -> AgentCompoundTurn:
     return AgentCompoundTurn(
         reasoning=reasoning,
@@ -34,8 +32,6 @@ def compound(
         look_target=look_target,
         turn_action=turn_action,
         content=content,
-        confidence=confidence,
-        emotion=emotion,
     )
 
 
@@ -47,7 +43,7 @@ def test_nav_null_action_speak_only():
     record = run_compound_turn(
         agent,
         area,
-        compound(turn_action="speak", content="Hello."),
+        compound(turn_action="none", content="Hello."),
         turn_number=1,
     )
 
@@ -67,7 +63,7 @@ def test_move_look_speak_in_order():
         compound(
             move_target="2,3",
             look_target="obj_ball_01",
-            turn_action="speak",
+            turn_action="none",
             content="Hi.",
         ),
         turn_number=1,
@@ -122,7 +118,7 @@ def test_turn_record_has_structured_steps():
         compound(
             move_target="2,3",
             look_target="obj_ball_01",
-            turn_action="speak",
+            turn_action="none",
             content="Hi.",
             reasoning="full turn",
         ),
@@ -165,7 +161,7 @@ def test_passive_result_speak_wins_over_move_and_look():
         compound(
             move_target="2,3",
             look_target="obj_ball_01",
-            turn_action="speak",
+            turn_action="none",
             content="Hi.",
         ),
         next_turn_number_for_agent(goblin),
@@ -183,7 +179,7 @@ def test_step_compound_parser():
     assert parsed.turn.move_target == "2,3"
     assert parsed.turn.look_target == "obj_ball_01"
     assert parsed.turn.content == "Hello."
-    assert parsed.turn.turn_action == "speak"
+    assert parsed.turn.turn_action == "none"
 
     stay = parse_compound_step_arg("- look obj_ball_01")
     assert stay.turn.move_target is None

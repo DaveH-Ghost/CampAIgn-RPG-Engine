@@ -22,7 +22,6 @@ Current V0.1 Scope (superseded by V0.2 when shipped):
 - Pure dialogue encouraged via prompt only (no runtime emote/action detection)
 - `reasoning` limited to 400 characters (supports prompt token budget)
 - move target uses full direction strings ("north", "east", etc.)
-- confidence and emotion fields are kept for now (can be removed later if problematic)
 
 Last synced: 2026-06-05 (V0.2 prep — marked pre-V0.2; runtime still V0.1)
 """
@@ -58,7 +57,6 @@ class AgentTurn(BaseModel):
     - `target` is kept as a string for simplicity (with format rules per action).
     - `content` (for speak) is limited to a maximum of 5 sentences and 280 characters.
     - All text in `content` is treated as verbal dialogue (enforced by prompt, not runtime parsing).
-    - `confidence` and `emotion` are optional and kept short (max 3 words).
     """
 
     reasoning: str = Field(
@@ -86,16 +84,6 @@ class AgentTurn(BaseModel):
     content: Optional[str] = Field(
         default=None,
         description="Only used with the 'speak' action. Maximum 5 sentences of pure dialogue."
-    )
-
-    confidence: Optional[str] = Field(
-        default=None,
-        description="How confident you feel about this decision. Use 1-3 words max (e.g. 'certain', 'hesitant', 'curious')."
-    )
-
-    emotion: Optional[str] = Field(
-        default=None,
-        description="Your current dominant feeling. Use 1-3 words max (e.g. 'curious', 'uneasy', 'amused')."
     )
 
     # =====================
@@ -165,18 +153,5 @@ class AgentTurn(BaseModel):
                 f"ERR:CONTENT_TOO_LONG: speak content is limited to 280 characters "
                 f"in V0 (you used {len(text)})."
             )
-
-        return v
-
-    @field_validator("confidence", "emotion")
-    @classmethod
-    def validate_short_fields(cls, v: Optional[str]):
-        if v is None:
-            return v
-
-        word_count = len(v.strip().split())
-
-        if word_count > 3:
-            raise ValueError("ERR:INVALID_CONTENT: confidence and emotion should be short (1-3 words max).")
 
         return v

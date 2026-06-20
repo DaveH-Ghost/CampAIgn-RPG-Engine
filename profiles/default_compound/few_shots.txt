@@ -11,12 +11,10 @@ Output:
   "reasoning": "The ball is at (2, 2). I will move closer, examine it, and comment.",
   "move_target": "2,3",
   "look_target": "obj_ball_01",
-  "turn_action": "speak",
-  "target": null,
-  "action_name": null,
   "content": "Interesting ball.",
-  "confidence": "curious",
-  "emotion": "intrigued"
+  "turn_action": "none",
+  "target": null,
+  "action_name": null
 }
 
 Example 2: Stay in place and speak
@@ -31,12 +29,10 @@ Output:
   "reasoning": "Nothing new to examine. I will speak from here.",
   "move_target": null,
   "look_target": null,
-  "turn_action": "speak",
-  "target": null,
-  "action_name": null,
   "content": "Hello, room.",
-  "confidence": "certain",
-  "emotion": "calm"
+  "turn_action": "none",
+  "target": null,
+  "action_name": null
 }
 
 Example 3: Move only
@@ -51,10 +47,8 @@ Output:
   "reasoning": "The sign is at (2, 4). I will move closer.",
   "move_target": "2,3",
   "look_target": null,
+  "content": null,
   "turn_action": "none",
   "target": null,
-  "action_name": null,
-  "content": null,
-  "confidence": "decided",
-  "emotion": "focused"
+  "action_name": null
 }

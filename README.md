@@ -2,16 +2,17 @@
 
 A grid-based agent simulation framework designed around structured output and narrative roleplay.
 
-**Current Status:** **V0.4.1** (`0.4.1` in `pyproject.toml`) + [**realm-studio**](examples/web/realm-studio) example app. Tag **`v0.4.1`** when ready. Ships: sentence-aware truncation, **prompt block layout** (reorder + static sections), slot ⚙ settings, session **vision units** / relative bearing, plus V0.4.0 movement and multi-area.
+**Current Status:** **V0.4.2** (`0.4.2` in `pyproject.toml`) + [**realm-studio**](examples/web/realm-studio) example app. Tag **`v0.4.2`** when ready. Ships: **emote** turn action, speak as its own step, action ranges in session units, prompt token hint, **last prompt / last response** debug panels — plus V0.4.1 truncation, prompt blocks, vision units, and V0.4.0 movement / multi-area.
 
 **Documentation:**
 
+- [V0.4.2 changelog](docs/v0.4.2-changelog.md) — emote, speak step, action range units, debug panels (**0.4.2a–e**) ✅
 - [V0.4.1 changelog](docs/v0.4.1-changelog.md) — truncation, prompt blocks, prompt editor, vision units (**0.4.1a–d**) ✅
 - [V0.4.0 changelog](docs/v0.4.0-changelog.md) — movement, multi-area, `move_area`, object actions (**0.4.0a–e**) ✅
 - [V0.3.2 changelog](docs/v0.3.2-changelog.md) — **realm-studio** GM events, pannable grid, token images (0.3.2a–e) ✅
 - [V0.3.1 changelog](docs/v0.3.1-changelog.md) — **realm-studio** web app (0.3.1a–f) ✅
 - [V0.3.0 changelog](docs/v0.3.0-changelog.md) — engine refactor (0.3.0a–e)
-- [Roadmap](docs/ROADMAP.md) — version plans (**V0.4.1** ✅; **V0.4.0** ✅; V0.3.x ✅)
+- [Roadmap](docs/ROADMAP.md) — version plans (**V0.4.2** ✅; **V0.4.1** ✅; **V0.4.0** ✅; V0.3.x ✅)
 - [V0.2.5 changelog](docs/v0.2.5-changelog.md) — memory / prompt slices (0.2.5a–g)
 - [Long-term goals](LONG_TERM_GOALS.md) — aspirational features
 - [V0 implementation checklist](docs/v0-implementation-readiness-checklist.md) — V0 historical design reference
@@ -25,7 +26,7 @@ A grid-based agent simulation framework designed around structured output and na
 |-------|------------|
 | **`realm_fabric` package** | Public API: `Session`, `GameProfile`, `load_profile`, `PromptContext`, `AgentCompoundTurn`, snapshots |
 | **`realm` CLI** | Reference client (`ManualStepper`) for manual testing — not required for library use |
-| **[realm-studio](examples/web/realm-studio)** | Example web UI (V0.4.1) — prompt layout editor, vision units, multi-area grid, object actions, GM **Emit event**, LLM **Run turn** over HTTP |
+| **[realm-studio](examples/web/realm-studio)** | Example web UI (V0.4.2) — emotes, speak step, prompt layout, vision units, last prompt/response debug, multi-area grid, GM **Emit event**, LLM **Run turn** over HTTP |
 
 Quick start for a downstream project:
 
@@ -39,7 +40,7 @@ result = session.run_compound_turn(AgentCompoundTurn(...))
 state = session.snapshot()
 ```
 
-**V0.4.1** ships [realm-studio](examples/web/realm-studio) on this API:
+**V0.4.2** ships [realm-studio](examples/web/realm-studio) on this API:
 
 ```powershell
 cd examples\web\realm-studio
@@ -47,7 +48,7 @@ uv sync
 uv run realm-studio
 ```
 
-Multi-area pannable grid, token images (SVG/PNG), right-click create/edit/delete, **Manage actions…** on objects, **Prompt layout** (block reorder + section edit + slot ⚙), session **Units** for distance/move speed, **Emit event…**, area dropdown, and **Run turn** (needs `OPENROUTER_API_KEY`). See [realm-studio README](examples/web/realm-studio/README.md) and [v0.4.1-changelog](docs/v0.4.1-changelog.md).
+Multi-area pannable grid, token images (SVG/PNG), right-click create/edit/delete, **Manage actions…** on objects, **Prompt layout** (block reorder + section edit + slot ⚙), session **Units** for distance/move speed and action ranges, **Emit event…**, area dropdown, **Run turn** with input-token hover hint, and **Last prompt / Last response** debug panels (needs `OPENROUTER_API_KEY`). See [realm-studio README](examples/web/realm-studio/README.md) and [v0.4.2-changelog](docs/v0.4.2-changelog.md).
 
 ## Running / Testing (without LLM)
 
@@ -168,6 +169,16 @@ Sessions assemble compound prompts from an ordered **block list** (`slot`, `text
 Session **Units** + **Units per tile** (sidebar) feed relative bearing in passive vision and move-speed wording in move instructions.
 
 Engine API: `Session.get_prompt_blocks()`, `Session.set_prompt_blocks()`, `Session.build_prompt()` uses blocks when set. See [v0.4.1-changelog](docs/v0.4.1-changelog.md).
+
+### Compound turns (V0.4.2)
+
+Pipeline per agent turn: **move → look → speak → turn action** (`interact` | `emote` | `none`).
+
+- **Speak** — optional `content` (independent of `turn_action`); speak and interact/emote can combine in one turn
+- **Emote** — `turn_action: "emote"` with past-tense `action_name` and optional `target` (entity id or free text)
+- **Action ranges** — interact lines in prompts use session **Units** when set (`range 5 ft`, etc.)
+
+**Breaking (0.4.2):** `"turn_action": "speak"` rejected; optional `confidence` / `emotion` fields removed — use emote for non-verbal expression. See [v0.4.2-changelog](docs/v0.4.2-changelog.md).
 
 ### Multi-agent (V0.1 Section 3)
 
@@ -344,8 +355,8 @@ Tests use [pytest](https://docs.pytest.org/) and run **without** an API key or n
 
 | Suite | Where to run | Count | What it covers |
 |-------|----------------|-------|----------------|
-| **Engine** | Repo root (`uv run pytest`) | **386** | `tests/` — perception, prompt blocks, truncation, editing, Session API, multi-area, pathing, snapshots, etc. |
-| **realm-studio** | `examples/web/realm-studio` (`uv run pytest`) | **49** | HTTP smoke — health, multi-area state, prompt blocks, vision units, areas CRUD, object actions, events, turn |
+| **Engine** | Repo root (`uv run pytest`) | **396** | `tests/` — perception, emote, prompt blocks, truncation, editing, Session API, multi-area, pathing, snapshots, etc. |
+| **realm-studio** | `examples/web/realm-studio` (`uv run pytest`) | **49** | HTTP smoke — health, multi-area state, prompt blocks, vision units, areas CRUD, object actions, events, turn, debug panels |
 
 Root `pyproject.toml` sets `testpaths = ["tests"]` only. The example app has its own `pyproject.toml` and does **not** get picked up when you run pytest from the repo root.
 
@@ -399,7 +410,9 @@ uv run pytest -x
 | `tests/test_coordinate_move.py` | Coordinate move parser, bounds, schema |
 | `tests/test_move_target.py` | Entity id as move target (V0.4.0a) |
 | `tests/test_move_pathing.py` | `move_speed`, Chebyshev pathing, towards/reached wording (V0.4.0b) |
-| `tests/test_compound_turn.py` | Compound orchestration, `TurnRecord.steps`, step-compound parser |
+| `tests/test_compound_turn.py` | Compound orchestration, speak step, `TurnRecord.steps`, step-compound parser |
+| `tests/test_emote.py` | Emote turn action, witness phrasing, passive priority (V0.4.2) |
+| `tests/test_token_estimate.py` | Prompt token estimate helper (V0.4.2) |
 | `tests/test_object_actions.py` | Effect registry, interact range/vision, `delete_self`, ball `kick` |
 | `tests/test_move_area_effect.py` | `move_area` effect, cross-area transfer (V0.4.0d) |
 | `tests/test_interact_templates.py` | Result/passive template placeholders |

@@ -10,12 +10,15 @@ import { initGridViewport, maybeCenterGrid } from "./gridViewport.js";
 import {
   appendTurnLogEntry,
   bindPromptDebug,
+  bindResponseDebug,
   renderAgentsElsewhere,
   renderLastPrompt,
+  renderLastResponse,
   renderPassiveVision,
   renderRecentEvents,
   renderTurnLog,
   setLastPrompt,
+  setLastResponse,
 } from "./panels.js";
 import { activeAreaView, asArray, normalizeSnapshot } from "./snapshot.js";
 import {
@@ -48,6 +51,8 @@ const turnLogEl = document.getElementById("turn-log");
 const turnLogEmptyEl = document.getElementById("turn-log-empty");
 const lastPromptEl = document.getElementById("last-prompt");
 const lastPromptEmptyEl = document.getElementById("last-prompt-empty");
+const lastResponseEl = document.getElementById("last-response");
+const lastResponseEmptyEl = document.getElementById("last-response-empty");
 const promptLayoutEl = document.getElementById("prompt-layout");
 const promptLayoutStatusEl = document.getElementById("prompt-layout-status");
 const promptBlockListEl = document.getElementById("prompt-block-list");
@@ -64,16 +69,47 @@ const promptAddContentWrap = document.getElementById("prompt-add-content-wrap");
 const promptAddContentInput = document.getElementById("prompt-add-content");
 const promptAddBtn = document.getElementById("prompt-add-btn");
 const promptDebugEl = document.getElementById("prompt-debug");
+const responseDebugEl = document.getElementById("response-debug");
 const activeAreaSelect = document.getElementById("active-area-select");
 const createAreaBtn = document.getElementById("create-area");
 const editAreaBtn = document.getElementById("edit-area");
 const deleteAreaBtn = document.getElementById("delete-area");
 const activeAgentSelect = document.getElementById("active-agent-select");
 const runTurnBtn = document.getElementById("run-turn");
+const runTurnHintEl = document.getElementById("run-turn-hint");
 const emitEventBtn = document.getElementById("emit-event");
 
 let lastSnapshot = null;
 let turnInFlight = false;
+let promptTokenHintSeq = 0;
+
+function resolveActiveAgentIdForPrompt() {
+  return lastSnapshot?.active_agent_id ?? activeAgentSelect?.value ?? undefined;
+}
+
+function setRunTurnTokenHint(text) {
+  const hint = String(text ?? "").trim();
+  if (runTurnHintEl) {
+    runTurnHintEl.textContent = hint;
+  }
+}
+
+async function refreshRunTurnTokenHint() {
+  if (turnInFlight || !runTurnBtn) return;
+  const seq = ++promptTokenHintSeq;
+  const agentId = resolveActiveAgentIdForPrompt();
+  try {
+    const data = await getPrompt(agentId);
+    if (seq !== promptTokenHintSeq) return;
+    if (data.prompt_tokens != null) {
+      setRunTurnTokenHint(
+        `~${Number(data.prompt_tokens).toLocaleString()} input tokens (estimate)`,
+      );
+    }
+  } catch {
+    // keep previous hint if any
+  }
+}
 
 function posKey(x, y) {
   return `${x},${y}`;
@@ -238,6 +274,7 @@ function renderState(data) {
   if (activeAreaSelect) renderActiveAreaSelect(activeAreaSelect, lastSnapshot);
   if (activeAgentSelect) renderActiveAgentSelect(activeAgentSelect, lastSnapshot);
   snapshotEl.textContent = JSON.stringify(lastSnapshot, null, 2);
+  void refreshRunTurnTokenHint();
 }
 
 async function fetchState() {
@@ -277,6 +314,12 @@ function recordTurnResult(result) {
     setLastPrompt(result.prompt);
     if (promptDebugEl.open) {
       renderLastPrompt(lastPromptEl, lastPromptEmptyEl);
+    }
+  }
+  if (result.llm_response) {
+    setLastResponse(result.llm_response);
+    if (responseDebugEl.open) {
+      renderLastResponse(lastResponseEl, lastResponseEmptyEl);
     }
   }
 }
@@ -344,6 +387,7 @@ bindAreaManageButtons({
 });
 bindEmitEventButton(emitEventBtn);
 bindPromptDebug(promptDebugEl, lastPromptEl, lastPromptEmptyEl, () => getPrompt());
+bindResponseDebug(responseDebugEl, lastResponseEl, lastResponseEmptyEl);
 initPromptLayout({
   detailsEl: promptLayoutEl,
   listEl: promptBlockListEl,
@@ -367,10 +411,15 @@ initPromptLayout({
     if (promptDebugEl.open) {
       renderLastPrompt(lastPromptEl, lastPromptEmptyEl);
     }
+    void refreshRunTurnTokenHint();
   },
 });
 
 document.getElementById("refresh").addEventListener("click", fetchState);
 runTurnBtn.addEventListener("click", runTurn);
+
+runTurnBtn.addEventListener("mouseenter", () => {
+  void refreshRunTurnTokenHint();
+});
 renderTurnLog(turnLogEl, turnLogEmptyEl);
 fetchState();

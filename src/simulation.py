@@ -4,7 +4,7 @@ simulation.py
 Compound turn execution for V0.2.5.
 
 Pipeline per agent turn:
-  optional move → optional look → optional turn action (speak / interact)
+  optional move → optional look → optional speak → optional turn action (interact / emote)
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from src.action_outcome import ActionOutcome
-from src.actions import do_interact, do_move, do_speak
+from src.actions import do_emote, do_interact, do_move, do_speak
 from src.agent import Agent
 from src.llm.schemas import AgentCompoundTurn
 from src.memory import Memory, StepKind, TurnRecord, TurnStep
@@ -26,22 +26,6 @@ if TYPE_CHECKING:
 def next_turn_number_for_agent(agent: Agent) -> int:
     """Return the next per-agent sequential turn number for TurnRecord."""
     return agent.memory.turn_count + 1
-
-
-def _append_passive_mood(passive_result: str, turn: AgentCompoundTurn) -> str:
-    """Append confidence/emotion from the turn to passive_result."""
-    if not passive_result:
-        return passive_result
-
-    parts = []
-    if turn.confidence:
-        parts.append(f"confidence: {turn.confidence}")
-    if turn.emotion:
-        parts.append(f"Emotion: {turn.emotion}")
-    if not parts:
-        return passive_result
-
-    return f"{passive_result} ({', '.join(parts)})"
 
 
 def _composite_result(steps: list[TurnStep]) -> str:
@@ -108,8 +92,8 @@ def execute_action_phase(
             )
         )
 
-    if turn.turn_action == "speak":
-        outcome = do_speak(agent, area, turn.content or "")
+    if turn.content and str(turn.content).strip():
+        outcome = do_speak(agent, area, turn.content)
         steps.append(
             _make_step(
                 "speak",
@@ -118,7 +102,8 @@ def execute_action_phase(
                 content=turn.content,
             )
         )
-    elif turn.turn_action == "interact":
+
+    if turn.turn_action == "interact":
         outcome = do_interact(
             agent,
             area,
@@ -136,28 +121,62 @@ def execute_action_phase(
                 content=turn.action_name,
             )
         )
+    elif turn.turn_action == "emote":
+        outcome = do_emote(
+            agent,
+            area,
+            turn.target or "",
+            turn.action_name or "",
+        )
+        steps.append(
+            _make_step(
+                "emote",
+                turn.reasoning,
+                outcome,
+                target=turn.target,
+                content=turn.action_name,
+            )
+        )
 
     return steps
 
 
-def _pick_passive_from_steps(steps: list[TurnStep], turn: AgentCompoundTurn) -> str:
-    """Priority: turn action > look > move."""
-    turn_action_passive = ""
+def _pick_passive_from_steps(steps: list[TurnStep]) -> str:
+    """Priority: interact > emote > speak > look > move."""
+    interact_passive = ""
+    emote_passive = ""
+    speak_passive = ""
     look_passive = ""
     move_passive = ""
 
     for step in steps:
         if not step.passive_result:
             continue
-        if step.kind in ("speak", "interact"):
-            turn_action_passive = step.passive_result
+        if step.kind == "interact":
+            interact_passive = step.passive_result
+        elif step.kind == "emote":
+            emote_passive = step.passive_result
+        elif step.kind == "speak":
+            speak_passive = step.passive_result
         elif step.kind == "look":
             look_passive = step.passive_result
         elif step.kind == "move":
             move_passive = step.passive_result
 
-    winner = turn_action_passive or look_passive or move_passive
-    return _append_passive_mood(winner, turn)
+    return (
+        interact_passive
+        or emote_passive
+        or speak_passive
+        or look_passive
+        or move_passive
+    )
+
+
+def _find_emote_step(steps: list[TurnStep]) -> TurnStep | None:
+    for step in reversed(steps):
+        if step.kind == "emote":
+            return step
+    return None
 
 
 def finalize_turn_record(
@@ -185,7 +204,7 @@ def commit_turn_record(
     session_turn: int | None = None,
 ) -> TurnRecord:
     """Apply passive_result, memory, and last_action side effects."""
-    passive = _pick_passive_from_steps(record.steps, turn)
+    passive = _pick_passive_from_steps(record.steps)
     if passive:
         agent.passive_result = passive
 
@@ -194,7 +213,12 @@ def commit_turn_record(
     witness_session = session_turn if session_turn is not None else record.turn_number
     from src.observations import broadcast_actor_turn
 
-    broadcast_actor_turn(area, agent, session_turn=witness_session)
+    broadcast_actor_turn(
+        area,
+        agent,
+        session_turn=witness_session,
+        emote_step=_find_emote_step(record.steps) if turn.turn_action == "emote" else None,
+    )
 
     agent.last_action = record.steps[-1].kind if record.steps else None
     return record

@@ -1,6 +1,7 @@
 """Tests for relative compass bearings (V0.4.1c)."""
 
 from src.vision_bearing import (
+    format_action_range_label,
     format_relative_bearing_phrase,
     relative_compass_direction,
 )
@@ -40,3 +41,20 @@ def test_format_relative_bearing_same_tile():
         format_relative_bearing_phrase((2, 2), (2, 2), units="ft", units_per_tile=5)
         == "on your tile"
     )
+
+
+def test_format_action_range_label_tiles_by_default():
+    assert format_action_range_label(1) == "range 1"
+    assert format_action_range_label(0) == "same tile"
+
+
+def test_format_action_range_label_with_session_units():
+    assert (
+        format_action_range_label(1, vision_units="ft", units_per_tile=5)
+        == "range 5 ft"
+    )
+    assert (
+        format_action_range_label(2, vision_units="ft", units_per_tile=5)
+        == "range 10 ft"
+    )
+    assert format_action_range_label(1, units_per_tile=5) == "range 5"
