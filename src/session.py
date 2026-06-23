@@ -450,6 +450,22 @@ class Session:
             include_passive_vision=include_passive_vision,
         )
 
+    def to_save_dict(self) -> dict:
+        """Full session save document for CLI export and realm-studio download."""
+        from src.session_persistence import build_save_snapshot
+
+        return build_save_snapshot(self)
+
+    @classmethod
+    def from_snapshot(cls, data: dict) -> Session:
+        """Restore a session from a save document produced by :meth:`to_save_dict`."""
+        from src.session_persistence import load_session_from_snapshot
+
+        session = load_session_from_snapshot(data)
+        if not isinstance(session, cls):
+            raise TypeError(f"Expected Session, got {type(session)!r}")
+        return session
+
     def format_debug_state(self, name_or_id: Optional[str] = None) -> str:
         """Human-readable agent/area debug report (CLI ``state`` command)."""
         from src.memory_modules.registry import format_memory_module_label

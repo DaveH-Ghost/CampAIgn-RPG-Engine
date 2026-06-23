@@ -1,5 +1,5 @@
 """
-realm_fabric — public engine API for Realm-Fabric (V0.4.4).
+realm_fabric — public engine API for Realm-Fabric (V0.4.5).
 
 Downstream projects should import from this package. Modules under ``src.*``
 remain importable for the CLI and tests but are not guaranteed stable.
@@ -18,6 +18,7 @@ from src.llm.schemas import AgentCompoundTurn
 from src.object import Object
 from src.session import CommandResult, Session, SessionResult, TurnResult
 from src.simulation import run_compound_turn
+from src.session_persistence import build_save_snapshot, load_session_from_snapshot
 from src.snapshot import DEFAULT_AREA_ID, build_area_snapshot, build_session_snapshot
 
 __all__ = [
@@ -34,6 +35,7 @@ __all__ = [
     "SessionResult",
     "TurnResult",
     "build_area_snapshot",
+    "build_save_snapshot",
     "build_session_snapshot",
     "DEFAULT_AREA_ID",
     "build_prompt_context",
@@ -41,6 +43,7 @@ __all__ = [
     "create_initial_area",
     "default_compound_profile",
     "load_profile",
+    "load_session_from_snapshot",
     "run_compound_turn",
 ]
 

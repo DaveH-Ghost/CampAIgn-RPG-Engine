@@ -335,11 +335,14 @@ Larger items (Roll20 integration, full strategy turn models, lorebooks, etc.) re
 
 **Focus:** **Session save/load** — full snapshot round-trip (world + memory + prompt blocks) + realm-studio export/import.
 
-**Status:** ⬜ **Planned** — not started.
+**Status:** ✅ **Done** — tag **`v0.4.5`** when ready.
 
-- `Session.from_snapshot()` / extended save format with `snapshot_version: 1`
-- `GET /api/session/export`, `POST /api/session/import` in realm-studio
-- Snapshot includes V0.4.4 JSON key names and prompt block overrides
+- `Session.from_snapshot()` / `Session.to_save_dict()` / `build_save_snapshot` with `snapshot_version: 1`
+- Memory modules: `export_state` / `restore_state` on all built-in modules
+- CLI: `export-session`, `import-session`
+- realm-studio: `GET /api/session/export`, `POST /api/session/import`, header save/load icon buttons
+
+See [v0.4.5-changelog.md](v0.4.5-changelog.md).
 
 ---
 

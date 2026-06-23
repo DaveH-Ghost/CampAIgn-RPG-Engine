@@ -90,6 +90,29 @@ def create_module(module_id: str | None = None, **config: Any) -> MemoryModule:
     return factory(**config)
 
 
+def export_module_state(module: MemoryModule) -> dict[str, Any]:
+    """Serialize a memory module for session save."""
+    export = getattr(module, "export_state", None)
+    if export is None:
+        raise TypeError(f"Memory module {module.module_id!r} does not support export_state")
+    return export()
+
+
+def restore_module_state(module: MemoryModule, data: dict[str, Any]) -> None:
+    """Restore a memory module from :func:`export_module_state` output."""
+    restore = getattr(module, "restore_state", None)
+    if restore is None:
+        raise TypeError(f"Memory module {module.module_id!r} does not support restore_state")
+    restore(data)
+
+
+def create_module_from_state(module_id: str, state: dict[str, Any]) -> MemoryModule:
+    """Construct a module and restore saved state."""
+    module = create_module(module_id)
+    restore_module_state(module, state)
+    return module
+
+
 def known_module_ids() -> list[str]:
     """Return registered memory module ids (for create-agent and listing)."""
     return sorted(_REGISTRY)

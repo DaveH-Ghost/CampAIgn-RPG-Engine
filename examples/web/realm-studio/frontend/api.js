@@ -403,3 +403,41 @@ export function buildAddObjectAction(objectId, {
 export function buildRemoveObjectAction(objectId, actionName) {
   return `edit-object ${objectId} remove-action ${actionName}`;
 }
+
+function parseContentDispositionFilename(header) {
+  if (!header) return "realm-session.json";
+  const match = /filename="([^"]+)"/.exec(header);
+  return match ? match[1] : "realm-session.json";
+}
+
+export async function exportSession() {
+  const res = await fetch("/api/session/export");
+  if (!res.ok) {
+    throw new Error(`GET /api/session/export failed: HTTP ${res.status}`);
+  }
+  const blob = await res.blob();
+  const filename = parseContentDispositionFilename(
+    res.headers.get("Content-Disposition"),
+  );
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+  return { filename };
+}
+
+export async function importSession(snapshot) {
+  const res = await fetch("/api/session/import", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(snapshot),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    const detail = data.detail || data.message || `HTTP ${res.status}`;
+    throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+  }
+  return data;
+}

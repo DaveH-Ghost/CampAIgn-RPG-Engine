@@ -20,6 +20,14 @@ from src.memory_modules.formatting import (
     should_include_reasoning,
     step_salience,
 )
+from src.memory_modules.serialization import (
+    deserialize_turn_list,
+    deserialize_witness_list,
+    deserialize_witnessed_before,
+    serialize_turn_list,
+    serialize_witness_list,
+    serialize_witnessed_before,
+)
 from src.turn_record import TurnRecord
 
 DEFAULT_CHAR_BUDGET = 2500
@@ -247,3 +255,32 @@ class SalientTurnsModule:
     def stored_turns(self) -> list[TurnRecord]:
         """Own turns in storage (up to ``storage_window``); render may compress older turns."""
         return list(self._turns)
+
+    def export_state(self) -> dict:
+        return {
+            "char_budget": self.char_budget,
+            "storage_window": self.storage_window,
+            "recency_floor": self.recency_floor,
+            "total_turns": self._total_turns,
+            "turns": serialize_turn_list(self._turns),
+            "witnessed_before": serialize_witnessed_before(self._witnessed_before),
+            "salience_scores": list(self._salience_scores),
+            "pending": serialize_witness_list(self._pending),
+        }
+
+    def restore_state(self, data: dict) -> None:
+        self.char_budget = int(data["char_budget"])
+        self.storage_window = int(data["storage_window"])
+        self.recency_floor = int(data["recency_floor"])
+        validate_char_budget(self.char_budget)
+        if self.recency_floor < 1:
+            raise ValueError("recency_floor must be at least 1")
+        if self.storage_window < self.recency_floor:
+            raise ValueError("storage_window must be >= recency_floor")
+        self._total_turns = int(data["total_turns"])
+        self._turns = deserialize_turn_list(data.get("turns", []))
+        self._witnessed_before = deserialize_witnessed_before(
+            data.get("witnessed_before", [])
+        )
+        self._salience_scores = [int(score) for score in data.get("salience_scores", [])]
+        self._pending = deserialize_witness_list(data.get("pending", []))

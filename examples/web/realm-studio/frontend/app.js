@@ -3,7 +3,7 @@
  */
 
 import { hasAppearance, resolveAppearanceUrl } from "./appearance.js";
-import { getPrompt, getState, postTurn } from "./api.js";
+import { exportSession, getPrompt, getState, importSession, postTurn } from "./api.js";
 import { initPromptLayout, reloadPromptLayoutIfOpen } from "./promptLayout.js";
 import { initVisionUnits, syncVisionUnitsFromSnapshot } from "./visionUnits.js";
 import { initGridViewport, maybeCenterGrid } from "./gridViewport.js";
@@ -11,6 +11,7 @@ import {
   appendTurnLogEntry,
   bindPromptDebug,
   bindResponseDebug,
+  clearTurnLog,
   renderAgentsElsewhere,
   renderLastPrompt,
   renderLastResponse,
@@ -79,6 +80,9 @@ const activeAgentSelect = document.getElementById("active-agent-select");
 const runTurnBtn = document.getElementById("run-turn");
 const runTurnHintEl = document.getElementById("run-turn-hint");
 const emitEventBtn = document.getElementById("emit-event");
+const sessionExportBtn = document.getElementById("session-export");
+const sessionImportBtn = document.getElementById("session-import");
+const sessionImportInput = document.getElementById("session-import-input");
 
 let lastSnapshot = null;
 let turnInFlight = false;
@@ -428,6 +432,53 @@ initPromptLayout({
 
 document.getElementById("refresh").addEventListener("click", fetchState);
 runTurnBtn.addEventListener("click", runTurn);
+
+if (sessionExportBtn) {
+  sessionExportBtn.addEventListener("click", async () => {
+    try {
+      const { filename } = await exportSession();
+      showToast(`Session saved (${filename})`);
+      if (statusEl) statusEl.textContent = `Saved ${filename}`;
+    } catch (err) {
+      showToast(`Save failed: ${err.message}`);
+      if (statusEl) statusEl.textContent = `Save failed: ${err.message}`;
+    }
+  });
+}
+
+if (sessionImportBtn && sessionImportInput) {
+  sessionImportBtn.addEventListener("click", () => {
+    sessionImportInput.click();
+  });
+
+  sessionImportInput.addEventListener("change", async () => {
+    const file = sessionImportInput.files?.[0];
+    sessionImportInput.value = "";
+    if (!file) return;
+    if (
+      !window.confirm(
+        "Replace the current session with the loaded file? Unsaved changes will be lost.",
+      )
+    ) {
+      return;
+    }
+    try {
+      const text = await file.text();
+      const snapshot = JSON.parse(text);
+      const result = await importSession(snapshot);
+      setLastPrompt("");
+      setLastResponse(null);
+      clearTurnLog();
+      renderTurnLog(turnLogEl, turnLogEmptyEl);
+      await fetchState();
+      showToast(result.message || "Session loaded");
+      if (statusEl) statusEl.textContent = result.message || "Session loaded";
+    } catch (err) {
+      showToast(`Load failed: ${err.message}`);
+      if (statusEl) statusEl.textContent = `Load failed: ${err.message}`;
+    }
+  });
+}
 
 runTurnBtn.addEventListener("mouseenter", () => {
   void refreshRunTurnTokenHint();

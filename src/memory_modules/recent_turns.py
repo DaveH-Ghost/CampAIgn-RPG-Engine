@@ -11,6 +11,14 @@ from src.memory_modules.base import (
     WitnessedEvent,
 )
 from src.memory_modules.formatting import format_stored_turns_block, join_lines
+from src.memory_modules.serialization import (
+    deserialize_turn_list,
+    deserialize_witness_list,
+    deserialize_witnessed_before,
+    serialize_turn_list,
+    serialize_witness_list,
+    serialize_witnessed_before,
+)
 from src.turn_record import TurnRecord
 
 DEFAULT_WINDOW = 10
@@ -71,3 +79,22 @@ class RecentTurnsModule:
     def stored_turns(self) -> list[TurnRecord]:
         """Last ``window`` own turns kept verbatim in the prompt detail buffer."""
         return list(self._turns)
+
+    def export_state(self) -> dict:
+        return {
+            "window": self.window,
+            "total_turns": self._total_turns,
+            "turns": serialize_turn_list(self._turns),
+            "witnessed_before": serialize_witnessed_before(self._witnessed_before),
+            "pending": serialize_witness_list(self._pending),
+        }
+
+    def restore_state(self, data: dict) -> None:
+        self.window = int(data["window"])
+        validate_window(self.window)
+        self._total_turns = int(data["total_turns"])
+        self._turns = deserialize_turn_list(data.get("turns", []))
+        self._witnessed_before = deserialize_witnessed_before(
+            data.get("witnessed_before", [])
+        )
+        self._pending = deserialize_witness_list(data.get("pending", []))

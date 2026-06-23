@@ -24,6 +24,14 @@ from src.memory_modules.formatting import (
     format_turns_batch_for_summary,
     join_lines,
 )
+from src.memory_modules.serialization import (
+    deserialize_turn_list,
+    deserialize_witness_list,
+    deserialize_witnessed_before,
+    serialize_turn_list,
+    serialize_witness_list,
+    serialize_witnessed_before,
+)
 from src.memory_modules.recent_turns import DEFAULT_WINDOW
 from src.turn_record import TurnRecord
 
@@ -255,3 +263,35 @@ class RollingSummaryModule:
     @property
     def summary(self) -> str:
         return self._summary
+
+    def export_state(self) -> dict:
+        return {
+            "summary_interval": self.summary_interval,
+            "max_summary_chars": self.max_summary_chars,
+            "summary_tail": self.summary_tail,
+            "total_turns": self._total_turns,
+            "summary": self._summary,
+            "last_summarized_turn_number": self._last_summarized_turn_number,
+            "turns": serialize_turn_list(self._turns),
+            "witnessed_before": serialize_witnessed_before(self._witnessed_before),
+            "pending": serialize_witness_list(self._pending),
+        }
+
+    def restore_state(self, data: dict) -> None:
+        self.summary_interval = int(data["summary_interval"])
+        self.max_summary_chars = int(data["max_summary_chars"])
+        self.summary_tail = int(data["summary_tail"])
+        validate_summary_interval(self.summary_interval)
+        validate_max_summary_chars(self.max_summary_chars)
+        validate_summary_tail(self.summary_tail)
+        self._total_turns = int(data["total_turns"])
+        self._summary = str(data.get("summary", ""))
+        self._last_summarized_turn_number = int(
+            data.get("last_summarized_turn_number", 0)
+        )
+        self._turns = deserialize_turn_list(data.get("turns", []))
+        self._witnessed_before = deserialize_witnessed_before(
+            data.get("witnessed_before", [])
+        )
+        self._pending = deserialize_witness_list(data.get("pending", []))
+        self._consolidation_runner = ConsolidationRunner()

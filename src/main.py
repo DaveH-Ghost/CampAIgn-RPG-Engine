@@ -65,6 +65,7 @@ class ManualStepper(cmd.Cmd):
         "- 'emit-event \"...\"' : room-wide event all agents perceive (no turn)\n"
         "- 'prompt' : show the full prompt that would be sent to the LLM\n"
         "- 'fewshots on/off' : toggle few-shot examples in prompts (off by default)\n"
+        "- 'export-session <path>' / 'import-session <path>' : save/load full session JSON\n"
         "Sign updates: edit-object obj_sign_01 desc \"new text\" (pdesc for glance text)\n"
         "CLI flags: --log , --with-fewshots\n"
         "Example: Explorer\n"
@@ -387,6 +388,61 @@ class ManualStepper(cmd.Cmd):
         if arg:
             arg = arg.replace("-", "_")
         return super().do_help(arg)
+
+    def do_export_session(self, arg):
+        """Write the full session to a JSON file. Usage: export-session path.json"""
+        path = arg.strip()
+        if not path:
+            print("Usage: export-session <path>")
+            return
+        import json
+
+        try:
+            data = self.session.to_save_dict()
+            with open(path, "w", encoding="utf-8") as handle:
+                json.dump(data, handle, indent=2)
+                handle.write("\n")
+        except OSError as exc:
+            print(f"Could not write session file: {exc}")
+            return
+        except Exception as exc:
+            print(f"Export failed: {exc}")
+            return
+        print(
+            f"Session exported to {path} "
+            f"(turn {self.session.session_turn}, "
+            f"{len(self.session.areas)} area(s), "
+            f"{sum(len(a.agents) for a in self.session.areas.values())} agent(s))."
+        )
+
+    def do_import_session(self, arg):
+        """Load a session from a JSON file. Usage: import-session path.json"""
+        path = arg.strip()
+        if not path:
+            print("Usage: import-session <path>")
+            return
+        import json
+
+        try:
+            with open(path, encoding="utf-8") as handle:
+                data = json.load(handle)
+        except OSError as exc:
+            print(f"Could not read session file: {exc}")
+            return
+        except json.JSONDecodeError as exc:
+            print(f"Invalid JSON: {exc}")
+            return
+        try:
+            self.session = Session.from_snapshot(data)
+        except (ValueError, TypeError) as exc:
+            print(f"Import failed: {exc}")
+            return
+        agent = self.session.get_active_agent()
+        print(
+            f"Session imported from {path} "
+            f"(turn {self.session.session_turn}, active agent {agent.name}, "
+            f"{len(self.session.areas)} area(s))."
+        )
 
     def do_quit(self, arg):
         """Exit the simulator."""

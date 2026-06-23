@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI
+from datetime import datetime, timezone
+
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from src.llm.token_estimate import estimate_prompt_tokens
 
@@ -49,7 +51,7 @@ _ENGINE_SRC = _REPO_ROOT / "src"
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="realm-studio", version="0.4.4")
+    app = FastAPI(title="realm-studio", version="0.4.5")
 
     app.add_middleware(
         CORSMiddleware,
@@ -201,6 +203,35 @@ def create_app() -> FastAPI:
     @app.get("/api/memory-modules")
     def get_memory_modules_route() -> dict[str, object]:
         return get_memory_modules_catalog()
+
+    @app.get("/api/session/export")
+    def export_session_route() -> JSONResponse:
+        store = get_session_store()
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+        filename = f"realm-session-{stamp}.json"
+        return JSONResponse(
+            content=store.export_session(),
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+            },
+        )
+
+    @app.post("/api/session/import")
+    async def import_session_route(body: dict) -> dict[str, object]:
+        store = get_session_store()
+        try:
+            store.import_session(body)
+        except (ValueError, TypeError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        session = store.session
+        agent = session.get_active_agent()
+        return {
+            "ok": True,
+            "message": (
+                f"Session loaded (turn {session.session_turn}, "
+                f"active agent {agent.name}, {len(session.areas)} area(s))."
+            ),
+        }
 
     @app.post("/api/event")
     def post_event(body: EventRequest) -> dict[str, object]:

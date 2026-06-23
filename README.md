@@ -2,10 +2,11 @@
 
 A grid-based agent simulation framework designed around structured output and narrative roleplay.
 
-**Current Status:** **V0.4.4** (`0.4.4` in `pyproject.toml`) + [**realm-studio**](examples/web/realm-studio) example app. Tag **`v0.4.4`** when ready. Ships: **compact default prompt** (~500 est. input tokens, down from ~966) and **compact JSON keys** (`move`, `look`, `say`, `action`, `verb`) — plus V0.4.3 memory UI, V0.4.2 emote/speak/debug, V0.4.1 prompt layout, and V0.4.0 movement / multi-area.
+**Current Status:** **V0.4.5** (`0.4.5` in `pyproject.toml`) + [**realm-studio**](examples/web/realm-studio) example app. Tag **`v0.4.5`** when ready. Ships: **session save/load** (CLI + realm-studio), plus V0.4.4 compact prompt/JSON keys, V0.4.3 memory UI, and earlier V0.4.x features.
 
 **Documentation:**
 
+- [V0.4.5 changelog](docs/v0.4.5-changelog.md) — session save/load (**0.4.5a–e**) ✅
 - [V0.4.4 changelog](docs/v0.4.4-changelog.md) — prompt/schema token reduction (**0.4.4a–d**) ✅
 - [V0.4.3 changelog](docs/v0.4.3-changelog.md) — memory module UI, edit location, witness broadcast (**0.4.3a–c**) ✅
 - [V0.4.2 changelog](docs/v0.4.2-changelog.md) — emote, speak step, action range units, debug panels (**0.4.2a–e**) ✅
@@ -14,7 +15,7 @@ A grid-based agent simulation framework designed around structured output and na
 - [V0.3.2 changelog](docs/v0.3.2-changelog.md) — **realm-studio** GM events, pannable grid, token images (0.3.2a–e) ✅
 - [V0.3.1 changelog](docs/v0.3.1-changelog.md) — **realm-studio** web app (0.3.1a–f) ✅
 - [V0.3.0 changelog](docs/v0.3.0-changelog.md) — engine refactor (0.3.0a–e)
-- [Roadmap](docs/ROADMAP.md) — version plans (**V0.4.4** ✅; **V0.4.5** save/load planned; V0.4.x ✅)
+- [Roadmap](docs/ROADMAP.md) — version plans (**V0.4.5** save/load ✅; V0.4.x ✅)
 - [V0.2.5 changelog](docs/v0.2.5-changelog.md) — memory / prompt slices (0.2.5a–g)
 - [Long-term goals](LONG_TERM_GOALS.md) — aspirational features
 - [V0 implementation checklist](docs/v0-implementation-readiness-checklist.md) — V0 historical design reference
@@ -40,6 +41,8 @@ prompt = session.build_prompt()
 # ... call your LLM, then:
 result = session.run_compound_turn(AgentCompoundTurn(...))
 state = session.snapshot()
+save_doc = session.to_save_dict()       # full save (V0.4.5)
+restored = Session.from_snapshot(save_doc)
 ```
 
 **V0.4.2** ships [realm-studio](examples/web/realm-studio) on this API:
@@ -50,7 +53,7 @@ uv sync
 uv run realm-studio
 ```
 
-Multi-area pannable grid, token images (SVG/PNG), right-click create/edit/delete, **Manage actions…** on objects, **Prompt layout** (block reorder + section edit + slot ⚙), session **Units** for distance/move speed and action ranges, **Emit event…**, area dropdown, **Run turn** with input-token hover hint, and **Last prompt / Last response** debug panels (needs `OPENROUTER_API_KEY`). See [realm-studio README](examples/web/realm-studio/README.md) and [v0.4.2-changelog](docs/v0.4.2-changelog.md).
+Multi-area pannable grid, token images (SVG/PNG), right-click create/edit/delete, **Manage actions…** on objects, **Prompt layout** (block reorder + section edit + slot ⚙), session **Units** for distance/move speed and action ranges, **Emit event…**, area dropdown, **Run turn** with input-token hover hint, **Save / Load session** (top-right icons), and **Last prompt / Last response** debug panels (needs `OPENROUTER_API_KEY`). See [realm-studio README](examples/web/realm-studio/README.md) and [v0.4.5-changelog](docs/v0.4.5-changelog.md).
 
 ## Running / Testing (without LLM)
 
@@ -426,6 +429,7 @@ uv run pytest -x
 | `tests/test_area_config.py` | Configurable grid bounds and `area_description` |
 | `tests/test_session.py` | Session API — turns, commands, active agent, `build_prompt` |
 | `tests/test_session_snapshot.py` | `Session.snapshot()` JSON shape, privacy, post-turn state |
+| `tests/test_session_persistence.py` | Full save/load round-trip, memory modules, CLI export/import (V0.4.5) |
 | `tests/test_game_profile.py` | `GameProfile`, `PromptTemplate`, default profile parity |
 | `tests/test_simulation.py` | Compound turns, memory side effects, prompts |
 | `tests/test_perception.py` | V0.1 `[?]` / stale vision for objects and cross-agent invalidation |

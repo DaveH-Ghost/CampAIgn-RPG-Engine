@@ -143,3 +143,12 @@ class Memory:
     def reset_looked_at(self) -> None:
         self._looked_at.clear()
         self._ever_looked.clear()
+
+    def restore_look_state(
+        self,
+        looked_at: set[str] | list[str],
+        ever_looked: set[str] | list[str],
+    ) -> None:
+        """Restore look knowledge from a saved session snapshot."""
+        self._looked_at = set(looked_at)
+        self._ever_looked = set(ever_looked)

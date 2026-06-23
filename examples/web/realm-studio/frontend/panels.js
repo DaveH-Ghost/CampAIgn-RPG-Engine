@@ -108,6 +108,10 @@ export function appendTurnLogEntry({ sessionTurn, agentName, message, steps }) {
   }
 }
 
+export function clearTurnLog() {
+  turnLogEntries = [];
+}
+
 export function renderTurnLog(listEl, emptyEl) {
   listEl.innerHTML = "";
   if (turnLogEntries.length === 0) {

@@ -51,6 +51,14 @@ class SessionStore:
         _seed_studio_hall(self._session)
         _maybe_dev_stack_seed(self._session)
 
+    def export_session(self) -> dict:
+        """Full save document for download."""
+        return self._session.to_save_dict()
+
+    def import_session(self, data: dict) -> None:
+        """Replace the in-memory session from a save document."""
+        self._session = Session.from_snapshot(data)
+
     @property
     def session(self) -> Session:
         return self._session

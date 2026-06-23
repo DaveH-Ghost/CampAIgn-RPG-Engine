@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from src.turn_record import TurnRecord
 
@@ -69,6 +69,12 @@ class MemoryModule(Protocol):
         detail only (``rolling_summary`` — see that module's ``summary`` property
         for consolidated history).
         """
+
+    def export_state(self) -> dict[str, Any]:
+        """Serialize config and runtime buffers for session save/load."""
+
+    def restore_state(self, data: dict[str, Any]) -> None:
+        """Restore config and runtime buffers from :meth:`export_state`."""
 
 
 @runtime_checkable
