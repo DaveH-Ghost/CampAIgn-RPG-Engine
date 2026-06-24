@@ -2,9 +2,16 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Callable
 
 from src.memory_modules.base import MemoryModule
+from src.memory_modules.loader import (
+    CustomModuleMetadata,
+    ModuleFactory,
+    parse_custom_memory_module,
+    write_module_source_to_cache,
+)
 from src.memory_modules.recent_turns import DEFAULT_WINDOW, RecentTurnsModule, validate_window
 from src.memory_modules.rolling_summary import (
     DEFAULT_MAX_SUMMARY_CHARS,
@@ -21,11 +28,9 @@ from src.memory_modules.salient_turns import (
     validate_char_budget,
 )
 
-ModuleFactory = Callable[..., MemoryModule]
-
 DEFAULT_MODULE_ID = "recent_turns"
 
-_REGISTRY: dict[str, ModuleFactory] = {
+_BUILTIN_REGISTRY: dict[str, ModuleFactory] = {
     "recent_turns": lambda **cfg: RecentTurnsModule(window=cfg.get("window", DEFAULT_WINDOW)),
     "salient_turns": lambda **cfg: SalientTurnsModule(
         char_budget=int(cfg.get("char_budget", DEFAULT_CHAR_BUDGET)),
@@ -39,12 +44,91 @@ _REGISTRY: dict[str, ModuleFactory] = {
     ),
 }
 
+_CUSTOM_REGISTRY: dict[str, ModuleFactory] = {}
+_CUSTOM_METADATA: dict[str, CustomModuleMetadata] = {}
+
 
 def default_module_id() -> str:
     return DEFAULT_MODULE_ID
 
 
-def _validate_module_config(module_id: str, config: dict[str, Any]) -> None:
+def builtin_module_ids() -> list[str]:
+    return sorted(_BUILTIN_REGISTRY)
+
+
+def is_builtin_module_id(module_id: str) -> bool:
+    return module_id in _BUILTIN_REGISTRY
+
+
+def loaded_module_ids() -> list[str]:
+    """Built-in ids (always) plus runtime-registered custom modules."""
+    return sorted(set(_BUILTIN_REGISTRY) | set(_CUSTOM_REGISTRY))
+
+
+def is_module_loaded(module_id: str) -> bool:
+    return module_id in _BUILTIN_REGISTRY or module_id in _CUSTOM_REGISTRY
+
+
+def get_custom_module_metadata(module_id: str) -> CustomModuleMetadata | None:
+    return _CUSTOM_METADATA.get(module_id)
+
+
+def list_custom_module_metadata() -> list[CustomModuleMetadata]:
+    return [_CUSTOM_METADATA[mid] for mid in sorted(_CUSTOM_METADATA)]
+
+
+def _register_custom_module(
+    module_id: str,
+    factory: ModuleFactory,
+    metadata: CustomModuleMetadata,
+) -> str:
+    if is_builtin_module_id(module_id):
+        raise ValueError(
+            f"Memory module id {module_id!r} conflicts with a built-in module."
+        )
+    _CUSTOM_REGISTRY[module_id] = factory
+    _CUSTOM_METADATA[module_id] = metadata
+    return module_id
+
+
+def register_memory_module_from_path(path: str | Path) -> str:
+    """Load a custom memory module from a .py path (overwrites same custom id)."""
+    resolved = Path(path).expanduser().resolve()
+    module_id, factory, metadata = parse_custom_memory_module(resolved)
+    return _register_custom_module(module_id, factory, metadata)
+
+
+def register_memory_module_from_source(
+    source: str,
+    *,
+    filename: str,
+    cache_dir: Path,
+) -> str:
+    """Write uploaded source to cache, load, and register (overwrites same custom id)."""
+    staging = cache_dir / "_staging_upload.py"
+    staging.parent.mkdir(parents=True, exist_ok=True)
+    staging.write_text(source, encoding="utf-8")
+    module_id, factory, meta_staging = parse_custom_memory_module(staging)
+    dest = write_module_source_to_cache(
+        source,
+        module_id=module_id,
+        filename=filename,
+        cache_dir=cache_dir,
+    )
+    staging.unlink(missing_ok=True)
+    _, factory_final, metadata = parse_custom_memory_module(dest)
+    metadata = CustomModuleMetadata(
+        module_id=metadata.module_id,
+        label=metadata.label,
+        description=metadata.description,
+        create_agent_options=metadata.create_agent_options,
+        source_path=dest,
+        filename=filename or dest.name,
+    )
+    return _register_custom_module(module_id, factory_final, metadata)
+
+
+def _validate_builtin_module_config(module_id: str, config: dict[str, Any]) -> None:
     if module_id != "recent_turns" and "window" in config:
         raise ValueError(
             "memory-window is only valid with memory recent_turns "
@@ -82,11 +166,13 @@ def _validate_module_config(module_id: str, config: dict[str, Any]) -> None:
 def create_module(module_id: str | None = None, **config: Any) -> MemoryModule:
     """Construct a memory module by id. Defaults to recent_turns."""
     resolved = module_id or DEFAULT_MODULE_ID
-    factory = _REGISTRY.get(resolved)
+    if resolved in _BUILTIN_REGISTRY:
+        _validate_builtin_module_config(resolved, config)
+        return _BUILTIN_REGISTRY[resolved](**config)
+    factory = _CUSTOM_REGISTRY.get(resolved)
     if factory is None:
-        known = ", ".join(known_module_ids())
-        raise ValueError(f"Unknown memory module {resolved!r}. Known modules: {known}")
-    _validate_module_config(resolved, config)
+        known = ", ".join(loaded_module_ids())
+        raise ValueError(f"Unknown memory module {resolved!r}. Loaded modules: {known}")
     return factory(**config)
 
 
@@ -114,8 +200,8 @@ def create_module_from_state(module_id: str, state: dict[str, Any]) -> MemoryMod
 
 
 def known_module_ids() -> list[str]:
-    """Return registered memory module ids (for create-agent and listing)."""
-    return sorted(_REGISTRY)
+    """Return loaded memory module ids (built-ins + registered customs)."""
+    return loaded_module_ids()
 
 
 def format_memory_module_label(module: MemoryModule) -> str:
@@ -127,13 +213,18 @@ def format_memory_module_label(module: MemoryModule) -> str:
             f"memory={module.module_id} interval={module.summary_interval} "
             f"max={module.max_summary_chars} tail={module.summary_tail}"
         )
+    if hasattr(module, "summary_interval") and hasattr(module, "max_summary_chars"):
+        return (
+            f"memory={module.module_id} interval={module.summary_interval} "
+            f"max={module.max_summary_chars} tail={module.summary_tail}"
+        )
     return f"memory={module.module_id}"
 
 
 def format_memory_modules_list() -> str:
-    """Read-only listing of registered memory modules."""
+    """Read-only listing of loaded memory modules."""
     lines = ["Registered memory modules:"]
-    for module_id in known_module_ids():
+    for module_id in loaded_module_ids():
         if module_id == "recent_turns":
             desc = "Last N own turns plus witnessed other-agent actions (default)"
             flags = "memory-window N"
@@ -152,8 +243,18 @@ def format_memory_modules_list() -> str:
             flags = (
                 "memory-summary-interval N, memory-summary-max N, memory-summary-tail N"
             )
+        elif module_id in _CUSTOM_METADATA:
+            meta = _CUSTOM_METADATA[module_id]
+            desc = meta.description or "(custom module)"
+            flags = ", ".join(
+                opt.get("flag", "") for opt in meta.create_agent_options if opt.get("flag")
+            ) or "(see module CREATE_AGENT_OPTIONS)"
+            lines.append(f"  - {module_id}: {desc} [custom]")
+            lines.append(f"      path: {meta.source_path}")
+            lines.append(f"      create-agent flags: {flags}")
+            continue
         else:
-            desc = "(no description)"
+            desc = "(custom module)"
             flags = "(unknown)"
         lines.append(f"  - {module_id}: {desc}")
         lines.append(f"      create-agent flags: {flags}")

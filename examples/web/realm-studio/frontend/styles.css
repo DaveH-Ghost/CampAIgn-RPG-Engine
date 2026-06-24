@@ -62,6 +62,67 @@ h2 {
   display: block;
 }
 
+.settings-modal {
+  max-width: 28rem;
+}
+
+.settings-section {
+  margin-bottom: 1.25rem;
+}
+
+.settings-subheading {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  color: #c8c8d8;
+}
+
+.settings-hint {
+  margin: 0 0 0.65rem;
+  font-size: 0.8rem;
+  color: #9a9aa8;
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.65rem;
+  font-size: 0.85rem;
+}
+
+.settings-field input {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #1a1a1e;
+  color: #e8e8ec;
+}
+
+.settings-key-status {
+  margin: 0 0 0.65rem;
+  font-size: 0.8rem;
+  color: #9a9aa8;
+}
+
+.settings-action-btn {
+  margin-top: 0.35rem;
+}
+
+.settings-upload-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.settings-module-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+  color: #b8b8c8;
+}
+
 button {
   padding: 0.35rem 0.75rem;
   cursor: pointer;

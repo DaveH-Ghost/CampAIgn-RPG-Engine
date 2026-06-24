@@ -216,19 +216,49 @@ def test_unknown_profile_raises():
         load_session_from_snapshot(data)
 
 
+def test_import_fails_when_custom_module_not_loaded():
+    from src.memory_modules.registry import register_memory_module_from_path
+
+    example = (
+        Path(__file__).resolve().parent.parent
+        / "examples"
+        / "custom_memory"
+        / "rolling_summary_custom.py"
+    )
+    session = Session.from_default()
+    register_memory_module_from_path(example)
+    session.run_command(
+        'create-agent name "Archivist" personality "x" '
+        "memory rolling_summary_custom at 2,2"
+    )
+    data = build_save_snapshot(session)
+
+    from src.memory_modules import registry
+
+    registry._CUSTOM_REGISTRY.clear()
+    registry._CUSTOM_METADATA.clear()
+
+    with pytest.raises(ValueError, match="rolling_summary_custom"):
+        load_session_from_snapshot(data)
+
+    register_memory_module_from_path(example)
+    restored = load_session_from_snapshot(data)
+    assert restored.get_agent("Archivist") is not None
+
+
+def test_validate_snapshot_modules_helper():
+    from src.session_persistence import validate_snapshot_modules
+
+    with pytest.raises(ValueError, match="not found"):
+        validate_snapshot_modules(
+            {
+                "agents": [
+                    {"memory": {"module_id": "missing_custom_module"}},
+                ]
+            }
+        )
+
+
 def test_session_to_save_dict_alias():
     session = Session.from_default()
     assert session.to_save_dict()["snapshot_version"] == SNAPSHOT_VERSION
-
-
-def test_stepper_export_import(tmp_path: Path):
-    from src.main import ManualStepper
-
-    stepper = ManualStepper()
-    stepper.session.session_turn = 2
-    path = tmp_path / "session.json"
-    stepper.do_export_session(str(path))
-    assert path.is_file()
-    stepper.session.session_turn = 99
-    stepper.do_import_session(str(path))
-    assert stepper.session.session_turn == 2

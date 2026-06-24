@@ -17,7 +17,11 @@ if TYPE_CHECKING:
 
 from src.agent import Agent
 from src.memory import Memory
-from src.memory_modules.registry import format_memory_module_label
+from src.memory_modules.registry import (
+    format_memory_module_label,
+    is_builtin_module_id,
+    is_module_loaded,
+)
 from src.object import Object
 from src.effect_spec import EffectSpec
 from src.object_action import ObjectAction
@@ -602,10 +606,12 @@ def _build_agent_memory(fields: dict[str, str]) -> tuple[Optional[Memory], Optio
     summary_tail_raw = fields.get("memory-summary-tail")
 
     if memory_window_raw is not None and memory_module_id not in (None, "recent_turns"):
-        return None, "memory-window is only valid with memory recent_turns."
+        if memory_module_id is None or is_builtin_module_id(memory_module_id):
+            return None, "memory-window is only valid with memory recent_turns."
 
     if memory_budget_raw is not None and memory_module_id not in (None, "salient_turns"):
-        return None, "memory-budget is only valid with memory salient_turns."
+        if memory_module_id is None or is_builtin_module_id(memory_module_id):
+            return None, "memory-budget is only valid with memory salient_turns."
 
     if (
         summary_interval_raw is not None
@@ -613,11 +619,12 @@ def _build_agent_memory(fields: dict[str, str]) -> tuple[Optional[Memory], Optio
         or summary_tail_raw is not None
     ):
         if memory_module_id not in (None, "rolling_summary"):
-            return (
-                None,
-                "memory-summary-interval, memory-summary-max, and memory-summary-tail "
-                "are only valid with memory rolling_summary.",
-            )
+            if memory_module_id is None or is_builtin_module_id(memory_module_id):
+                return (
+                    None,
+                    "memory-summary-interval, memory-summary-max, and memory-summary-tail "
+                    "are only valid with memory rolling_summary.",
+                )
 
     module_config: dict[str, int] = {}
     if memory_window_raw is not None:
@@ -668,6 +675,11 @@ def _build_agent_memory(fields: dict[str, str]) -> tuple[Optional[Memory], Optio
             resolved_id = "rolling_summary"
         else:
             resolved_id = "recent_turns"
+    if not is_module_loaded(resolved_id):
+        return None, (
+            f"Memory module {resolved_id!r} is not loaded. "
+            "Use add-memory-module or load the module before create-agent."
+        )
     try:
         return Memory(module_id=resolved_id, **module_config), None
     except ValueError as exc:

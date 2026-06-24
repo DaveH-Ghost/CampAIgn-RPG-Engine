@@ -67,7 +67,7 @@ def get_structured_turn(
 ) -> LLMResponse:
     """Send prompt to LLM and parse JSON into the given Pydantic schema."""
     client = get_llm_client()
-    model = model or DEFAULT_MODEL
+    model = model or os.getenv("OPENROUTER_MODEL", DEFAULT_MODEL)
 
     response = client.chat.completions.create(
         model=model,
@@ -108,7 +108,7 @@ def get_text_completion(
 ) -> LLMResponse:
     """Send prompt to LLM; entire message content is the response text."""
     client = get_llm_client()
-    model = model or DEFAULT_MODEL
+    model = model or os.getenv("OPENROUTER_MODEL", DEFAULT_MODEL)
 
     response = client.chat.completions.create(
         model=model,

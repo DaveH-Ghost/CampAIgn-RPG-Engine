@@ -1,5 +1,7 @@
 """realm-studio API tests (V0.3.1–0.4.0c2)."""
 
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -694,3 +696,129 @@ def test_post_delete_area_route(client):
     data = response.json()
     assert data["ok"] is True
     assert "closet" not in data["snapshot"]["areas"]
+
+
+@pytest.fixture(autouse=True)
+def _clear_custom_memory_modules():
+    import shutil
+
+    from backend.memory_module_upload import CUSTOM_MODULES_DIR
+    from src.memory_modules import registry
+
+    registry._CUSTOM_REGISTRY.clear()
+    registry._CUSTOM_METADATA.clear()
+    if CUSTOM_MODULES_DIR.is_dir():
+        shutil.rmtree(CUSTOM_MODULES_DIR)
+    yield
+    registry._CUSTOM_REGISTRY.clear()
+    registry._CUSTOM_METADATA.clear()
+    if CUSTOM_MODULES_DIR.is_dir():
+        shutil.rmtree(CUSTOM_MODULES_DIR)
+
+
+def test_get_llm_settings_never_returns_api_key(client):
+    response = client.get("/api/settings/llm")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] is True
+    assert "api_key" not in data
+    assert "key_configured" in data
+    assert "model" in data
+
+
+def test_put_llm_settings_in_memory(client, monkeypatch):
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    monkeypatch.delenv("OPENROUTER_MODEL", raising=False)
+    response = client.put(
+        "/api/settings/llm",
+        json={"api_key": "test-key", "model": "test/model"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] is True
+    assert data["key_configured"] is True
+    assert data["model"] == "test/model"
+    get_resp = client.get("/api/settings/llm")
+    get_data = get_resp.json()
+    assert get_data["key_configured"] is True
+    assert "api_key" not in get_data
+
+
+def _example_custom_module_path() -> Path:
+    return (
+        Path(__file__).resolve().parents[3]
+        / "custom_memory"
+        / "rolling_summary_custom.py"
+    )
+
+
+def test_upload_memory_module_lists_in_catalog(client):
+    example = _example_custom_module_path()
+    source = example.read_text(encoding="utf-8")
+    response = client.post(
+        "/api/memory-modules/upload",
+        files={"file": ("rolling_summary_custom.py", source, "text/x-python")},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] is True
+    assert data["module_id"] == "rolling_summary_custom"
+
+    catalog = client.get("/api/memory-modules").json()
+    ids = {mod["id"] for mod in catalog["modules"]}
+    assert "rolling_summary_custom" in ids
+    assert catalog["custom_modules"]
+    assert catalog["custom_modules"][0]["id"] == "rolling_summary_custom"
+
+
+def test_cached_modules_reload_from_disk_after_registry_clear(client):
+    example = _example_custom_module_path()
+    source = example.read_text(encoding="utf-8")
+    upload = client.post(
+        "/api/memory-modules/upload",
+        files={"file": ("rolling_summary_custom.py", source, "text/x-python")},
+    )
+    assert upload.status_code == 200
+
+    from backend.memory_module_upload import CUSTOM_MODULES_DIR, load_cached_custom_modules
+    from src.memory_modules import registry
+
+    assert list(CUSTOM_MODULES_DIR.glob("*.py"))
+
+    registry._CUSTOM_REGISTRY.clear()
+    registry._CUSTOM_METADATA.clear()
+
+    loaded = load_cached_custom_modules()
+    assert "rolling_summary_custom" in loaded
+
+    catalog = client.get("/api/memory-modules").json()
+    ids = {mod["id"] for mod in catalog["modules"]}
+    assert "rolling_summary_custom" in ids
+
+
+def test_session_import_fails_without_custom_module(client):
+    from src.memory_modules.registry import register_memory_module_from_path
+
+    example = _example_custom_module_path()
+    register_memory_module_from_path(example)
+    client.post(
+        "/api/command",
+        json={
+            "line": (
+                'create-agent name "Archivist" personality "x" '
+                "memory rolling_summary_custom at 2,2"
+            ),
+        },
+    )
+    snapshot = client.get("/api/session/export").json()
+
+    from src.memory_modules import registry
+
+    registry._CUSTOM_REGISTRY.clear()
+    registry._CUSTOM_METADATA.clear()
+
+    response = client.post("/api/session/import", json=snapshot)
+    assert response.status_code == 400
+    detail = response.json()["detail"]
+    assert "rolling_summary_custom" in detail
+    assert "not found" in detail.lower()

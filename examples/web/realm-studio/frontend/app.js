@@ -5,6 +5,7 @@
 import { hasAppearance, resolveAppearanceUrl } from "./appearance.js";
 import { exportSession, getPrompt, getState, importSession, postTurn } from "./api.js";
 import { initPromptLayout, reloadPromptLayoutIfOpen } from "./promptLayout.js";
+import { initSettings } from "./settings.js";
 import { initVisionUnits, syncVisionUnitsFromSnapshot } from "./visionUnits.js";
 import { initGridViewport, maybeCenterGrid } from "./gridViewport.js";
 import {
@@ -386,6 +387,7 @@ initVisionUnits({
   showToastFn: showToast,
   onUpdatedFn: refreshAfterMutation,
 });
+initSettings({ showToastFn: showToast });
 initGridViewport(gridViewportEl, gridWorldEl);
 bindGridContextMenu(gridEl);
 if (activeAreaSelect) bindActiveAreaSelect(activeAreaSelect, refreshAfterMutation);

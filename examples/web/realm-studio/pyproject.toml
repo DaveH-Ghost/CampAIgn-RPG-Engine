@@ -1,12 +1,13 @@
 [project]
 name = "realm-studio"
-version = "0.4.4"
+version = "0.4.6"
 description = "Example web UI for Realm-Fabric (realm-studio)"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "realm-fabric",
     "fastapi>=0.115.0",
+    "python-multipart>=0.0.9",
     "uvicorn[standard]>=0.32.0",
 ]
 

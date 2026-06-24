@@ -1,4 +1,4 @@
-"""Memory module catalog for realm-studio agent creation (V0.4.3)."""
+"""Memory module catalog for realm-studio agent creation (V0.4.6)."""
 
 from __future__ import annotations
 
@@ -9,7 +9,11 @@ from src.memory_modules.recent_turns import (
     MAX_WINDOW,
     MIN_WINDOW,
 )
-from src.memory_modules.registry import default_module_id, known_module_ids
+from src.memory_modules.registry import (
+    default_module_id,
+    get_custom_module_metadata,
+    loaded_module_ids,
+)
 from src.memory_modules.rolling_summary import (
     DEFAULT_MAX_SUMMARY_CHARS,
     DEFAULT_SUMMARY_INTERVAL,
@@ -46,9 +50,9 @@ def _option(
 
 
 def get_memory_modules_catalog() -> dict[str, Any]:
-    """Structured catalog for create-agent memory module UI."""
+    """Structured catalog for create-agent memory module UI (loaded modules only)."""
     modules: list[dict[str, Any]] = []
-    for module_id in known_module_ids():
+    for module_id in loaded_module_ids():
         if module_id == "recent_turns":
             modules.append(
                 {
@@ -119,17 +123,42 @@ def get_memory_modules_catalog() -> dict[str, Any]:
                 }
             )
         else:
-            modules.append(
-                {
-                    "id": module_id,
-                    "label": module_id.replace("_", " ").title(),
-                    "description": "",
-                    "options": [],
-                }
-            )
+            meta = get_custom_module_metadata(module_id)
+            if meta is not None:
+                modules.append(
+                    {
+                        "id": module_id,
+                        "label": meta.label,
+                        "description": meta.description,
+                        "options": list(meta.create_agent_options),
+                        "custom": True,
+                        "filename": meta.filename,
+                    }
+                )
+            else:
+                modules.append(
+                    {
+                        "id": module_id,
+                        "label": module_id.replace("_", " ").title(),
+                        "description": "",
+                        "options": [],
+                        "custom": True,
+                    }
+                )
+
+    custom_modules = [
+        {
+            "id": m["id"],
+            "label": m.get("label", m["id"]),
+            "filename": m.get("filename", ""),
+        }
+        for m in modules
+        if m.get("custom")
+    ]
 
     return {
         "ok": True,
         "default_id": default_module_id(),
         "modules": modules,
+        "custom_modules": custom_modules,
     }

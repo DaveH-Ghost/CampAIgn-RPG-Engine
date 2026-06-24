@@ -346,6 +346,22 @@ See [v0.4.5-changelog.md](v0.4.5-changelog.md).
 
 ---
 
+## V0.4.6
+
+**Focus:** **Custom memory modules** — runtime registration, save/load validation, realm-studio settings gear.
+
+**Status:** ✅ **Done** — tag **`v0.4.6`** when ready.
+
+- Split built-in / custom registries; `loader.py`; CLI `add-memory-module`
+- Example `rolling_summary_custom`; contract in `examples/custom_memory/`
+- `validate_snapshot_modules` — import fails if save references unloaded `module_id`
+- realm-studio: settings modal (LLM key/model in-memory, module upload); loaded-only create-agent catalog
+- Per-request `OPENROUTER_MODEL`; fresh root README + [cli.md](cli.md)
+
+See [v0.4.6-changelog.md](v0.4.6-changelog.md).
+
+---
+
 **Notes**
 
 - Prefer adding sections to the [V0.2.5 changelog](v0.2.5-changelog.md) or [V0.3.0 changelog](v0.3.0-changelog.md) over a readiness checklist for new versions.

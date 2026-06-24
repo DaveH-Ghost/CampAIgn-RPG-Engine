@@ -16,7 +16,11 @@ from src.area_event import AreaEventRecord
 from src.effect_spec import EffectSpec
 from src.game_profile import load_profile
 from src.memory import Memory
-from src.memory_modules.registry import create_module_from_state, export_module_state
+from src.memory_modules.registry import (
+    create_module_from_state,
+    export_module_state,
+    is_module_loaded,
+)
 from src.object import Object
 from src.object_action import ObjectAction
 from src.prompt_blocks import prompt_blocks_from_dicts
@@ -28,7 +32,28 @@ __all__ = [
     "SNAPSHOT_VERSION",
     "build_save_snapshot",
     "load_session_from_snapshot",
+    "validate_snapshot_modules",
 ]
+
+
+def validate_snapshot_modules(data: dict[str, Any]) -> None:
+    """Ensure every agent memory module_id in a save is currently loaded."""
+    agents = data.get("agents") or []
+    missing: list[str] = []
+    seen: set[str] = set()
+    for agent_data in agents:
+        memory = agent_data.get("memory") or {}
+        module_id = memory.get("module_id")
+        if not module_id or module_id in seen:
+            continue
+        seen.add(module_id)
+        if not is_module_loaded(module_id):
+            missing.append(module_id)
+    for module_id in missing:
+        raise ValueError(
+            f"Memory module '{module_id}' is not found. "
+            "Load the module before loading this save."
+        )
 
 
 def _engine_version() -> str:
@@ -205,6 +230,8 @@ def load_session_from_snapshot(data: dict[str, Any]):
             f"Unsupported snapshot_version {version!r} "
             f"(expected {SNAPSHOT_VERSION})"
         )
+
+    validate_snapshot_modules(data)
 
     profile_id = data.get("profile_id")
     if not profile_id:

@@ -4,18 +4,28 @@ Example web app for [Realm-Fabric](https://github.com/) — wraps the engine `Se
 
 **Location:** `examples/web/realm-studio` in the Realm-Fabric repo.
 
-**Status:** **V0.4.4** — compact prompt + JSON schema, plus V0.4.3 create-agent memory and V0.4.2 emote/speak/debug.
+**Status:** **V0.4.6** — settings gear (in-memory LLM + custom memory upload), loaded-only memory catalog, session save/load validation for custom modules.
 
 ## Quick start
 
 ```powershell
 cd examples\web\realm-studio
 uv sync
-copy ..\..\..\.env.example .env   # set OPENROUTER_API_KEY for Run turn
+copy ..\..\..\.env.example .env   # optional; or use Settings gear
 uv run realm-studio
 ```
 
 Open [http://127.0.0.1:8765](http://127.0.0.1:8765) (opens automatically). Right-click the grid to edit; switch **Area** for multi-room sessions; **Emit event…** for GM narration; **Run turn ▶** for the active agent.
+
+### Windows Smart App Control
+
+If `uv run realm-studio` is blocked, start the server directly:
+
+```powershell
+uv run python -m backend.main
+```
+
+Use `--no-browser` to skip opening the browser.
 
 ## Prerequisites
 
@@ -24,108 +34,50 @@ Open [http://127.0.0.1:8765](http://127.0.0.1:8765) (opens automatically). Right
 - Realm-Fabric engine at repo root (path dependency on `realm-fabric`)
 - **OpenRouter API key** for LLM turns (area edits and object actions work without it)
 
-## Run (dev server)
+## Settings (V0.4.6)
 
-```powershell
-uv run realm-studio
-```
+Click the **gear** icon (next to save/load in the header):
 
-Use `--no-browser` to skip opening the browser:
+1. **LLM** — API key (password field; shows “configured” after set; never returned by API) and model name. Applied **in memory only** for this server process.
+2. **Memory modules** — upload a `.py` custom module; list shows loaded customs (id + filename). Re-upload overwrites the same `MODULE_ID`.
 
-```powershell
-uv run realm-studio --no-browser
-```
-
-Alternative:
-
-```powershell
-uv run uvicorn backend.app:app --host 127.0.0.1 --port 8765 --reload
-```
+Create-agent memory dropdown lists **only loaded modules** (three built-ins always present + any uploaded customs). Upload a module in Settings before it appears in the dropdown.
 
 ## UI
 
-- **Grid** — white pannable map scoped to the **active area**; token images from `appearance` (else name chips); active agent ★
-- **Area toolbar** — dropdown (room / hall / …); **+ Area**, **Edit area**, **Delete area**
-- **Agents elsewhere** — sidebar list when agents are in other areas
-- **Right-click** — create/edit/delete on tiles and tokens; **Play as** for agents; **Manage actions…** on objects
-- **Create agent** — memory module dropdown (`recent_turns`, `salient_turns`, `rolling_summary`) and module-specific options
-- **Manage actions…** — add/edit/remove object actions; effect picker (`delete_self`, `random_move_self`, `move_area`); **?** on result/passive fields lists template variables
-- **Stacked tiles** — manage menu when multiple entities share a cell
-- **Toolbar** — active-agent dropdown; **Emit event…**; **Run turn ▶** (hover shows ~input token estimate)
-- **Sidebar** — session meta (**Units** / **Units per tile**), passive vision, recent GM events, turn log, **Prompt layout**, **Last prompt (debug)**, **Last response (debug)**
-- **Refresh** — manual re-fetch; edits and turns auto-refresh
+- **Grid** — pannable map for the **active area**; token images from `appearance`; active agent ★
+- **Header** — save/load session, **settings gear**, area toolbar, **Run turn ▶**
+- **Right-click** — create/edit/delete; **Manage actions…** on objects
+- **Create agent** — memory module dropdown from `GET /api/memory-modules` + module-specific options
+- **Sidebar** — session meta (Units), events, turn log, **Prompt layout**, debug panels
 
-**Note:** `realm-studio` and the terminal `realm` CLI use **separate in-memory sessions** — CLI edits do not appear in the browser.
+`realm-studio` and the terminal `realm` CLI use **separate in-memory sessions**.
 
-**Demo areas:** server seeds **room** (default profile) plus empty **hall**. Add a door object and a `move_area` action via **Manage actions…** or CLI to test cross-area travel.
+## Session save/load
 
-## Token images
+- **Save** — downloads `realm-session-<timestamp>.json`
+- **Load** — file picker replaces the in-memory session
 
-Entity `appearance` is an image path (engine field). realm-studio resolves it under `/static/` — e.g. `tokens/explorer.svg` → `/static/tokens/explorer.svg`.
+If the save uses a **custom** memory module, upload/load that module in Settings (or CLI `add-memory-module`) **before** import — otherwise import fails with a clear error.
 
-Bundled demo tokens live in `frontend/tokens/`. Add PNG/SVG files there and set the path in create/edit modals or via CLI:
+## Custom memory modules
 
-```text
-edit-agent agent_01 appearance "tokens/explorer.svg"
-create-object name "Crate" appearance "tokens/ball.svg" at 3,3
-```
+See [examples/custom_memory/README.md](../../../examples/custom_memory/README.md) for the module contract. Uploaded files are cached under `.custom_modules/` (gitignored). The server reloads them on startup (and after dev-server reload), so custom modules survive restarts.
 
-Empty path falls back to a name chip. Broken paths fall back at render time.
-
-## Prompt layout (V0.4.1)
-
-Open **Prompt layout** in the sidebar to edit how the compound prompt is assembled:
-
-- **Reorder** — ↑↓ on `slot`, `text`, and `section` blocks
-- **Edit** — `text` glue and `section` bodies (`compound_rules`, `output_format`)
-- **Add / remove** — block catalog (`GET /api/prompt-block-catalog`)
-- **Slot ⚙** — Character (name / personality / description), Passive vision (you-are-at, coordinates, direction+distance), Move instructions (coordinate moves)
-- **Reset to default** — restore profile block list
-- **Preview** — full rendered prompt; syncs **Last prompt (debug)** when open
-
-**Units** and **Units per tile** under Session meta enable relative bearing (`South-East of you, 10 ft away`), move-speed lines, and **object action range** labels in session units. Direction and distance requires both fields.
-
-Changes are session-scoped (in-memory until server restart).
-
-## Compound turns (V0.4.2)
-
-Engine pipeline: **move → look → speak → turn action** (`interact` | `emote` | `none`).
-
-- **Speak** — optional dialogue via `content`; can combine with interact or emote in one turn
-- **Emote** — non-verbal gestures (`turn_action: "emote"`, past-tense `action_name`, optional `target`)
-- **Breaking:** `"turn_action": "speak"` and `confidence` / `emotion` JSON fields removed — use `content` + `"turn_action": "none"` for speech
-
-After **Run turn**, open **Last prompt (debug)** or **Last response (debug)** in the sidebar to inspect the rendered prompt and raw LLM JSON.
-
-## Agent move speed
-
-Set **Move speed (steps per turn)** in create/edit agent modals, or via CLI (`move-speed N`). Blank = unlimited (teleport). Limited speed uses Chebyshev pathing — agents may stop **towards** a target without reaching it in one turn.
-
-## API
+## API (selected)
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/api/health` | Liveness |
-| `GET` | `/api/state` | Full session snapshot (all areas, `actions_detail` on objects) |
-| `POST` | `/api/command` | `{ "line": "create-object ..." }` → `run_command` |
-| `POST` | `/api/active-agent` | `{ "name_or_id": "Explorer" }` → `set_active_agent` |
-| `POST` | `/api/active-area` | `{ "area_id": "hall" }` → set GM active area |
-| `POST` | `/api/create-area` | Create empty area |
-| `POST` | `/api/edit-area` | Edit area description / grid size |
-| `POST` | `/api/delete-area` | Delete empty area |
-| `POST` | `/api/turn` | LLM compound turn (optional `agent_id`, `include_examples`); returns `prompt`, `prompt_tokens`, `completion_tokens`, `total_tokens`, `prompt_tokens_estimate`, `llm_response`, `steps` |
-| `POST` | `/api/event` | `{ "text": "..." }` → `emit_area_event` (no turn consumed) |
-| `GET` | `/api/prompt` | Build compound prompt (debug); includes `prompt_tokens` estimate |
-| `GET` | `/api/prompt-blocks` | Session prompt block list |
-| `PUT` | `/api/prompt-blocks` | `{ "blocks": [...] }` — reorder / edit static sections |
-| `POST` | `/api/prompt-blocks/reset` | Restore profile default blocks |
-| `GET` | `/api/prompt-slots` | Slot names + preview snippets (optional `agent_id`) |
-| `GET` | `/api/prompt-block-catalog` | Addable block types, slot/section options, section defaults |
-| `PUT` | `/api/vision-units` | `{ "units": "ft", "units_per_tile": 5 }` — session distance labels |
-| `GET` | `/api/memory-modules` | Memory module catalog for create-agent (ids, defaults, option ranges) |
-| `GET` | `/api/interact-template-vars` | Placeholders for object action result/passive text |
+| `GET` | `/api/settings/llm` | `{ model, key_configured }` — no secret |
+| `PUT` | `/api/settings/llm` | Set in-memory `OPENROUTER_API_KEY` / `OPENROUTER_MODEL` |
+| `GET` | `/api/memory-modules` | Loaded modules only (built-ins + customs) |
+| `POST` | `/api/memory-modules/upload` | Multipart `.py` → register |
+| `GET` | `/api/session/export` | Full save JSON |
+| `POST` | `/api/session/import` | Load save (validates modules) |
+| `POST` | `/api/turn` | LLM compound turn |
+| `POST` | `/api/command` | `{ "line": "create-object ..." }` |
 
-See [v0.4.3-changelog.md](../../../docs/v0.4.3-changelog.md) for V0.4.3 release notes. [v0.4.2-changelog.md](../../../docs/v0.4.2-changelog.md) covers emote and debug panels.
+Full route list and older features: see git history or [v0.4.5-changelog](../../../docs/v0.4.5-changelog.md).
 
 ## Tests
 
@@ -133,16 +85,14 @@ See [v0.4.3-changelog.md](../../../docs/v0.4.3-changelog.md) for V0.4.3 release 
 uv run pytest
 ```
 
-**51** smoke/integration tests (`test_api.py`, `test_snapshot_compat.py`) via FastAPI `TestClient` (mocked LLM — no API key or running server).
+HTTP smoke tests via FastAPI `TestClient` (mocked LLM — no API key or running server).
 
-From repo root, engine tests remain separate:
+From repo root:
 
 ```powershell
 cd ..\..\..
 uv run pytest
 ```
-
-(396 engine tests as of 0.4.2e.)
 
 ## Environment
 
@@ -151,17 +101,8 @@ uv run pytest
 | `OPENROUTER_API_KEY` | For **Run turn** | [OpenRouter](https://openrouter.ai/) API key |
 | `OPENROUTER_MODEL` | No | Default: `deepseek/deepseek-v4-flash` |
 
-`python-dotenv` loads `.env` from the working directory when the server starts.
-
-## Dev: stacked objects on one tile
-
-```powershell
-$env:REALM_STUDIO_DEV_STACK = "1"
-uv run realm-studio
-```
-
-Adds 10 objects on tile **(3, 3)** to test scrollbars. Omit for the normal demo room.
+`python-dotenv` loads `.env` at server start. **Settings gear** overrides these in memory until restart (not written to disk).
 
 ## What's next
 
-**V0.5+** — swappable turn schemas, tile blockers, cross-area vision — see [ROADMAP.md](../../../docs/ROADMAP.md).
+**V0.5+** — lorebook, swappable turn schemas — see [ROADMAP.md](../../../docs/ROADMAP.md).

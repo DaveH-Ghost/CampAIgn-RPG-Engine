@@ -1,4 +1,4 @@
-﻿# Byte-compiled / optimized / DLL files
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
@@ -155,3 +155,4 @@ Thumbs.db
 logs/
 *.log
 examples/web/realm-studio/frontend/tokens/pip.png
+examples/web/realm-studio/.custom_modules/

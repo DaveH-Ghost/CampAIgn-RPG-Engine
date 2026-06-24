@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -24,6 +25,7 @@ from backend.schemas import (
     DeleteAreaRequest,
     EditAreaRequest,
     EventRequest,
+    LlmSettingsRequest,
     PromptBlocksPreviewRequest,
     PromptBlocksRequest,
     TurnRequest,
@@ -33,7 +35,12 @@ from backend.session_store import get_session_store
 from backend.snapshot_compat import normalize_state_snapshot
 from backend.turn_runner import run_llm_turn
 from backend.vision_units_api import put_vision_units as api_put_vision_units
+from backend.memory_module_upload import (
+    load_cached_custom_modules,
+    upload_memory_module,
+)
 from backend.memory_modules_api import get_memory_modules_catalog
+from backend.settings_api import get_llm_settings, put_llm_settings
 from backend.prompt_api import (
     get_prompt_block_catalog_route as api_get_prompt_block_catalog,
     get_prompt_blocks as api_get_prompt_blocks,
@@ -50,8 +57,14 @@ _REPO_ROOT = _STUDIO_DIR.parent.parent.parent
 _ENGINE_SRC = _REPO_ROOT / "src"
 
 
+@asynccontextmanager
+async def _app_lifespan(_app: FastAPI):
+    load_cached_custom_modules()
+    yield
+
+
 def create_app() -> FastAPI:
-    app = FastAPI(title="realm-studio", version="0.4.5")
+    app = FastAPI(title="realm-studio", version="0.4.6", lifespan=_app_lifespan)
 
     app.add_middleware(
         CORSMiddleware,
@@ -204,6 +217,32 @@ def create_app() -> FastAPI:
     def get_memory_modules_route() -> dict[str, object]:
         return get_memory_modules_catalog()
 
+    @app.post("/api/memory-modules/upload")
+    async def upload_memory_module_route(
+        file: UploadFile = File(...),
+    ) -> dict[str, object]:
+        if not file.filename or not file.filename.lower().endswith(".py"):
+            raise HTTPException(status_code=400, detail="Upload must be a .py file.")
+        raw = await file.read()
+        try:
+            source = raw.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise HTTPException(
+                status_code=400, detail="Module file must be UTF-8 text."
+            ) from exc
+        try:
+            return upload_memory_module(source=source, filename=file.filename)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/api/settings/llm")
+    def get_llm_settings_route() -> dict[str, object]:
+        return get_llm_settings()
+
+    @app.put("/api/settings/llm")
+    def put_llm_settings_route(body: LlmSettingsRequest) -> dict[str, object]:
+        return put_llm_settings(api_key=body.api_key, model=body.model)
+
     @app.get("/api/session/export")
     def export_session_route() -> JSONResponse:
         store = get_session_store()
@@ -289,6 +328,7 @@ def main() -> None:
         port=_DEFAULT_PORT,
         reload=True,
         reload_dirs=reload_dirs,
+        reload_excludes=[".custom_modules/*"],
     )
 
 

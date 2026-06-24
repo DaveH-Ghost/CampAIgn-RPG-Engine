@@ -244,8 +244,8 @@ def test_create_agent_unknown_memory_module_rejected():
         'name "Scribe" personality "Quiet." memory summarizing at 2,2',
     )
     assert agent is None
-    assert "Unknown memory module" in msg
-    assert "recent_turns" in msg
+    assert "not loaded" in msg.lower()
+    assert "summarizing" in msg
 
 
 def test_known_module_ids_lists_recent_turns():

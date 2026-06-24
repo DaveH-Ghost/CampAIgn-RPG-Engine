@@ -62,6 +62,7 @@ class ManualStepper(cmd.Cmd):
         "- 'list' / 'objects' / 'agents' / 'effects' : list area entities (no turn)\n"
         "- 'create-object' / 'edit-object' / 'delete-object' : edit objects (see 'effects')\n"
         "- 'create-agent' / 'edit-agent' / 'delete-agent' : edit agents (see 'memory-modules')\n"
+        "- 'add-memory-module <path>' : load a custom memory module from a .py file\n"
         "- 'emit-event \"...\"' : room-wide event all agents perceive (no turn)\n"
         "- 'prompt' : show the full prompt that would be sent to the LLM\n"
         "- 'fewshots on/off' : toggle few-shot examples in prompts (off by default)\n"
@@ -184,6 +185,21 @@ class ManualStepper(cmd.Cmd):
     def do_memory_modules(self, arg):
         """List registered agent memory modules (read-only)."""
         self._print_command("memory-modules")
+
+    def do_add_memory_module(self, arg):
+        """Load a custom memory module from a .py file. Usage: add-memory-module <path>"""
+        path = arg.strip()
+        if not path:
+            print("Usage: add-memory-module <path>")
+            return
+        from src.memory_modules.registry import register_memory_module_from_path
+
+        try:
+            module_id = register_memory_module_from_path(path)
+        except (OSError, ValueError, TypeError) as exc:
+            print(f"Could not load memory module: {exc}")
+            return
+        print(f"Loaded memory module {module_id!r} from {path}")
 
     def do_agents(self, arg):
         """List all agents in the active area. Does not consume a turn."""
