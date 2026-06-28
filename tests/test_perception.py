@@ -6,7 +6,13 @@ Tests for V0.1 passive/detailed perception and cross-agent invalidation.
 
 from src.agent import Agent
 from src.memory import Memory
-from src.perception import build_passive_vision, format_object_vision_desc, perform_look
+from src.perception import (
+    PASSIVE_VISION_LOOK_RULE,
+    PASSIVE_VISION_NO_LOOK_TARGETS,
+    build_passive_vision,
+    format_object_vision_desc,
+    perform_look,
+)
 from src.object import Object
 from src.area import create_initial_area
 
@@ -289,15 +295,17 @@ def test_build_compound_prompt_look_rule_and_filtered_targets():
     agent = area.get_agent()
     prompt = build_compound_prompt(agent, area)
 
-    assert "look: one entity id from passive vision" in prompt
+    assert "look: entity id with [?] in passive vision" in prompt
     assert "Passive Vision:" in prompt
     assert "interact: action" in prompt
-    assert "You can look at: obj_ball_01, obj_sign_01" in prompt
+    assert PASSIVE_VISION_LOOK_RULE in prompt
+    assert "Ceramic Ball (obj_ball_01)" in prompt
+    assert "  - kick (range 1)" in prompt
 
     perform_look(agent, area, "obj_ball_01")
     perform_look(agent, area, "obj_sign_01")
     prompt = build_compound_prompt(agent, area)
-    assert "You can look at: (nothing visible to examine)" in prompt
+    assert PASSIVE_VISION_NO_LOOK_TARGETS in prompt
 
 
 def test_reset_looked_at_clears_both_sets():

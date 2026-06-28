@@ -11,8 +11,6 @@ Passive Vision:
 
 {{move_instructions}}
 
-{{look_and_interact}}
-
 Memory:
 {{memory}}
 

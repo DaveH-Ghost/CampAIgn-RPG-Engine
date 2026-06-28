@@ -32,14 +32,14 @@ EDITABLE_SECTION_NAMES = frozenset({"compound_rules", "output_format"})
 
 SLOT_DESCRIPTIONS: dict[str, str] = {
     "character": "Agent name, personality, and detailed description",
-    "passive_vision": "Current passive vision for the agent",
+    "passive_vision": "Passive vision, look hints, and reachable object interactions",
     "memory": "Memory module render for the agent",
     "area_description": "Narrative description of the current area",
     "grid_description": "Grid bounds and coordinate instructions",
     "compound_rules": "Compound turn rules (editable as a section block)",
     "rules": "Alias for compound_rules",
     "move_instructions": "Move targets and move_speed guidance",
-    "look_and_interact": "Look targets and available object interactions",
+    "look_and_interact": "Deprecated — merged into passive_vision (0.6.0c); renders empty",
     "lorebook": "Inject matched entries from one loaded lorebook (requires lorebook_id option)",
     "output_format": "JSON output shape (editable as a section block)",
 }
@@ -126,8 +126,6 @@ def default_prompt_blocks() -> list[PromptBlock]:
         PromptBlock(type="slot", name="area_description"),
         PromptBlock(type="text", content="\n\n"),
         PromptBlock(type="slot", name="move_instructions"),
-        PromptBlock(type="text", content="\n\n"),
-        PromptBlock(type="slot", name="look_and_interact"),
         PromptBlock(type="text", content="\n\nMemory:\n"),
         PromptBlock(type="slot", name="memory"),
         PromptBlock(type="text", content="\n\n"),

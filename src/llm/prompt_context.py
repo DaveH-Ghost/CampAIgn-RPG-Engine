@@ -19,11 +19,8 @@ from src.move_target import (
 )
 from src.perception import (
     build_passive_vision,
-    get_available_interactions,
-    get_available_look_targets,
     normalize_passive_vision_options,
 )
-from src.vision_bearing import format_action_range_label
 
 
 @dataclass(frozen=True)
@@ -186,7 +183,7 @@ def _compound_turn_rules() -> str:
 Rules:
 - Plan from current position and vision; move runs first, then look, speak, and action.
 - move: "x,y", entity id (obj_* / agent_*), or null to stay; stay in grid bounds.
-- look: one entity id from passive vision, or null.
+- look: entity id with [?] in passive vision for hidden detail, or null.
 - Hidden detail: [?]; stale examined: [?] [changed].
 - Other agents show their latest observable action on their vision line.
 - speak: set say to dialogue or null.
@@ -197,27 +194,6 @@ Rules:
 Reply with a single valid JSON object only."""
 
 
-def _format_interact_block(
-    agent: Agent,
-    area: Area,
-    *,
-    vision_units: str = "",
-    units_per_tile: int | None = None,
-) -> str:
-    interactions = get_available_interactions(agent, area)
-    if not interactions:
-        return ""
-    lines = ["Object interactions available this turn:"]
-    for action_name, obj_id, obj, action in interactions:
-        range_label = format_action_range_label(
-            action.range,
-            vision_units=vision_units,
-            units_per_tile=units_per_tile,
-        )
-        lines.append(f"- {action_name} {obj_id} ({obj.name}) — {range_label}")
-    return "\n".join(lines)
-
-
 def look_and_interact_block(
     agent: Agent,
     area: Area,
@@ -225,22 +201,9 @@ def look_and_interact_block(
     vision_units: str = "",
     units_per_tile: int | None = None,
 ) -> str:
-    targets = get_available_look_targets(agent, area)
-    lines = []
-    if targets:
-        lines.append("You can look at: " + ", ".join(targets))
-    else:
-        lines.append("You can look at: (nothing visible to examine)")
-    interact_block = _format_interact_block(
-        agent,
-        area,
-        vision_units=vision_units,
-        units_per_tile=units_per_tile,
-    )
-    if interact_block:
-        lines.append("")
-        lines.append(interact_block)
-    return "\n".join(lines)
+    """Deprecated (0.6.0c): look targets and interactions live in passive vision."""
+    del agent, area, vision_units, units_per_tile
+    return ""
 
 
 def render_look_and_interact_slot(
@@ -251,14 +214,9 @@ def render_look_and_interact_slot(
     vision_units: str = "",
     units_per_tile: int | None = None,
 ) -> str:
-    if agent is not None and area is not None:
-        return look_and_interact_block(
-            agent,
-            area,
-            vision_units=vision_units,
-            units_per_tile=units_per_tile,
-        )
-    return ctx.look_and_interact
+    """Deprecated slot alias — content merged into passive_vision (0.6.0c)."""
+    del ctx, agent, area, vision_units, units_per_tile
+    return ""
 
 
 def _look_and_interact_block(agent: Agent, area: Area) -> str:

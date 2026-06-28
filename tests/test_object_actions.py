@@ -9,7 +9,7 @@ from src.effect_spec import EffectSpec
 from src.llm.prompt import build_compound_prompt
 from src.llm.schemas import AgentCompoundTurn
 from src.object_effects import format_effects_list
-from src.perception import build_passive_vision, perform_look
+from src.perception import build_passive_vision, PASSIVE_VISION_LOOK_RULE, perform_look
 from src.simulation import next_turn_number_for_agent, run_compound_turn
 from src.area import create_initial_area
 from src.area_edit import (
@@ -87,8 +87,9 @@ def test_kick_appears_in_action_prompt_when_adjacent():
     explorer.position = (2, 3)
 
     prompt = build_compound_prompt(explorer, area)
-    assert "Object interactions available this turn:" in prompt
-    assert "kick obj_ball_01 (Ceramic Ball) — range 1" in prompt
+    assert PASSIVE_VISION_LOOK_RULE in prompt
+    assert "  - kick (range 1)" in prompt
+    assert "Object interactions available this turn:" not in prompt
 
 
 def test_unknown_interact_wrong_action_name():
@@ -111,7 +112,7 @@ def test_range_zero_same_tile_interact():
     goblin = _create_goblin(area, at="2,3")
 
     prompt = build_compound_prompt(goblin, area)
-    assert "pick obj_gem_01 (Gem) — same tile" in prompt
+    assert "  - pick (same tile)" in prompt
 
     outcome = interact(goblin, area, obj.id, "pick")
     assert "You pick up the Gem." in outcome.result
@@ -202,8 +203,7 @@ def test_in_range_goblin_sees_eat_in_action_prompt():
     goblin = _create_goblin(area, at="2,3")
 
     prompt = build_compound_prompt(goblin, area)
-    assert "Object interactions available this turn:" in prompt
-    assert "eat obj_cookie_01 (Cookie) — range 1" in prompt
+    assert "  - eat (range 1)" in prompt
 
 
 def test_goblin_interact_eat_deletes_cookie():
@@ -253,7 +253,7 @@ def test_out_of_range_not_in_prompt_and_runtime_fails():
     goblin.move_speed = 1
 
     prompt = build_compound_prompt(goblin, area)
-    assert "Object interactions available this turn:" not in prompt
+    assert "  - eat" not in prompt
 
     outcome = interact(goblin, area, cookie.id, "eat")
     assert "Unfortunately you are too far from Cookie to eat." in outcome.result

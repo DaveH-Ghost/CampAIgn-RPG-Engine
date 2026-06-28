@@ -15,11 +15,22 @@ Walls/room boundaries are conveyed via the separate room description from Area.
 from src.action_outcome import ActionOutcome
 from src.agent import Agent
 from src.grid import chebyshev_distance
-from src.vision_bearing import format_relative_bearing_phrase
+from src.vision_bearing import format_action_range_label, format_relative_bearing_phrase
 from src.memory import Memory
 from src.object import Object
 from src.object_action import ObjectAction
+from src.occupancy import is_tile_enterable, resolve_standable_goal
+from src.pathfinding import walk_with_pathfinding
 from src.area import Area
+
+
+PASSIVE_VISION_LOOK_RULE = (
+    "Detail marked [?] can be examined with look."
+)
+PASSIVE_VISION_NO_LOOK_TARGETS = (
+    "There are currently no objects you have not looked at and "
+    "cannot gain any new information from looking."
+)
 
 
 def format_vision_desc(
@@ -85,10 +96,9 @@ def build_passive_vision(
     """
     Build the passive vision block for the given agent.
 
-    Format:
-    You are at (x, y).  (optional)
-    {name} ({id}), {coordinates}, {bearing phrase} - {description fragment}
-    Entity coordinates apply to objects and other agents, not the you-are-at line.
+    Includes look guidance, per-object interaction hints (indented), and agents.
+    Interactions list actions reachable after spending full ``move_speed`` toward
+    the object (same rules as interact pathing in 0.6.0b).
     """
     bearing_ready = (
         include_relative_bearing
@@ -98,6 +108,7 @@ def build_passive_vision(
     lines: list[str] = []
     if include_you_are_at:
         lines.append(f"You are at {agent.position}.")
+    lines.append(PASSIVE_VISION_LOOK_RULE)
 
     memory = agent.memory
 
@@ -112,6 +123,15 @@ def build_passive_vision(
                 observer=agent.position,
                 include_coordinates=include_entity_coordinates,
                 include_relative_bearing=bearing_ready,
+                vision_units=vision_units,
+                units_per_tile=units_per_tile,
+            )
+        )
+        lines.extend(
+            _format_object_interaction_lines(
+                agent,
+                area,
+                obj,
                 vision_units=vision_units,
                 units_per_tile=units_per_tile,
             )
@@ -134,6 +154,9 @@ def build_passive_vision(
                 units_per_tile=units_per_tile,
             )
         )
+
+    if not get_available_look_targets(agent, area):
+        lines.append(PASSIVE_VISION_NO_LOOK_TARGETS)
 
     return "\n".join(lines)
 
@@ -166,6 +189,98 @@ def _format_passive_vision_entity_line(
     if desc:
         return f"{prefix} - {desc}"
     return prefix
+
+
+def nearest_standable_in_interact_range(
+    agent: Agent,
+    area: Area,
+    obj: Object,
+    action: ObjectAction,
+) -> tuple[int, int] | None:
+    """Return the closest enterable tile from which *action* can be used on *obj*."""
+    best: tuple[int, int] | None = None
+    best_dist = 10**9
+    for x in range(area.min_x, area.max_x + 1):
+        for y in range(area.min_y, area.max_y + 1):
+            pos = (x, y)
+            if chebyshev_distance(pos, obj.position) > action.range:
+                continue
+            if not is_tile_enterable(area, pos, agent.id):
+                continue
+            dist = chebyshev_distance(agent.position, pos)
+            if dist < best_dist:
+                best_dist = dist
+                best = pos
+    return best
+
+
+def position_after_move_budget(
+    start: tuple[int, int],
+    goal: tuple[int, int],
+    move_speed: int | None,
+    area: Area,
+    mover_id: str,
+) -> tuple[int, int]:
+    """Simulate movement toward *goal* using the same budget rules as move/interact."""
+    if start == goal:
+        return start
+    if move_speed is None:
+        if is_tile_enterable(area, goal, mover_id):
+            return goal
+        standable = resolve_standable_goal(area, goal, mover_id)
+        return standable if standable is not None else start
+    final, _, _ = walk_with_pathfinding(start, goal, move_speed, area, mover_id)
+    return final
+
+
+def get_object_interactions_reachable_after_move(
+    agent: Agent,
+    area: Area,
+    obj: Object,
+) -> list[tuple[str, ObjectAction]]:
+    """
+    Return object actions reachable after spending full move budget toward *obj*.
+
+    Each entry is ``(action_name, action)``. Sorted by action name.
+    """
+    results: list[tuple[str, ObjectAction]] = []
+    for action_name, action in sorted(obj.actions.items()):
+        if chebyshev_distance(agent.position, obj.position) <= action.range:
+            results.append((action_name, action))
+            continue
+        goal = nearest_standable_in_interact_range(agent, area, obj, action)
+        if goal is None:
+            continue
+        simulated = position_after_move_budget(
+            agent.position,
+            goal,
+            agent.move_speed,
+            area,
+            agent.id,
+        )
+        if chebyshev_distance(simulated, obj.position) <= action.range:
+            results.append((action_name, action))
+    return results
+
+
+def _format_object_interaction_lines(
+    agent: Agent,
+    area: Area,
+    obj: Object,
+    *,
+    vision_units: str = "",
+    units_per_tile: int | None = None,
+) -> list[str]:
+    interactions = get_object_interactions_reachable_after_move(agent, area, obj)
+    lines: list[str] = []
+    for action_name, action in interactions:
+        range_label = format_action_range_label(
+            action.range,
+            vision_units=vision_units,
+            units_per_tile=units_per_tile,
+        )
+        lines.append(f"  - {action_name} ({range_label})")
+    return lines
 
 
 DEFAULT_PASSIVE_VISION_OPTIONS: dict[str, bool] = {
@@ -215,6 +330,7 @@ def get_available_interactions(
     Return in-range object interactions for the action-phase prompt.
 
     Each entry is (action_name, object_id, object, action).
+    Deprecated for prompts — interactions are listed in passive vision (0.6.0c).
     """
     results: list[tuple[str, str, Object, ObjectAction]] = []
     visible = set(get_visible_object_ids(agent, area))

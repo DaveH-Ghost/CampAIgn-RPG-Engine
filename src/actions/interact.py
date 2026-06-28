@@ -60,7 +60,7 @@ from src.occupancy import find_blocker_between, is_tile_enterable
 
 from src.pathfinding import find_path, walk_with_pathfinding
 
-from src.perception import is_object_in_passive_vision
+from src.perception import is_object_in_passive_vision, nearest_standable_in_interact_range
 
 from src.area import Area
 
@@ -113,52 +113,6 @@ def _resolve_agent_area(
 def _in_range(agent: Agent, obj: Object, action: ObjectAction) -> bool:
 
     return chebyshev_distance(agent.position, obj.position) <= action.range
-
-
-
-
-
-def _nearest_standable_in_interact_range(
-
-    agent: Agent,
-
-    area: Area,
-
-    obj: Object,
-
-    action: ObjectAction,
-
-) -> tuple[int, int] | None:
-
-    """Return the closest enterable tile from which *action* can be used on *obj*."""
-
-    best: tuple[int, int] | None = None
-
-    best_dist = 10**9
-
-    for x in range(area.min_x, area.max_x + 1):
-
-        for y in range(area.min_y, area.max_y + 1):
-
-            pos = (x, y)
-
-            if chebyshev_distance(pos, obj.position) > action.range:
-
-                continue
-
-            if not is_tile_enterable(area, pos, agent.id):
-
-                continue
-
-            dist = chebyshev_distance(agent.position, pos)
-
-            if dist < best_dist:
-
-                best_dist = dist
-
-                best = pos
-
-    return best
 
 
 
@@ -328,7 +282,7 @@ def _path_agent_for_interact(
 
 
 
-    goal = _nearest_standable_in_interact_range(agent, area, obj, action)
+    goal = nearest_standable_in_interact_range(agent, area, obj, action)
 
     if goal is None:
 

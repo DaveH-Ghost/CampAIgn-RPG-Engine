@@ -69,7 +69,7 @@ def test_build_prompt_context_exposes_string_blocks():
     assert "You are at" in ctx.passive_vision
     assert ctx.memory == "No memories yet."
     assert ctx.area_description == "A tavern common room."
-    assert ctx.look_and_interact.startswith("You can look at:")
+    assert ctx.look_and_interact == ""
 
 
 def test_application_can_compose_custom_prompt_from_context():

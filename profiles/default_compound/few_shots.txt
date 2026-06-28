@@ -3,8 +3,10 @@ Example 1: Move, look, and speak
 Context:
 Passive Vision:
 You are at (1, 1).
+Detail marked [?] can be examined with look.
 Ceramic Ball (obj_ball_01), (2, 2) - [?]
-You can look at: obj_ball_01, obj_sign_01
+  - kick (range 1)
+Wooden Sign (obj_sign_01), (2, 4) - [?] A simple wooden sign on the wall.
 
 Output:
 {
@@ -22,7 +24,10 @@ Example 2: Stay in place and speak
 Context:
 Passive Vision:
 You are at (2, 2).
-You can look at: obj_ball_01, obj_sign_01
+Detail marked [?] can be examined with look.
+Ceramic Ball (obj_ball_01), (2, 2) - [?]
+  - kick (range 1)
+Wooden Sign (obj_sign_01), (2, 4) - [?] A simple wooden sign on the wall.
 
 Output:
 {
@@ -40,6 +45,10 @@ Example 3: Move only
 Context:
 Passive Vision:
 You are at (1, 1).
+Detail marked [?] can be examined with look.
+Ceramic Ball (obj_ball_01), (2, 2) - [?]
+  - kick (range 1)
+Wooden Sign (obj_sign_01), (2, 4) - [?] A simple wooden sign on the wall.
 You may move to any coordinate (x, y) where x is an integer from 0 to 4 and y is an integer from 0 to 4.
 
 Output:
