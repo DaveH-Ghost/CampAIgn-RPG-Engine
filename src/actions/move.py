@@ -44,7 +44,7 @@ from src.move_target import (
 
 )
 
-from src.occupancy import find_blocker_between, is_tile_enterable, resolve_standable_goal
+from src.occupancy import find_blocker_between, footprint_tiles_for_entity, is_tile_enterable, resolve_standable_goal
 
 from src.pathfinding import find_path, walk_with_pathfinding
 
@@ -78,7 +78,11 @@ def move(agent: Agent, area: Area, target: str) -> ActionOutcome:
 
     goal_blocks = entity_goal_blocks_movement(area, resolved, agent.id)
 
-    ignore_blockers_at = goal if resolved.entity_id else None
+    if resolved.entity_id:
+        tiles = footprint_tiles_for_entity(area, resolved.entity_id)
+        ignore_tiles = tiles if tiles else None
+    else:
+        ignore_tiles = None
 
 
 
@@ -112,7 +116,7 @@ def move(agent: Agent, area: Area, target: str) -> ActionOutcome:
 
             agent.id,
 
-            ignore_blockers_at=ignore_blockers_at,
+            ignore_tiles=ignore_tiles,
 
         )
 
@@ -158,7 +162,7 @@ def move(agent: Agent, area: Area, target: str) -> ActionOutcome:
 
                 agent.id,
 
-                ignore_blockers_at=ignore_blockers_at,
+                ignore_tiles=ignore_tiles,
 
             )
 
@@ -210,7 +214,7 @@ def move(agent: Agent, area: Area, target: str) -> ActionOutcome:
 
             agent.id,
 
-            ignore_blockers_at=ignore_blockers_at,
+            ignore_tiles=ignore_tiles,
 
         )
 
@@ -292,7 +296,7 @@ def move(agent: Agent, area: Area, target: str) -> ActionOutcome:
 
             agent.id,
 
-            ignore_blockers_at=ignore_blockers_at,
+            ignore_tiles=ignore_tiles,
 
         )
 
@@ -305,23 +309,16 @@ def move(agent: Agent, area: Area, target: str) -> ActionOutcome:
     return ActionOutcome(
 
         result=format_move_towards_message(
-
             resolved,
-
             final_pos,
-
             blocker_name=blocker,
-
+            area=area,
         ),
-
         passive_result=format_move_towards_passive(
-
             agent.name,
-
             resolved,
-
             final_pos,
-
+            area=area,
         ),
 
     )

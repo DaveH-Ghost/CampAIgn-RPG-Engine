@@ -531,6 +531,48 @@ def test_post_command_create_object_blocks_movement(client):
     assert obj["blocks_movement"] is False
 
 
+def test_post_command_create_object_with_footprint(client):
+    response = client.post(
+        "/api/command",
+        json={
+            "line": (
+                'create-object name "Table" pdesc "A table." at 1,1 width 2 height 2'
+            ),
+        },
+    )
+    assert response.json()["ok"] is True
+
+    state = client.get("/api/state").json()
+    obj = next(o for o in _room(state)["objects"] if o["name"] == "Table")
+    assert obj["width"] == 2
+    assert obj["height"] == 2
+
+
+def test_post_command_edit_object_footprint(client):
+    create = client.post(
+        "/api/command",
+        json={
+            "line": 'create-object name "Shelf" pdesc "A shelf." at 0,2',
+        },
+    )
+    assert create.json()["ok"] is True
+    state_after_create = client.get("/api/state").json()
+    obj_id = next(
+        o["id"] for o in _room(state_after_create)["objects"] if o["name"] == "Shelf"
+    )
+
+    edit = client.post(
+        "/api/command",
+        json={"line": f"edit-object {obj_id} width 3 height 1"},
+    )
+    assert edit.json()["ok"] is True
+
+    state = client.get("/api/state").json()
+    obj = next(o for o in _room(state)["objects"] if o["id"] == obj_id)
+    assert obj["width"] == 3
+    assert obj["height"] == 1
+
+
 def test_post_command_edit_object_movement_exceptions(client):
     create = client.post(
         "/api/command",

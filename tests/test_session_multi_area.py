@@ -198,7 +198,7 @@ def test_edit_object_area_rejected_when_out_of_bounds():
     assert obj is not None
 
     message = edit_object_for_session(session, f"{obj.id} area hall pos 9,9")
-    assert "Invalid position" in message
+    assert "extends outside" in message or "Invalid position" in message
     assert session.areas["room"].get_object_by_id(obj.id) is not None
 
 

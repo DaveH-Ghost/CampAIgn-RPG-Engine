@@ -382,7 +382,7 @@ See [v0.5.0-changelog.md](v0.5.0-changelog.md).
 
 **Focus:** **Grid simulation depth** — multi-tile objects, movement blocking, interact pathing, merged passive-vision prompt, hidden objects and triggers. Builds on V0.5.0.
 
-**Status:** 🚧 **In progress** — **0.6.0a–c** done; **0.6.0d–e** planned.
+**Status:** 🚧 **In progress** — **0.6.0a–d** done; **0.6.0e** planned.
 
 **Implementation order (proposed):**
 
@@ -391,7 +391,7 @@ See [v0.5.0-changelog.md](v0.5.0-changelog.md).
 | **0.6.0a** | Movement blocking + pathfinder | ✅ Done |
 | **0.6.0b** | Interact pathing (overwrites move) | ✅ Done |
 | **0.6.0c** | Merge look + interact into passive vision | ✅ Done |
-| **0.6.0d** | Multi-tile object footprints | 📋 Planned |
+| **0.6.0d** | Multi-tile object footprints | ✅ Done |
 | **0.6.0e** | Hidden objects + step-aware triggers | 📋 Planned |
 
 See [v0.6.0-changelog.md](v0.6.0-changelog.md).
@@ -419,7 +419,7 @@ See [v0.6.0-changelog.md](v0.6.0-changelog.md).
 - List interactions reachable **after** full move budget toward the object (consistent with interact-overwrites-move)
 - Agents still show `[?]` for examination; no fake interaction lines on agents
 
-### 0.6.0d — Multi-tile objects
+### 0.6.0d — Multi-tile objects ✅
 
 - Axis-aligned **footprint** (`width`, `height`, anchor at `position`) — not arbitrary shapes in v1
 - Passive vision: one line per object (document center vs footprint in range rules)

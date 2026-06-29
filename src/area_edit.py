@@ -22,7 +22,7 @@ from src.memory_modules.registry import (
     is_builtin_module_id,
     is_module_loaded,
 )
-from src.object import Object
+from src.object import Object, object_footprint_fits_bounds
 from src.effect_spec import EffectSpec
 from src.object_action import ObjectAction
 from src.object_effects import validate_effect_params
@@ -200,8 +200,11 @@ def format_objects_list(area: Area) -> str:
             if obj.actions:
                 names = ", ".join(sorted(obj.actions))
                 action_suffix = f" actions: {names}"
+            size_suffix = ""
+            if obj.width != 1 or obj.height != 1:
+                size_suffix = f" {obj.width}×{obj.height}"
             lines.append(
-                f"  - {obj.name} ({obj.id}) at {obj.position}{action_suffix}"
+                f"  - {obj.name} ({obj.id}) at {obj.position}{size_suffix}{action_suffix}"
             )
     return "\n".join(lines)
 
@@ -301,11 +304,69 @@ def parse_object_action_fields(
     return {name: action}, None
 
 
+
+def _parse_footprint_dims(
+    fields: dict[str, str],
+    *,
+    default_width: int = 1,
+    default_height: int = 1,
+) -> tuple[int, int, str | None]:
+    try:
+        width = int(fields.get("width", str(default_width)))
+        height = int(fields.get("height", str(default_height)))
+    except ValueError:
+        return 0, 0, "width and height must be integers."
+    if width < 1 or height < 1:
+        return 0, 0, "width and height must be at least 1."
+    return width, height, None
+
+
+def _validate_object_footprint_in_area(area: Area, obj: Object) -> str | None:
+    if object_footprint_fits_bounds(obj, area):
+        return None
+    return (
+        f"Footprint ({obj.width}x{obj.height}) at {obj.position} extends outside the room. "
+        f"{area.format_grid_bounds_message()}"
+    )
+
+
+def _apply_footprint_dim_fields(
+    area: Area,
+    obj: Object,
+    fields: dict[str, str],
+    changes: list[str],
+) -> str | None:
+    if "width" in fields:
+        try:
+            width = int(fields["width"])
+        except ValueError:
+            return "width must be an integer."
+        if width < 1:
+            return "width must be at least 1."
+        if width != obj.width:
+            obj.width = width
+            changes.append("width")
+    if "height" in fields:
+        try:
+            height = int(fields["height"])
+        except ValueError:
+            return "height must be an integer."
+        if height < 1:
+            return "height must be at least 1."
+        if height != obj.height:
+            obj.height = height
+            changes.append("height")
+    if "width" in fields or "height" in fields:
+        return _validate_object_footprint_in_area(area, obj)
+    return None
+
+
 def create_object_from_args(area: Area, arg: str) -> tuple[Optional[Object], str]:
     """
     Parse and create an object from command arguments.
 
     Usage: name "..." [pdesc "..."] [desc "..."] [appearance "..."] at x,y
+           [width N] [height N]
            [action NAME range N [effect EFFECT] result "..." passive "..."]
     """
     tokens, err = tokenize_args(arg)
@@ -314,6 +375,7 @@ def create_object_from_args(area: Area, arg: str) -> tuple[Optional[Object], str
     if not tokens:
         return None, (
             'Usage: create-object name "..." [pdesc "..."] [desc "..."] [appearance "..."] at x,y '
+            '[width N] [height N] '
             '[action NAME range N [effect EFFECT] result "..." passive "..."]'
         )
 
@@ -334,6 +396,8 @@ def create_object_from_args(area: Area, arg: str) -> tuple[Optional[Object], str
             "passive",
             "blocks-movement",
             "movement-exception",
+            "width",
+            "height",
         },
     )
     if err:
@@ -350,6 +414,10 @@ def create_object_from_args(area: Area, arg: str) -> tuple[Optional[Object], str
 
     if not area.is_valid_position(position):
         return None, f"Invalid position {position}. {area.format_grid_bounds_message()}"
+
+    width, height, dim_err = _parse_footprint_dims(fields)
+    if dim_err:
+        return None, dim_err
 
     actions, err = parse_object_action_fields(fields)
     if err:
@@ -368,16 +436,24 @@ def create_object_from_args(area: Area, arg: str) -> tuple[Optional[Object], str
         passive_description=pdesc,
         actions=actions,
         appearance=appearance,
+        width=width,
+        height=height,
     )
     movement_err = _apply_movement_fields(obj, fields, [])
     if movement_err:
         return None, movement_err
+    footprint_err = _validate_object_footprint_in_area(area, obj)
+    if footprint_err:
+        return None, footprint_err
     area.add_object(obj)
     action_note = ""
     if actions:
         action_note = f" Action(s): {', '.join(sorted(actions))}."
+    size_note = ""
+    if width != 1 or height != 1:
+        size_note = f" footprint {width}x{height}."
     return obj, (
-        f'Created object {obj_id} "{fields["name"]}" at {position}.{action_note} '
+        f'Created object {obj_id} "{fields["name"]}" at {position}.{size_note}{action_note} '
         f"Use 'objects' or 'list' to see all object ids."
     )
 
@@ -473,24 +549,24 @@ def _apply_object_location_fields(
         assert target_pos is not None
 
     dest_area = session.areas[dest_area_id]
-    if not dest_area.is_valid_position(target_pos):
-        return (
-            f"Invalid position {target_pos}. "
-            f"{dest_area.format_grid_bounds_message()}"
-        )
+    original_pos = obj.position
+    if "pos" in fields:
+        obj.position = target_pos
+    footprint_err = _validate_object_footprint_in_area(dest_area, obj)
+    if footprint_err:
+        obj.position = original_pos
+        return footprint_err
 
     if dest_area_id != located_area_id:
         for index, candidate in enumerate(area.objects):
             if candidate.id == object_id:
                 area.objects.pop(index)
                 break
-        obj.position = target_pos
         dest_area.add_object(obj)
         changes.append("area")
         if "pos" in fields:
             changes.append("pos")
-    elif "pos" in fields and target_pos != obj.position:
-        obj.position = target_pos
+    elif "pos" in fields and target_pos != original_pos:
         changes.append("pos")
     return None
 
@@ -538,14 +614,14 @@ def edit_object_for_session(session: Session, arg: str) -> str:
 
     fields, err = parse_field_tokens(
         tokens[1:],
-        {"name", "desc", "pdesc", "appearance", "pos", "area", "blocks-movement", "movement-exception"},
+        {"name", "desc", "pdesc", "appearance", "pos", "area", "blocks-movement", "movement-exception", "width", "height"},
     )
     if err:
         return err
     if not fields:
         return (
             "At least one field to change is required "
-            "(name, pdesc, desc, appearance, area, pos, blocks-movement, or movement-exception)."
+            "(name, pdesc, desc, appearance, area, pos, width, height, blocks-movement, or movement-exception)."
         )
 
     changes: list[str] = []
@@ -563,6 +639,10 @@ def edit_object_for_session(session: Session, arg: str) -> str:
     content_err = _apply_object_content_fields(current_area, obj, object_id, fields, changes)
     if content_err:
         return content_err
+
+    footprint_err = _apply_footprint_dim_fields(current_area, obj, fields, changes)
+    if footprint_err:
+        return footprint_err
 
     if not changes:
         return f"No changes applied to {object_id}."
@@ -605,26 +685,33 @@ def edit_object_from_args(area: Area, arg: str) -> str:
         if sub == "remove-action":
             return _edit_object_remove_action(obj, tokens)
 
-    fields, err = parse_field_tokens(tokens[1:], {"name", "desc", "pdesc", "appearance", "pos", "blocks-movement", "movement-exception"})
+    fields, err = parse_field_tokens(tokens[1:], {"name", "desc", "pdesc", "appearance", "pos", "blocks-movement", "movement-exception", "width", "height"})
     if err:
         return err
     if not fields:
-        return "At least one field to change is required (name, pdesc, desc, appearance, pos, blocks-movement, or movement-exception)."
+        return "At least one field to change is required (name, pdesc, desc, appearance, pos, width, height, blocks-movement, or movement-exception)."
 
     changes: list[str] = []
     content_err = _apply_object_content_fields(area, obj, object_id, fields, changes)
     if content_err:
         return content_err
 
+    footprint_err = _apply_footprint_dim_fields(area, obj, fields, changes)
+    if footprint_err:
+        return footprint_err
+
     if "pos" in fields:
         position, err = parse_position(fields["pos"])
         if err:
             return err
         assert position is not None
-        if not area.is_valid_position(position):
-            return f"Invalid position {position}. {area.format_grid_bounds_message()}"
-        if position != obj.position:
-            obj.position = position
+        original_pos = obj.position
+        obj.position = position
+        bounds_err = _validate_object_footprint_in_area(area, obj)
+        if bounds_err:
+            obj.position = original_pos
+            return bounds_err
+        if position != original_pos:
             changes.append("pos")
 
     if not changes:

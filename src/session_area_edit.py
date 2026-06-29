@@ -87,12 +87,14 @@ def _entities_outside_bounds(area: Area, bounds: GridBounds) -> Optional[str]:
                 f"would be outside the new bounds."
             )
     for obj in area.get_objects():
-        x, y = obj.position
-        if not (bounds.min_x <= x <= bounds.max_x and bounds.min_y <= y <= bounds.max_y):
-            return (
-                f"Object {obj.name} ({obj.id}) at ({x}, {y}) "
-                f"would be outside the new bounds."
-            )
+        from src.object import object_footprint_tiles
+
+        for x, y in object_footprint_tiles(obj):
+            if not (bounds.min_x <= x <= bounds.max_x and bounds.min_y <= y <= bounds.max_y):
+                return (
+                    f"Object {obj.name} ({obj.id}) footprint tile ({x}, {y}) "
+                    f"would be outside the new bounds."
+                )
     return None
 
 

@@ -1,14 +1,16 @@
 from dataclasses import dataclass, field
 
+from src.grid import chebyshev_distance
 from src.object_action import ObjectAction
 
 
 @dataclass
 class Object:
     """
-    Represents a simple, single-tile object in the area.
+    Represents an object in the area with an axis-aligned grid footprint.
 
-    Objects occupy one grid tile and carry two optional description layers (V0.1):
+    Objects occupy one or more grid tiles (``width`` × ``height`` anchored at
+    ``position``) and carry two optional description layers (V0.1):
     - passive_description: visible at a glance (no look required)
     - description: detailed text revealed by the `look` action
 
@@ -30,7 +32,7 @@ class Object:
     """
 
     position: tuple[int, int]
-    """The grid coordinates of the object as (x, y)."""
+    """Top-left anchor of the footprint as (x, y)."""
 
     passive_description: str = ""
     """
@@ -53,7 +55,68 @@ class Object:
     """
 
     blocks_movement: bool = True
-    """When True, other movers cannot enter this object's tile (unless excepted)."""
+    """When True, other movers cannot enter any footprint tile (unless excepted)."""
 
     movement_exceptions: list[str] = field(default_factory=list)
-    """Entity ids allowed to pass through or stand on this object's tile."""
+    """Entity ids allowed to pass through or stand on this object's tiles."""
+
+    width: int = 1
+    """Footprint width in tiles (extends +x from anchor)."""
+
+    height: int = 1
+    """Footprint height in tiles (extends +y from anchor)."""
+
+
+def object_footprint_tiles(obj: Object) -> list[tuple[int, int]]:
+    """Return every grid tile occupied by *obj*."""
+    ax, ay = obj.position
+    return [
+        (ax + dx, ay + dy)
+        for dx in range(obj.width)
+        for dy in range(obj.height)
+    ]
+
+
+def object_occupies_tile(obj: Object, x: int, y: int) -> bool:
+    """Return True if *(x, y)* lies inside *obj*'s footprint."""
+    ax, ay = obj.position
+    return ax <= x < ax + obj.width and ay <= y < ay + obj.height
+
+
+def chebyshev_distance_to_object(pos: tuple[int, int], obj: Object) -> int:
+    """Chebyshev distance from *pos* to the nearest tile of *obj*'s footprint."""
+    return min(chebyshev_distance(pos, tile) for tile in object_footprint_tiles(obj))
+
+
+def nearest_footprint_tile_to(observer: tuple[int, int], obj: Object) -> tuple[int, int]:
+    """Return the footprint tile closest to *observer*.
+
+    Primary sort: Chebyshev distance. Ties: Manhattan distance, then lower (x, y).
+    """
+    ox, oy = observer
+    best_tile: tuple[int, int] | None = None
+    best_key: tuple[int, int, tuple[int, int]] | None = None
+    for tx, ty in object_footprint_tiles(obj):
+        dx = abs(tx - ox)
+        dy = abs(ty - oy)
+        key = (max(dx, dy), dx + dy, (tx, ty))
+        if best_key is None or key < best_key:
+            best_key = key
+            best_tile = (tx, ty)
+    assert best_tile is not None
+    return best_tile
+
+
+def format_object_footprint_size(obj: Object) -> str:
+    """Return a footprint size label for multi-tile objects (e.g. ``3×2 tiles``)."""
+    if obj.width == 1 and obj.height == 1:
+        return ""
+    return f"{obj.width}×{obj.height} tiles"
+
+
+def object_footprint_fits_bounds(obj: Object, area) -> bool:
+    """Return True when every footprint tile is inside *area*'s grid."""
+    for x, y in object_footprint_tiles(obj):
+        if not area.is_valid_position((x, y)):
+            return False
+    return True

@@ -244,12 +244,19 @@ export function buildCreateObject({
   appearance,
   x,
   y,
+  width = 1,
+  height = 1,
   blocksMovement = true,
   movementExceptions = "",
 }) {
   let line =
     `create-object name ${cliQuote(name)} pdesc ${cliQuote(pdesc)} ` +
     `desc ${cliQuote(desc)} at ${x},${y}`;
+  const footprintWidth = Number(width) || 1;
+  const footprintHeight = Number(height) || 1;
+  if (footprintWidth !== 1 || footprintHeight !== 1) {
+    line += ` width ${footprintWidth} height ${footprintHeight}`;
+  }
   if (appearance) {
     line += ` appearance ${cliQuote(appearance)}`;
   }
@@ -357,6 +364,8 @@ export function buildEditObject({
   sourceAreaId,
   x,
   y,
+  width,
+  height,
   blocksMovement,
   movementExceptions,
 }) {
@@ -378,6 +387,12 @@ export function buildEditObject({
     parts.push(`area ${targetArea}`);
   }
   parts.push(`pos ${x},${y}`);
+  if (width !== undefined && width !== "") {
+    parts.push(`width ${Number(width) || 1}`);
+  }
+  if (height !== undefined && height !== "") {
+    parts.push(`height ${Number(height) || 1}`);
+  }
   return parts.join(" ");
 }
 

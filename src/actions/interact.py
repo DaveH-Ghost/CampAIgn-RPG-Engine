@@ -27,36 +27,20 @@ from typing import TYPE_CHECKING
 
 
 from src.action_outcome import ActionOutcome
-
 from src.agent import Agent
-
-from src.grid import chebyshev_distance
-
 from src.interact_templates import InteractTemplateContext, format_interact_template
-
 from src.move_target import (
-
     ResolvedMoveTarget,
-
     entity_goal_blocks_movement,
-
     format_move_arrival_message,
-
     format_move_arrival_passive,
-
     format_move_towards_message,
-
     format_move_towards_passive,
-
 )
-
-from src.object import Object
-
+from src.object import Object, chebyshev_distance_to_object
 from src.object_action import ObjectAction
-
 from src.object_effects import EffectContext, apply_effects
-
-from src.occupancy import find_blocker_between, is_tile_enterable
+from src.occupancy import find_blocker_between, footprint_tiles_for_entity, is_tile_enterable
 
 from src.pathfinding import find_path, walk_with_pathfinding
 
@@ -111,8 +95,7 @@ def _resolve_agent_area(
 
 
 def _in_range(agent: Agent, obj: Object, action: ObjectAction) -> bool:
-
-    return chebyshev_distance(agent.position, obj.position) <= action.range
+    return chebyshev_distance_to_object(agent.position, obj) <= action.range
 
 
 
@@ -209,17 +192,11 @@ def _build_interact_path_move_outcome(
     ):
 
         blocker = find_blocker_between(
-
             area,
-
             agent.position,
-
             obj.position,
-
             agent.id,
-
-            ignore_blockers_at=obj.position,
-
+            ignore_tiles=footprint_tiles_for_entity(area, obj.id),
         )
 
 
@@ -227,23 +204,16 @@ def _build_interact_path_move_outcome(
     return ActionOutcome(
 
         result=format_move_towards_message(
-
             resolved,
-
             agent.position,
-
             blocker_name=blocker,
-
+            area=area,
         ),
-
         passive_result=format_move_towards_passive(
-
             agent.name,
-
             resolved,
-
             agent.position,
-
+            area=area,
         ),
 
     )

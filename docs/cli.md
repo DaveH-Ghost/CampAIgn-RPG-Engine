@@ -45,8 +45,10 @@ Add a `lorebook` prompt block in realm-studio Prompt layout (or custom `prompt_b
 
 ```
 create-object name "Crate" pdesc "A crate." desc "Wooden." at 0,0
+create-object name "Table" pdesc "A large table." at 1,1 width 2 height 2
 create-object name "Door" pdesc "A door." at 1,1 action enter range 0 effect move_area dest-area hall dest-at 0,0 result "You walk through." passive "{actor} walks through."
 edit-object obj_sign_01 desc "New sign text."
+edit-object obj_table_01 width 3 height 1
 delete-object obj_crate_01
 
 create-area id attic desc "A dusty attic." width 6 height 6

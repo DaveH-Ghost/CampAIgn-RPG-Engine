@@ -101,6 +101,8 @@ def deserialize_object(data: dict[str, Any]) -> Object:
         appearance=data.get("appearance", ""),
         blocks_movement=bool(data.get("blocks_movement", True)),
         movement_exceptions=list(data.get("movement_exceptions", [])),
+        width=int(data.get("width", 1)),
+        height=int(data.get("height", 1)),
     )
 
 

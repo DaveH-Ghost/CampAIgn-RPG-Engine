@@ -18,7 +18,8 @@ import {
   postEditArea,
   postEvent,
 } from "./api.js";
-import { activeAreaView, asArray, DEFAULT_AREA_ID, normalizeSnapshot } from "./snapshot.js";
+import { activeAreaView, asArray, DEFAULT_AREA_ID, normalizeSnapshot, objectOccupiesTile } from "./snapshot.js";
+import { CELL_SIZE } from "./gridViewport.js";
 import { initObjectActions, openManageObjectActionsModal } from "./objectActions.js";
 
 let menuEl;
@@ -65,22 +66,40 @@ export function initUi({ getSnapshotFn, onStateChangedFn }) {
   });
 }
 
+function tileCoordsFromContextEvent(e) {
+  const tile = e.target.closest(".tile");
+  if (tile) {
+    return { x: Number(tile.dataset.x), y: Number(tile.dataset.y) };
+  }
+
+  const grid = activeAreaView(getSnapshot())?.grid;
+  const gridNode = document.getElementById("grid");
+  if (!grid || !gridNode) return null;
+
+  const rect = gridNode.getBoundingClientRect();
+  const relX = e.clientX - rect.left;
+  const relY = e.clientY - rect.top;
+  if (relX < 0 || relY < 0 || relX >= rect.width || relY >= rect.height) {
+    return null;
+  }
+
+  const x = grid.min_x + Math.floor(relX / CELL_SIZE);
+  const y = grid.min_y + Math.floor(relY / CELL_SIZE);
+  if (x < grid.min_x || x > grid.max_x || y < grid.min_y || y > grid.max_y) {
+    return null;
+  }
+  return { x, y };
+}
+
 export function bindGridContextMenu(gridEl) {
   gridEl.addEventListener("contextmenu", (e) => {
     e.preventDefault();
     hideMenu();
 
-    const marker = e.target.closest(".chip, .token");
-    if (marker) {
-      showEntityMenu(e.clientX, e.clientY, marker.dataset.kind, marker.dataset.id);
-      return;
-    }
+    const coords = tileCoordsFromContextEvent(e);
+    if (!coords) return;
 
-    const tile = e.target.closest(".tile");
-    if (!tile) return;
-
-    const x = Number(tile.dataset.x);
-    const y = Number(tile.dataset.y);
+    const { x, y } = coords;
     const at = entitiesAt(x, y);
     const count = at.agents.length + at.objects.length;
 
@@ -102,9 +121,7 @@ function entitiesAt(x, y) {
   const agents = asArray(snap.agents).filter(
     (a) => a.position[0] === x && a.position[1] === y,
   );
-  const objects = asArray(snap.objects).filter(
-    (o) => o.position[0] === x && o.position[1] === y,
-  );
+  const objects = asArray(snap.objects).filter((o) => objectOccupiesTile(o, x, y));
   return { agents, objects };
 }
 
@@ -475,6 +492,8 @@ function openCreateObjectModal(x, y) {
     },
     { name: "x", label: "X", value: String(x), type: "number", required: true },
     { name: "y", label: "Y", value: String(y), type: "number", required: true },
+    { name: "width", label: "Width (tiles)", value: "1", type: "number", required: true },
+    { name: "height", label: "Height (tiles)", value: "1", type: "number", required: true },
     ...objectMovementFields({ blocksMovement: true, movementExceptions: "" }),
   ], async (data) => {
     const line = buildCreateObject({
@@ -484,6 +503,8 @@ function openCreateObjectModal(x, y) {
       appearance: data.appearance,
       x: data.x,
       y: data.y,
+      width: data.width,
+      height: data.height,
       blocksMovement: data.blocksMovement,
       movementExceptions: data.movementExceptions,
     });
@@ -657,6 +678,22 @@ function openEditObjectModal(entity, areaId) {
       required: true,
       location: true,
     },
+    {
+      name: "width",
+      label: "Width (tiles)",
+      value: String(entity.width ?? 1),
+      type: "number",
+      required: true,
+      location: true,
+    },
+    {
+      name: "height",
+      label: "Height (tiles)",
+      value: String(entity.height ?? 1),
+      type: "number",
+      required: true,
+      location: true,
+    },
     ...objectMovementFields({
       blocksMovement: entity.blocks_movement !== false,
       movementExceptions: (entity.movement_exceptions || []).join(", "),
@@ -672,6 +709,8 @@ function openEditObjectModal(entity, areaId) {
       sourceAreaId: resolvedAreaId,
       x: data.x,
       y: data.y,
+      width: data.width,
+      height: data.height,
       blocksMovement: data.blocksMovement,
       movementExceptions: data.blocksMovement ? data.movementExceptions : "",
     });

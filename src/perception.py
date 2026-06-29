@@ -8,8 +8,9 @@ Responsibilities:
 - Passive vs detailed rendering for objects and other agents (V0.1+).
 - Provide look logic: validate targets, return descriptions, update memory.
 
-The viewing agent sees objects and other agents in passive vision (not itself).
-Walls/room boundaries are conveyed via the separate room description from Area.
+Passive vision lists one line per object using the footprint tile nearest the
+viewer for coordinates and bearing; multi-tile objects also show footprint
+size (e.g. ``3×2 tiles``). Interaction range uses nearest-footprint Chebyshev distance.
 """
 
 from src.action_outcome import ActionOutcome
@@ -17,7 +18,7 @@ from src.agent import Agent
 from src.grid import chebyshev_distance
 from src.vision_bearing import format_action_range_label, format_relative_bearing_phrase
 from src.memory import Memory
-from src.object import Object
+from src.object import Object, chebyshev_distance_to_object, format_object_footprint_size, nearest_footprint_tile_to
 from src.object_action import ObjectAction
 from src.occupancy import is_tile_enterable, resolve_standable_goal
 from src.pathfinding import walk_with_pathfinding
@@ -114,17 +115,20 @@ def build_passive_vision(
 
     for obj in area.get_objects():
         desc = format_object_vision_desc(obj, memory)
+        vision_position = nearest_footprint_tile_to(agent.position, obj)
+        footprint_size = format_object_footprint_size(obj)
         lines.append(
             _format_passive_vision_entity_line(
                 obj.name,
                 obj.id,
-                obj.position,
+                vision_position,
                 desc,
                 observer=agent.position,
                 include_coordinates=include_entity_coordinates,
                 include_relative_bearing=bearing_ready,
                 vision_units=vision_units,
                 units_per_tile=units_per_tile,
+                footprint_size=footprint_size,
             )
         )
         lines.extend(
@@ -172,10 +176,14 @@ def _format_passive_vision_entity_line(
     include_relative_bearing: bool = False,
     vision_units: str = "",
     units_per_tile: int | None = None,
+    footprint_size: str = "",
 ) -> str:
     parts = [f"{name} ({entity_id})"]
     if include_coordinates:
-        parts.append(f"{position}")
+        coord_parts = [f"{position}"]
+        if footprint_size:
+            coord_parts.append(footprint_size)
+        parts.append(", ".join(coord_parts))
     if include_relative_bearing and units_per_tile is not None:
         bearing = format_relative_bearing_phrase(
             observer,
@@ -203,7 +211,7 @@ def nearest_standable_in_interact_range(
     for x in range(area.min_x, area.max_x + 1):
         for y in range(area.min_y, area.max_y + 1):
             pos = (x, y)
-            if chebyshev_distance(pos, obj.position) > action.range:
+            if chebyshev_distance_to_object(pos, obj) > action.range:
                 continue
             if not is_tile_enterable(area, pos, agent.id):
                 continue
@@ -245,7 +253,7 @@ def get_object_interactions_reachable_after_move(
     """
     results: list[tuple[str, ObjectAction]] = []
     for action_name, action in sorted(obj.actions.items()):
-        if chebyshev_distance(agent.position, obj.position) <= action.range:
+        if chebyshev_distance_to_object(agent.position, obj) <= action.range:
             results.append((action_name, action))
             continue
         goal = nearest_standable_in_interact_range(agent, area, obj, action)
@@ -258,7 +266,7 @@ def get_object_interactions_reachable_after_move(
             area,
             agent.id,
         )
-        if chebyshev_distance(simulated, obj.position) <= action.range:
+        if chebyshev_distance_to_object(simulated, obj) <= action.range:
             results.append((action_name, action))
     return results
 
@@ -338,7 +346,7 @@ def get_available_interactions(
         if obj.id not in visible:
             continue
         for action_name, action in obj.actions.items():
-            if chebyshev_distance(agent.position, obj.position) <= action.range:
+            if chebyshev_distance_to_object(agent.position, obj) <= action.range:
                 results.append((action_name, obj.id, obj, action))
     results.sort(key=lambda item: (item[2].name.lower(), item[0], item[1]))
     return results

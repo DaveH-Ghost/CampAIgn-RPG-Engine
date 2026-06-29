@@ -53,6 +53,8 @@ def serialize_object(obj: Object, *, include_private: bool = False) -> dict[str,
         "appearance": obj.appearance,
         "blocks_movement": obj.blocks_movement,
         "movement_exceptions": list(obj.movement_exceptions),
+        "width": obj.width,
+        "height": obj.height,
     }
     if include_private:
         data["passive_description"] = obj.passive_description

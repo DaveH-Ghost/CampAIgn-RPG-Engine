@@ -208,9 +208,12 @@ class Area:
         return None
 
     def get_object_at(self, position: tuple[int, int]) -> Optional[Object]:
-        """Return the object at a given position, if any."""
+        """Return the first object whose footprint contains *position*, if any."""
+        from src.object import object_occupies_tile
+
+        x, y = position
         for obj in self.objects:
-            if obj.position == position:
+            if object_occupies_tile(obj, x, y):
                 return obj
         return None
 

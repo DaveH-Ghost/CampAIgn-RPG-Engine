@@ -8,7 +8,7 @@ import { initPromptLayout, reloadPromptLayoutIfOpen } from "./promptLayout.js";
 import { initAppTabs, initLorebooks, refreshLorebookList, refreshLorebookScanPanel } from "./lorebooks.js";
 import { initSettings } from "./settings.js";
 import { initVisionUnits, syncVisionUnitsFromSnapshot } from "./visionUnits.js";
-import { initGridViewport, maybeCenterGrid } from "./gridViewport.js";
+import { initGridViewport, maybeCenterGrid, CELL_SIZE } from "./gridViewport.js";
 import {
   appendTurnLogEntry,
   bindPromptDebug,
@@ -23,7 +23,7 @@ import {
   setLastPrompt,
   setLastResponse,
 } from "./panels.js";
-import { activeAreaView, asArray, normalizeSnapshot } from "./snapshot.js";
+import { activeAreaView, asArray, isMultiTileObject, normalizeSnapshot, objectFootprintSize } from "./snapshot.js";
 import {
   bindActiveAgentSelect,
   bindActiveAreaSelect,
@@ -41,6 +41,7 @@ const statusEl = document.getElementById("status");
 const gridViewportEl = document.getElementById("grid-viewport");
 const gridWorldEl = document.getElementById("grid-world");
 const gridEl = document.getElementById("grid");
+const gridOverlayEl = document.getElementById("grid-overlay");
 const snapshotEl = document.getElementById("snapshot");
 const sessionMetaEl = document.getElementById("session-meta");
 const visionUnitsInput = document.getElementById("vision-units-input");
@@ -133,22 +134,48 @@ function posKey(x, y) {
   return `${x},${y}`;
 }
 
-function indexEntities(agents, objects) {
-  const byPos = new Map();
-  const add = (x, y, kind, entity) => {
-    const key = posKey(x, y);
-    if (!byPos.has(key)) {
-      byPos.set(key, { agents: [], objects: [] });
-    }
-    byPos.get(key)[kind].push(entity);
-  };
-  for (const agent of asArray(agents)) {
-    add(agent.position[0], agent.position[1], "agents", agent);
-  }
+function buildFootprintCoverKeys(objects) {
+  const covered = new Set();
   for (const object of asArray(objects)) {
-    add(object.position[0], object.position[1], "objects", object);
+    if (!isMultiTileObject(object)) continue;
+    const { width, height } = objectFootprintSize(object);
+    const [ax, ay] = object.position;
+    for (let dx = 0; dx < width; dx++) {
+      for (let dy = 0; dy < height; dy++) {
+        if (dx !== 0 || dy !== 0) {
+          covered.add(posKey(ax + dx, ay + dy));
+        }
+      }
+    }
   }
-  return byPos;
+  return covered;
+}
+
+function entityFootprintSize(entity, kind) {
+  if (kind === "agent") {
+    return { width: 1, height: 1 };
+  }
+  return objectFootprintSize(entity);
+}
+
+function createFootprintMarker(entity, kind, grid, isActive = false) {
+  const marker = document.createElement("div");
+  marker.className = `footprint-marker footprint-marker-${kind}${isActive ? " footprint-marker-active" : ""}`;
+  marker.dataset.kind = kind;
+  marker.dataset.id = entity.id;
+  marker.title = `${entity.name} (${entity.id})`;
+
+  const { width, height } = entityFootprintSize(entity, kind);
+  const [ax, ay] = entity.position;
+  marker.style.left = `${(ax - grid.min_x) * CELL_SIZE}px`;
+  marker.style.top = `${(ay - grid.min_y) * CELL_SIZE}px`;
+  marker.style.width = `${width * CELL_SIZE}px`;
+  marker.style.height = `${height * CELL_SIZE}px`;
+
+  const inner = createEntityMarker(entity, kind, isActive);
+  inner.classList.add("footprint-marker-inner");
+  marker.appendChild(inner);
+  return marker;
 }
 
 function createNameChip(entity, kind, isActive) {
@@ -207,11 +234,14 @@ function renderGrid(data) {
   const { grid, active_agent_id } = view;
   if (!grid) {
     gridEl.innerHTML = "";
+    if (gridOverlayEl) gridOverlayEl.innerHTML = "";
     gridEl.classList.add("grid-empty");
     return;
   }
   gridEl.classList.remove("grid-empty");
-  const byPos = indexEntities(view.agents, view.objects);
+  const objects = asArray(view.objects);
+  const agents = asArray(view.agents);
+  const footprintCover = buildFootprintCoverKeys(objects);
 
   const width = grid.max_x - grid.min_x + 1;
   const height = grid.max_y - grid.min_y + 1;
@@ -219,11 +249,19 @@ function renderGrid(data) {
   gridEl.style.setProperty("--grid-cols", String(width));
   gridEl.style.setProperty("--grid-rows", String(height));
   gridEl.innerHTML = "";
+  if (gridOverlayEl) {
+    gridOverlayEl.innerHTML = "";
+    gridOverlayEl.style.width = `${width * CELL_SIZE}px`;
+    gridOverlayEl.style.height = `${height * CELL_SIZE}px`;
+  }
 
   for (let y = grid.min_y; y <= grid.max_y; y++) {
     for (let x = grid.min_x; x <= grid.max_x; x++) {
       const tile = document.createElement("div");
       tile.className = "tile";
+      if (footprintCover.has(posKey(x, y))) {
+        tile.classList.add("tile-covered");
+      }
       tile.dataset.x = String(x);
       tile.dataset.y = String(y);
 
@@ -232,19 +270,18 @@ function renderGrid(data) {
       coord.textContent = `${x}, ${y}`;
       tile.appendChild(coord);
 
-      const stack = document.createElement("div");
-      stack.className = "tile-stack";
-
-      const at = byPos.get(posKey(x, y)) || { agents: [], objects: [] };
-      for (const agent of asArray(at.agents)) {
-        stack.appendChild(createEntityMarker(agent, "agent", agent.id === active_agent_id));
-      }
-      for (const object of asArray(at.objects)) {
-        stack.appendChild(createEntityMarker(object, "object", false));
-      }
-
-      tile.appendChild(stack);
       gridEl.appendChild(tile);
+    }
+  }
+
+  if (gridOverlayEl) {
+    for (const object of objects) {
+      gridOverlayEl.appendChild(createFootprintMarker(object, "object", grid));
+    }
+    for (const agent of agents) {
+      gridOverlayEl.appendChild(
+        createFootprintMarker(agent, "agent", grid, agent.id === active_agent_id),
+      );
     }
   }
 
@@ -303,6 +340,7 @@ async function fetchState() {
     updateStatusLine(lastSnapshot);
   } catch (err) {
     gridEl.innerHTML = "";
+    if (gridOverlayEl) gridOverlayEl.innerHTML = "";
     gridEl.classList.add("grid-empty");
     snapshotEl.textContent = String(err.message || err);
     statusEl.textContent = `Error — ${err.message || err}`;
@@ -439,7 +477,7 @@ initLorebooks({
   },
 });
 initGridViewport(gridViewportEl, gridWorldEl);
-bindGridContextMenu(gridEl);
+bindGridContextMenu(gridWorldEl);
 if (activeAreaSelect) bindActiveAreaSelect(activeAreaSelect, refreshAfterMutation);
 if (activeAgentSelect) bindActiveAgentSelect(activeAgentSelect, refreshAfterMutation);
 bindAreaManageButtons({

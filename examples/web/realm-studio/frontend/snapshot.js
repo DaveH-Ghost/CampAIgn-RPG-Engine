@@ -110,3 +110,24 @@ export function activeAreaView(snapshot) {
 export function normalizeUiSnapshot(snapshot) {
   return activeAreaView(snapshot);
 }
+
+/** @param {object} obj */
+export function objectFootprintSize(obj) {
+  return {
+    width: Number(obj?.width ?? 1) || 1,
+    height: Number(obj?.height ?? 1) || 1,
+  };
+}
+
+/** @param {object} obj */
+export function isMultiTileObject(obj) {
+  const { width, height } = objectFootprintSize(obj);
+  return width > 1 || height > 1;
+}
+
+/** @param {object} obj */
+export function objectOccupiesTile(obj, x, y) {
+  const { width, height } = objectFootprintSize(obj);
+  const [ax, ay] = obj.position;
+  return x >= ax && x < ax + width && y >= ay && y < ay + height;
+}

@@ -325,8 +325,21 @@ class Session:
                     f"{dest_area.format_grid_bounds_message()}"
                 ),
             )
+        from src.object import object_footprint_fits_bounds
 
-        if source_area_id == dest_area_id and obj.position == position:
+        original_pos = obj.position
+        obj.position = position
+        if not object_footprint_fits_bounds(obj, dest_area):
+            obj.position = original_pos
+            return SessionResult(
+                ok=False,
+                message=(
+                    f"Footprint ({obj.width}x{obj.height}) at {position} extends outside "
+                    f"{dest_area_id}. {dest_area.format_grid_bounds_message()}"
+                ),
+            )
+
+        if source_area_id == dest_area_id and original_pos == position:
             return SessionResult(
                 ok=True,
                 message=f"Object {object_id} already in {dest_area_id} at {position}.",
@@ -337,7 +350,6 @@ class Session:
             if candidate.id == object_id:
                 source_area.objects.pop(index)
                 break
-        obj.position = position
         dest_area.add_object(obj)
         return SessionResult(
             ok=True,

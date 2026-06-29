@@ -12,6 +12,7 @@ from src.agent import Agent
 from src.area import Area
 from src.coordinates import CoordinateParseError, format_coordinate, parse_coordinate_target
 from src.grid import chebyshev_distance
+from src.object import chebyshev_distance_to_object
 from src.occupancy import entity_blocks_for_mover
 
 
@@ -175,15 +176,28 @@ def format_unreachable_message(
     return f"You cannot reach {goal_label}; movement is fully blocked."
 
 
+def _entity_stop_distance(
+    stop_position: tuple[int, int],
+    resolved: ResolvedMoveTarget,
+    area: Area | None,
+) -> int:
+    if resolved.entity_id and area is not None:
+        obj = area.get_object_by_id(resolved.entity_id)
+        if obj is not None:
+            return chebyshev_distance_to_object(stop_position, obj)
+    return chebyshev_distance(stop_position, resolved.position)
+
+
 def format_move_towards_message(
     resolved: ResolvedMoveTarget,
     stop_position: tuple[int, int],
     *,
     blocker_name: str | None = None,
+    area: Area | None = None,
 ) -> str:
     label = format_move_target_label(resolved)
     if resolved.entity_id:
-        distance = chebyshev_distance(stop_position, resolved.position)
+        distance = _entity_stop_distance(stop_position, resolved, area)
         message = (
             f"You moved towards {label}; "
             f"you are still {_step_label(distance)} away."
@@ -199,10 +213,12 @@ def format_move_towards_passive(
     agent_name: str,
     resolved: ResolvedMoveTarget,
     stop_position: tuple[int, int],
+    *,
+    area: Area | None = None,
 ) -> str:
     label = format_move_target_label(resolved)
     if resolved.entity_id:
-        distance = chebyshev_distance(stop_position, resolved.position)
+        distance = _entity_stop_distance(stop_position, resolved, area)
         return (
             f"{agent_name} moves towards {label}; "
             f"still {_step_label(distance)} away."

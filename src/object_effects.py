@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable
 
 from src.effect_spec import EffectSpec
+from src.object import object_footprint_tiles
 
 if TYPE_CHECKING:
     from src.agent import Agent
@@ -39,11 +40,12 @@ def _random_move_self(
     ctx: EffectContext, _agent: Agent, obj: Object, _spec: EffectSpec
 ) -> None:
     area = ctx.area
+    occupied = set(object_footprint_tiles(obj))
     positions = [
         (x, y)
         for x in range(area.min_x, area.max_x + 1)
         for y in range(area.min_y, area.max_y + 1)
-        if (x, y) != obj.position
+        if (x, y) not in occupied
     ]
     if not positions:
         return

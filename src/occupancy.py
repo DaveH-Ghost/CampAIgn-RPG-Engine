@@ -1,14 +1,15 @@
 """
 occupancy.py
 
-V0.6.0a — grid occupancy and movement blocking (1×1 entities).
+V0.6.0a — grid occupancy and movement blocking.
+V0.6.0d — multi-tile object footprints.
 """
 
 from __future__ import annotations
 
 from src.agent import Agent
 from src.area import Area
-from src.object import Object
+from src.object import Object, object_footprint_tiles, object_occupies_tile
 
 NEIGHBOR_DELTAS: tuple[tuple[int, int], ...] = (
     (-1, -1),
@@ -45,7 +46,22 @@ def agents_at(area: Area, position: tuple[int, int]) -> list[Agent]:
 
 
 def objects_at(area: Area, position: tuple[int, int]) -> list[Object]:
-    return [obj for obj in area.get_objects() if obj.position == position]
+    x, y = position
+    return [obj for obj in area.get_objects() if object_occupies_tile(obj, x, y)]
+
+
+def footprint_tiles_for_entity(
+    area: Area,
+    entity_id: str,
+) -> frozenset[tuple[int, int]]:
+    """Return footprint tiles for an entity id (full object footprint or agent tile)."""
+    obj = area.get_object_by_id(entity_id)
+    if obj is not None:
+        return frozenset(object_footprint_tiles(obj))
+    agent = area.get_agent_by_id(entity_id)
+    if agent is not None:
+        return frozenset({agent.position})
+    return frozenset()
 
 
 def is_tile_enterable(
@@ -118,12 +134,19 @@ def _blocker_name_at(
     return None
 
 
+def _goal_ignored(
+    goal_pos: tuple[int, int],
+    ignore_tiles: frozenset[tuple[int, int]] | None,
+) -> bool:
+    return ignore_tiles is not None and goal_pos in ignore_tiles
+
+
 def _frontier_blocker(
     area: Area,
     from_pos: tuple[int, int],
     goal_pos: tuple[int, int],
     mover_id: str,
-    ignore_blockers_at: tuple[int, int] | None,
+    ignore_tiles: frozenset[tuple[int, int]] | None,
 ) -> str | None:
     """Return a blocker on the BFS frontier when *from_pos* cannot reach *goal_pos*."""
     from collections import deque
@@ -140,7 +163,7 @@ def _frontier_blocker(
             if not area.is_valid_position(neighbor) or neighbor in reachable:
                 continue
             if not is_tile_enterable(area, neighbor, mover_id):
-                if neighbor == ignore_blockers_at:
+                if ignore_tiles is not None and neighbor in ignore_tiles:
                     continue
                 dist = max(
                     abs(neighbor[0] - goal_pos[0]),
@@ -163,7 +186,7 @@ def find_blocker_between(
     goal_pos: tuple[int, int],
     mover_id: str,
     *,
-    ignore_blockers_at: tuple[int, int] | None = None,
+    ignore_tiles: frozenset[tuple[int, int]] | None = None,
 ) -> str | None:
     """
     Return the display name of a blocking entity between *from_pos* and *goal_pos*.
@@ -171,12 +194,12 @@ def find_blocker_between(
     Prefers the goal tile when it cannot be entered, then the next step toward
     the goal, then the blocked neighbor closest to the goal.
 
-    *ignore_blockers_at* skips blockers on that tile (e.g. the entity being moved toward).
+    *ignore_tiles* skips blockers on those tiles (e.g. the entity being moved toward).
     """
     from src.pathing import path_step_towards
 
     if (
-        ignore_blockers_at != goal_pos
+        not _goal_ignored(goal_pos, ignore_tiles)
         and not is_tile_enterable(area, goal_pos, mover_id)
     ):
         name = _blocker_name_at(area, goal_pos, mover_id)
@@ -199,7 +222,7 @@ def find_blocker_between(
                 from_pos,
                 goal_pos,
                 mover_id,
-                ignore_blockers_at,
+                ignore_tiles,
             )
             if name is not None:
                 return name
