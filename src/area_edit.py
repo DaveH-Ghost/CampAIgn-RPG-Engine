@@ -169,6 +169,23 @@ def _apply_movement_fields(
     return None
 
 
+def _apply_hidden_fields(
+    obj: Object,
+    fields: dict[str, str],
+    changes: list[str],
+) -> Optional[str]:
+    if "hidden" not in fields:
+        return None
+    hidden, err = parse_bool_field(fields["hidden"], field_name="hidden")
+    if err:
+        return err
+    assert hidden is not None
+    if hidden != obj.hidden:
+        obj.hidden = hidden
+        changes.append("hidden")
+    return None
+
+
 def parse_field_tokens(
     tokens: list[str], allowed: set[str]
 ) -> tuple[dict[str, str], Optional[str]]:
@@ -203,8 +220,9 @@ def format_objects_list(area: Area) -> str:
             size_suffix = ""
             if obj.width != 1 or obj.height != 1:
                 size_suffix = f" {obj.width}×{obj.height}"
+            hidden_suffix = " (hidden)" if obj.hidden else ""
             lines.append(
-                f"  - {obj.name} ({obj.id}) at {obj.position}{size_suffix}{action_suffix}"
+                f"  - {obj.name} ({obj.id}) at {obj.position}{size_suffix}{hidden_suffix}{action_suffix}"
             )
     return "\n".join(lines)
 
@@ -289,6 +307,32 @@ def parse_object_action_fields(
     if not passive:
         return None, "Missing required field: passive (when action is set)"
 
+    kind = fields.get("kind", "interact").strip().lower()
+    if kind not in ("interact", "trigger"):
+        return None, "kind must be interact or trigger."
+
+    halt_movement = False
+    delete_after_trigger = True
+    trigger_exceptions: list[str] = []
+
+    if kind == "trigger":
+        if "halt-movement" in fields:
+            halt_movement, err = parse_bool_field(
+                fields["halt-movement"], field_name="halt-movement"
+            )
+            if err:
+                return None, err
+            assert halt_movement is not None
+        if "delete-after-trigger" in fields:
+            delete_after_trigger, err = parse_bool_field(
+                fields["delete-after-trigger"], field_name="delete-after-trigger"
+            )
+            if err:
+                return None, err
+            assert delete_after_trigger is not None
+        if "trigger-exception" in fields:
+            trigger_exceptions = parse_movement_exceptions(fields["trigger-exception"])
+
     effects, err = parse_effects_from_fields(fields)
     if err:
         return None, err
@@ -300,6 +344,10 @@ def parse_object_action_fields(
         result=result,
         passive_result=passive,
         effects=effects,
+        kind=kind,  # type: ignore[arg-type]
+        halt_movement=halt_movement,
+        delete_after_trigger=delete_after_trigger,
+        trigger_exceptions=trigger_exceptions,
     )
     return {name: action}, None
 
@@ -398,6 +446,11 @@ def create_object_from_args(area: Area, arg: str) -> tuple[Optional[Object], str
             "movement-exception",
             "width",
             "height",
+            "hidden",
+            "kind",
+            "halt-movement",
+            "delete-after-trigger",
+            "trigger-exception",
         },
     )
     if err:
@@ -442,6 +495,9 @@ def create_object_from_args(area: Area, arg: str) -> tuple[Optional[Object], str
     movement_err = _apply_movement_fields(obj, fields, [])
     if movement_err:
         return None, movement_err
+    hidden_err = _apply_hidden_fields(obj, fields, [])
+    if hidden_err:
+        return None, hidden_err
     footprint_err = _validate_object_footprint_in_area(area, obj)
     if footprint_err:
         return None, footprint_err
@@ -468,7 +524,19 @@ def _edit_object_add_action(obj: Object, tokens: list[str]) -> str:
 
     action_name = tokens[2]
     fields, err = parse_field_tokens(
-        tokens[3:], {"range", "effect", "dest-area", "dest-at", "result", "passive"}
+        tokens[3:],
+        {
+            "range",
+            "effect",
+            "dest-area",
+            "dest-at",
+            "result",
+            "passive",
+            "kind",
+            "halt-movement",
+            "delete-after-trigger",
+            "trigger-exception",
+        },
     )
     if err:
         return err
@@ -521,7 +589,9 @@ def _apply_object_content_fields(
             area.clear_object_examination_history(object_id)
         changes.append("desc")
 
-    return _apply_movement_fields(obj, fields, changes)
+    return _apply_movement_fields(obj, fields, changes) or _apply_hidden_fields(
+        obj, fields, changes
+    )
 
 
 def _apply_object_location_fields(
@@ -614,14 +684,14 @@ def edit_object_for_session(session: Session, arg: str) -> str:
 
     fields, err = parse_field_tokens(
         tokens[1:],
-        {"name", "desc", "pdesc", "appearance", "pos", "area", "blocks-movement", "movement-exception", "width", "height"},
+        {"name", "desc", "pdesc", "appearance", "pos", "area", "blocks-movement", "movement-exception", "width", "height", "hidden"},
     )
     if err:
         return err
     if not fields:
         return (
             "At least one field to change is required "
-            "(name, pdesc, desc, appearance, area, pos, width, height, blocks-movement, or movement-exception)."
+            "(name, pdesc, desc, appearance, area, pos, width, height, blocks-movement, movement-exception, or hidden)."
         )
 
     changes: list[str] = []
@@ -685,7 +755,7 @@ def edit_object_from_args(area: Area, arg: str) -> str:
         if sub == "remove-action":
             return _edit_object_remove_action(obj, tokens)
 
-    fields, err = parse_field_tokens(tokens[1:], {"name", "desc", "pdesc", "appearance", "pos", "blocks-movement", "movement-exception", "width", "height"})
+    fields, err = parse_field_tokens(tokens[1:], {"name", "desc", "pdesc", "appearance", "pos", "blocks-movement", "movement-exception", "width", "height", "hidden"})
     if err:
         return err
     if not fields:

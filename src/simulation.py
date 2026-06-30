@@ -53,7 +53,12 @@ def _make_step(
 
 
 def execute_nav_phase(
-    agent: Agent, area: Area, turn: AgentCompoundTurn
+    agent: Agent,
+    area: Area,
+    turn: AgentCompoundTurn,
+    *,
+    session: Session | None = None,
+    trigger_fired: set[tuple[str, str, str]] | None = None,
 ) -> list[TurnStep]:
     """Run optional move from compound turn. Commits position changes."""
     if turn.action == "interact":
@@ -61,7 +66,13 @@ def execute_nav_phase(
     if not turn.move:
         return []
 
-    outcome = do_move(agent, area, turn.move)
+    outcome = do_move(
+        agent,
+        area,
+        turn.move,
+        session=session,
+        trigger_fired=trigger_fired,
+    )
     return [
         _make_step(
             "move",
@@ -79,6 +90,7 @@ def execute_action_phase(
     *,
     session: Session | None = None,
     source_area_id: str | None = None,
+    trigger_fired: set[tuple[str, str, str]] | None = None,
 ) -> list[TurnStep]:
     """Run optional look and turn action from compound turn."""
     steps: list[TurnStep] = []
@@ -113,6 +125,7 @@ def execute_action_phase(
             turn.verb or "",
             session=session,
             source_area_id=source_area_id,
+            trigger_fired=trigger_fired,
         )
         if phases.path_move is not None:
             steps.append(
@@ -245,10 +258,24 @@ def run_compound_turn(
     Pass ``nav_steps`` when navigation was already executed (e.g. debug step-nav).
     """
     if nav_steps is None:
-        nav_steps = execute_nav_phase(agent, area, turn)
+        trigger_fired: set[tuple[str, str, str]] = set()
+        nav_steps = execute_nav_phase(
+            agent,
+            area,
+            turn,
+            session=session,
+            trigger_fired=trigger_fired,
+        )
+    else:
+        trigger_fired = set()
 
     action_steps = execute_action_phase(
-        agent, area, turn, session=session, source_area_id=source_area_id
+        agent,
+        area,
+        turn,
+        session=session,
+        source_area_id=source_area_id,
+        trigger_fired=trigger_fired,
     )
 
     record = finalize_turn_record(turn, nav_steps, action_steps, turn_number)

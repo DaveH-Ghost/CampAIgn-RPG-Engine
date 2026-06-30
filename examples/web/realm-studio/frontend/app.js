@@ -160,10 +160,11 @@ function entityFootprintSize(entity, kind) {
 
 function createFootprintMarker(entity, kind, grid, isActive = false) {
   const marker = document.createElement("div");
-  marker.className = `footprint-marker footprint-marker-${kind}${isActive ? " footprint-marker-active" : ""}`;
+  const hiddenObject = kind === "object" && entity.hidden;
+  marker.className = `footprint-marker footprint-marker-${kind}${isActive ? " footprint-marker-active" : ""}${hiddenObject ? " footprint-marker-hidden" : ""}`;
   marker.dataset.kind = kind;
   marker.dataset.id = entity.id;
-  marker.title = `${entity.name} (${entity.id})`;
+  marker.title = `${entity.name} (${entity.id})${hiddenObject ? " — hidden" : ""}`;
 
   const { width, height } = entityFootprintSize(entity, kind);
   const [ax, ay] = entity.position;

@@ -31,12 +31,18 @@ def serialize_effect_spec(spec: EffectSpec) -> dict[str, Any]:
 
 
 def serialize_object_action(action: ObjectAction) -> dict[str, Any]:
-    return {
+    data: dict[str, Any] = {
         "range": action.range,
         "result": action.result,
         "passive_result": action.passive_result,
         "effects": [serialize_effect_spec(e) for e in action.effects],
+        "kind": action.kind,
     }
+    if action.kind == "trigger":
+        data["halt_movement"] = action.halt_movement
+        data["delete_after_trigger"] = action.delete_after_trigger
+        data["trigger_exceptions"] = list(action.trigger_exceptions)
+    return data
 
 
 def serialize_object(obj: Object, *, include_private: bool = False) -> dict[str, Any]:
@@ -55,6 +61,7 @@ def serialize_object(obj: Object, *, include_private: bool = False) -> dict[str,
         "movement_exceptions": list(obj.movement_exceptions),
         "width": obj.width,
         "height": obj.height,
+        "hidden": obj.hidden,
     }
     if include_private:
         data["passive_description"] = obj.passive_description

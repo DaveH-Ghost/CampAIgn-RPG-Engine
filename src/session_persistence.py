@@ -27,8 +27,8 @@ from src.lorebook.models import Lorebook
 from src.prompt_blocks import prompt_blocks_from_dicts
 from src.snapshot import serialize_area_block, serialize_object
 
-SNAPSHOT_VERSION = 2
-SUPPORTED_SNAPSHOT_VERSIONS = frozenset({1, 2})
+SNAPSHOT_VERSION = 3
+SUPPORTED_SNAPSHOT_VERSIONS = frozenset({1, 2, 3})
 
 __all__ = [
     "SNAPSHOT_VERSION",
@@ -82,6 +82,10 @@ def deserialize_object_action(name: str, data: dict[str, Any]) -> ObjectAction:
         result=data["result"],
         passive_result=data["passive_result"],
         effects=effects,
+        kind=data.get("kind", "interact"),
+        halt_movement=bool(data.get("halt_movement", False)),
+        delete_after_trigger=bool(data.get("delete_after_trigger", True)),
+        trigger_exceptions=list(data.get("trigger_exceptions", [])),
     )
 
 
@@ -103,6 +107,7 @@ def deserialize_object(data: dict[str, Any]) -> Object:
         movement_exceptions=list(data.get("movement_exceptions", [])),
         width=int(data.get("width", 1)),
         height=int(data.get("height", 1)),
+        hidden=bool(data.get("hidden", False)),
     )
 
 

@@ -66,6 +66,9 @@ class Object:
     height: int = 1
     """Footprint height in tiles (extends +y from anchor)."""
 
+    hidden: bool = False
+    """When True, hidden from agent passive vision and look (GM tooling still sees it)."""
+
 
 def object_footprint_tiles(obj: Object) -> list[tuple[int, int]]:
     """Return every grid tile occupied by *obj*."""

@@ -5,11 +5,14 @@
 import {
   buildCompoundTurnPayload,
   buildCreateAgent,
+  buildCreateHiddenTrigger,
   buildCreateObject,
   buildEditAgent,
   buildEditObject,
   getMemoryModules,
+  getState,
   memoryOptionFieldName,
+  parseCreatedObjectId,
   postActiveAgent,
   postActiveArea,
   postCommand,
@@ -196,6 +199,10 @@ function showEmptyTileMenu(x, y, tileX, tileY) {
       action: () => openCreateObjectModal(tileX, tileY),
     },
     {
+      label: "Create hidden trigger…",
+      action: () => openCreateHiddenTriggerModal(tileX, tileY),
+    },
+    {
       label: "Create agent here…",
       action: () => openCreateAgentModal(tileX, tileY),
     },
@@ -207,6 +214,10 @@ function showManageTileMenu(x, y, tileX, tileY, at) {
     {
       label: "Create object here…",
       action: () => openCreateObjectModal(tileX, tileY),
+    },
+    {
+      label: "Create hidden trigger…",
+      action: () => openCreateHiddenTriggerModal(tileX, tileY),
     },
     {
       label: "Create agent here…",
@@ -258,6 +269,15 @@ function showEntityMenu(x, y, kind, id) {
         action: () => openEditObjectModal(objectCtx.entity, objectCtx.areaId),
       },
       { label: "Manage actions…", action: () => openManageObjectActionsModal(entity) },
+      entity.hidden
+        ? {
+            label: "Reveal",
+            action: () => runCommand(`edit-object ${entity.id} hidden false`),
+          }
+        : {
+            label: "Hide",
+            action: () => runCommand(`edit-object ${entity.id} hidden true`),
+          },
       {
         label: "Delete",
         action: () => runDelete(`delete-object ${entity.id}`, entity.name),
@@ -460,6 +480,16 @@ function openModal(title, fields, onSubmit, { submitLabel = "Save" } = {}) {
   modalBackdrop.classList.remove("hidden");
 }
 
+function objectHiddenField(hidden = false) {
+  return {
+    name: "hidden",
+    label: "Hidden from agent vision",
+    type: "checkbox",
+    value: !!hidden,
+    advanced: true,
+  };
+}
+
 function objectMovementFields({ blocksMovement, movementExceptions }) {
   const blocking = blocksMovement !== false;
   return [
@@ -495,6 +525,7 @@ function openCreateObjectModal(x, y) {
     { name: "width", label: "Width (tiles)", value: "1", type: "number", required: true },
     { name: "height", label: "Height (tiles)", value: "1", type: "number", required: true },
     ...objectMovementFields({ blocksMovement: true, movementExceptions: "" }),
+    objectHiddenField(false),
   ], async (data) => {
     const line = buildCreateObject({
       name: data.name,
@@ -507,12 +538,116 @@ function openCreateObjectModal(x, y) {
       height: data.height,
       blocksMovement: data.blocksMovement,
       movementExceptions: data.movementExceptions,
+      hidden: data.hidden,
     });
     const result = await postCommand(line);
     if (!result.ok) throw new Error(result.message);
     showToast(result.message, false);
     await onStateChanged();
   });
+}
+
+function openCreateHiddenTriggerModal(x, y) {
+  openModal(
+    "Create hidden trigger",
+    [
+      { name: "name", label: "Object name", value: "Trap", required: true },
+      {
+        name: "actionName",
+        label: "Trigger action name",
+        value: "trip",
+        required: true,
+      },
+      {
+        name: "areaEvent",
+        label: "Area event text (passive)",
+        value: "{actor} steps on the trap.",
+        type: "textarea",
+        required: true,
+      },
+      { name: "x", label: "X", value: String(x), type: "number", required: true },
+      { name: "y", label: "Y", value: String(y), type: "number", required: true },
+      {
+        name: "width",
+        label: "Width (tiles)",
+        value: "1",
+        type: "number",
+        required: true,
+      },
+      {
+        name: "height",
+        label: "Height (tiles)",
+        value: "1",
+        type: "number",
+        required: true,
+      },
+      {
+        name: "range",
+        label: "Range (Chebyshev tiles beyond footprint)",
+        value: "0",
+        type: "number",
+        required: true,
+      },
+      {
+        name: "haltMovement",
+        label: "Halt movement on trigger",
+        type: "checkbox",
+        value: true,
+      },
+      {
+        name: "deleteAfterTrigger",
+        label: "Delete object after trigger",
+        type: "checkbox",
+        value: true,
+      },
+      {
+        name: "triggerExceptions",
+        label: "Trigger exceptions (agent ids, comma-separated)",
+        value: "",
+        placeholder: "agent_01",
+        advanced: true,
+      },
+    ],
+    async (data) => {
+      const { createLine, actionLine } = buildCreateHiddenTrigger({
+        name: data.name,
+        x: data.x,
+        y: data.y,
+        width: data.width,
+        height: data.height,
+        areaEvent: data.areaEvent,
+        actionName: data.actionName,
+        range: data.range,
+        haltMovement: data.haltMovement,
+        deleteAfterTrigger: data.deleteAfterTrigger,
+        triggerExceptions: data.triggerExceptions,
+      });
+      const createResult = await postCommand(createLine);
+      if (!createResult.ok) throw new Error(createResult.message);
+
+      let objectId = parseCreatedObjectId(createResult.message);
+      if (!objectId) {
+        const snap = normalizeSnapshot(createResult.snapshot ?? (await getState()));
+        const objects = Object.values(snap?.areas || {}).flatMap((block) => block.objects || []);
+        const created = objects.find(
+          (obj) =>
+            obj.name === data.name &&
+            obj.position?.[0] === Number(data.x) &&
+            obj.position?.[1] === Number(data.y),
+        );
+        objectId = created?.id ?? null;
+      }
+      if (!objectId) {
+        throw new Error("Created object not found in snapshot.");
+      }
+      const addLine = actionLine.replace("__OBJECT_ID__", objectId);
+      const addResult = await postCommand(addLine);
+      if (!addResult.ok) throw new Error(addResult.message);
+      showToast(addResult.message, false);
+      await onStateChanged(addResult.snapshot ?? createResult.snapshot);
+    },
+    { submitLabel: "Create" },
+  );
 }
 
 function openCreateAgentModal(x, y) {
@@ -698,6 +833,7 @@ function openEditObjectModal(entity, areaId) {
       blocksMovement: entity.blocks_movement !== false,
       movementExceptions: (entity.movement_exceptions || []).join(", "),
     }),
+    objectHiddenField(!!entity.hidden),
   ], async (data) => {
     const line = buildEditObject({
       id: entity.id,
@@ -713,6 +849,7 @@ function openEditObjectModal(entity, areaId) {
       height: data.height,
       blocksMovement: data.blocksMovement,
       movementExceptions: data.blocksMovement ? data.movementExceptions : "",
+      hidden: data.hidden,
     });
     const result = await postCommand(line);
     if (!result.ok) throw new Error(result.message);

@@ -277,6 +277,17 @@ button:hover {
   border-radius: 4px;
 }
 
+.footprint-marker-hidden {
+  background: rgba(232, 224, 244, 0.12);
+  border: 1px dashed rgba(90, 74, 120, 0.55);
+  opacity: 0.72;
+}
+
+.footprint-marker-hidden .footprint-marker-inner {
+  opacity: 0.85;
+  font-style: italic;
+}
+
 .footprint-marker-agent {
   z-index: 2;
   background: rgba(212, 237, 218, 0.4);

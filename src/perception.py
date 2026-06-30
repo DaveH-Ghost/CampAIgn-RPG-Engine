@@ -114,6 +114,8 @@ def build_passive_vision(
     memory = agent.memory
 
     for obj in area.get_objects():
+        if obj.hidden:
+            continue
         desc = format_object_vision_desc(obj, memory)
         vision_position = nearest_footprint_tile_to(agent.position, obj)
         footprint_size = format_object_footprint_size(obj)
@@ -253,6 +255,8 @@ def get_object_interactions_reachable_after_move(
     """
     results: list[tuple[str, ObjectAction]] = []
     for action_name, action in sorted(obj.actions.items()):
+        if action.kind == "trigger":
+            continue
         if chebyshev_distance_to_object(agent.position, obj) <= action.range:
             results.append((action_name, action))
             continue
@@ -316,14 +320,14 @@ def get_visible_look_target_ids(agent: Agent, area: Area) -> list[str]:
 
     Used to validate look targets, including entries marked with [?].
     """
-    ids = [obj.id for obj in area.get_objects()]
+    ids = [obj.id for obj in area.get_objects() if not obj.hidden]
     ids.extend(other.id for other in area.agents if other.id != agent.id)
     return ids
 
 
 def get_visible_object_ids(agent: Agent, area: Area) -> list[str]:
     """Return object IDs visible in passive vision."""
-    return [obj.id for obj in area.get_objects()]
+    return [obj.id for obj in area.get_objects() if not obj.hidden]
 
 
 def is_object_in_passive_vision(agent: Agent, area: Area, object_id: str) -> bool:
@@ -346,6 +350,8 @@ def get_available_interactions(
         if obj.id not in visible:
             continue
         for action_name, action in obj.actions.items():
+            if action.kind == "trigger":
+                continue
             if chebyshev_distance_to_object(agent.position, obj) <= action.range:
                 results.append((action_name, obj.id, obj, action))
     results.sort(key=lambda item: (item[2].name.lower(), item[0], item[1]))

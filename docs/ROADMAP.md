@@ -431,10 +431,11 @@ See [v0.6.0-changelog.md](v0.6.0-changelog.md).
 
 - **`hidden`** on objects — excluded from passive vision and look lists; still in world state, snapshots, GM tooling
 - **`reveal` / `hide`** — `edit-object` (and realm-studio) toggles; optional handler-driven reveal on look/interact (hooks align with 0.6.1)
-- New action kind **`trigger`** — engine-fired (not LLM `interact`); fires when an agent **enters or passes through** trigger range (Chebyshev, same as action range)
+- New action kind **`trigger`** — engine-fired (not LLM `interact`); fires when an agent **enters or passes through** trigger range (Chebyshev to **nearest footprint tile**, same as interact range)
+- **Multi-tile zones** — hidden objects with `width` / `height` (tripwires, doorway cutscene triggers); does not block movement when `blocks_movement` is false
 - Evaluate triggers on **each step** along resolved paths (move, interact-path), not only endpoint; define dedupe (e.g. once per turn per trigger)
-- Story outcomes may call `Session.emit_area_event` from handlers
-- realm-studio: GM visibility for hidden objects (ghost/list) so designers can place traps
+- Story outcomes via **`Session.emit_area_event`** from `passive_result` (handler/effect hooks deferred to **0.6.1**)
+- realm-studio: GM visibility for hidden objects (ghost/list) so designers can place traps and zones
 
 ### Cross-cutting (0.6.0)
 
@@ -457,13 +458,15 @@ See [v0.6.0-changelog.md](v0.6.0-changelog.md).
 - **`ObjectAction`** — `result` / `passive` templates + **`handler_id`** + opaque **`params`** (handler optional = flavor-only interact)
 - **`InteractionHandler` protocol** — `(session, agent, obj, action) -> str | None` (error message or success)
 - **`register_interaction_handler(id, handler)`** — process-wide registry (parallel to memory modules)
-- Triggers call the same handler surface as `interact` actions
+- **Triggers and interacts share one handler surface** — same `handler_id` + `params` on `ObjectAction`
+- **Trigger effects** — world-change behavior on trigger fire (today: area event text + optional `delete_after_trigger` only; full handler parity in 0.6.1, not the legacy `effect` CLI)
 - Snapshots store handler id + params; validate on import that handlers are registered
 
 ### realm-studio (reference, not a library)
 
 - Register **reference handlers** at startup: `delete_self`, `random_move_self`, `move_area` (demo ball kick, doors)
-- **Manage actions…** UI maps to handler id + params — not engine-specific effect names
+- **Manage actions…** UI maps to handler id + params — for **interact** and **trigger** kinds (not engine-specific effect names)
+- **Trigger actions** — handler picker + params (replacing interact-only effect UI); cutscenes, teleports, item spawns via registered handlers
 - Other apps copy this pattern; they do **not** import behavior from realm-studio
 
 ### Migration

@@ -52,9 +52,14 @@ from src.area import Area
 
 
 
-
-
-def move(agent: Agent, area: Area, target: str) -> ActionOutcome:
+def move(
+    agent: Agent,
+    area: Area,
+    target: str,
+    *,
+    session=None,
+    trigger_fired=None,
+) -> ActionOutcome:
 
     """Move the agent toward a coordinate or entity-id target tile."""
 
@@ -172,7 +177,23 @@ def move(agent: Agent, area: Area, target: str) -> ActionOutcome:
 
             )
 
-        agent.position = standable_goal
+        path = find_path(agent.position, standable_goal, area, agent.id)
+        if session is not None and trigger_fired is not None and len(path) > 1:
+            from src.triggers import advance_agent_along_path
+
+            advance_agent_along_path(
+                agent,
+                area,
+                path,
+                session=session,
+                trigger_fired=trigger_fired,
+            )
+        else:
+            agent.position = standable_goal
+            if session is not None and trigger_fired is not None:
+                from src.triggers import evaluate_triggers_at_position
+
+                evaluate_triggers_at_position(session, agent, area, trigger_fired)
 
         return ActionOutcome(
 
@@ -226,31 +247,34 @@ def move(agent: Agent, area: Area, target: str) -> ActionOutcome:
 
 
 
-    final_pos, reached, _path = walk_with_pathfinding(
+    final_pos, reached, path = walk_with_pathfinding(
 
         agent.position, standable_goal, agent.move_speed, area, agent.id
 
     )
 
-    if not area.is_valid_position(final_pos):
+    if session is not None and trigger_fired is not None:
+        from src.triggers import advance_agent_along_path
 
-        return ActionOutcome(
-
-            result=(
-
-                "This action wasn't recognized, ERR:INVALID_COORDINATES, "
-
-                f"{format_coordinate(*final_pos)} is outside the room."
-
-            ),
-
+        final_pos, halted = advance_agent_along_path(
+            agent,
+            area,
+            path,
+            session=session,
+            trigger_fired=trigger_fired,
         )
+        if halted:
+            reached = False
+    else:
+        agent.position = final_pos
 
-
-
-    agent.position = final_pos
-
-
+    if not area.is_valid_position(final_pos):
+        return ActionOutcome(
+            result=(
+                "This action wasn't recognized, ERR:INVALID_COORDINATES, "
+                f"{format_coordinate(*final_pos)} is outside the room."
+            ),
+        )
 
     if reached:
 

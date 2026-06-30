@@ -508,7 +508,13 @@ def test_post_command_create_object(client):
             "line": 'create-object name "Test Crate" pdesc "A crate." desc "Wooden crate." at 2,2',
         },
     )
-    assert response.json()["ok"] is True
+    data = response.json()
+    assert data["ok"] is True
+    assert "snapshot" in data
+    assert any(
+        o["name"] == "Test Crate"
+        for o in data["snapshot"]["areas"]["room"]["objects"]
+    )
 
     state = client.get("/api/state").json()
     names = {o["name"] for o in _room(state)["objects"]}
@@ -571,6 +577,58 @@ def test_post_command_edit_object_footprint(client):
     obj = next(o for o in _room(state)["objects"] if o["id"] == obj_id)
     assert obj["width"] == 3
     assert obj["height"] == 1
+
+
+def test_post_command_create_hidden_object(client):
+    response = client.post(
+        "/api/command",
+        json={
+            "line": (
+                'create-object name "Trap" pdesc "Hidden." at 2,2 '
+                "hidden true blocks-movement false"
+            ),
+        },
+    )
+    assert response.json()["ok"] is True
+
+    state = client.get("/api/state").json()
+    obj = next(o for o in _room(state)["objects"] if o["name"] == "Trap")
+    assert obj["hidden"] is True
+    assert obj["blocks_movement"] is False
+
+
+def test_post_command_add_trigger_action(client):
+    create = client.post(
+        "/api/command",
+        json={
+            "line": (
+                'create-object name "Plate" pdesc "A plate." at 1,1 '
+                "hidden true blocks-movement false"
+            ),
+        },
+    )
+    assert create.json()["ok"] is True
+    state = client.get("/api/state").json()
+    obj_id = next(o["id"] for o in _room(state)["objects"] if o["name"] == "Plate")
+
+    add = client.post(
+        "/api/command",
+        json={
+            "line": (
+                f"edit-object {obj_id} add-action trip range 0 kind trigger "
+                "halt-movement true delete-after-trigger true "
+                'result "(trigger)" passive "{actor} steps on the plate."'
+            ),
+        },
+    )
+    assert add.json()["ok"] is True
+
+    state = client.get("/api/state").json()
+    obj = next(o for o in _room(state)["objects"] if o["id"] == obj_id)
+    detail = obj["actions_detail"]["trip"]
+    assert detail["kind"] == "trigger"
+    assert detail["halt_movement"] is True
+    assert detail["delete_after_trigger"] is True
 
 
 def test_post_command_edit_object_movement_exceptions(client):

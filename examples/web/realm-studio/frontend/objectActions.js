@@ -61,6 +61,19 @@ function formatEffectSummary(action) {
     .join(", ");
 }
 
+function formatActionSummary(action) {
+  const kind = action?.kind || "interact";
+  const kindLabel = kind === "trigger" ? "trigger" : "interact";
+  let suffix = formatEffectSummary(action);
+  if (kind === "trigger") {
+    const flags = [];
+    if (action?.halt_movement) flags.push("halt");
+    if (action?.delete_after_trigger === false) flags.push("reusable");
+    if (flags.length) suffix += ` · ${flags.join(", ")}`;
+  }
+  return `${kindLabel} · ${suffix}`;
+}
+
 function actionNames() {
   const detail = manageObject?.actions_detail || {};
   if (manageObject?.actions?.length) {
@@ -116,7 +129,7 @@ function showManageModal() {
 
       const label = document.createElement("span");
       label.className = "action-list-label";
-      label.textContent = `${name} (range ${action.range ?? "?"}) · ${formatEffectSummary(action)}`;
+      label.textContent = `${name} (range ${action.range ?? "?"}) · ${formatActionSummary(action)}`;
 
       const buttons = document.createElement("div");
       buttons.className = "action-list-buttons";
@@ -195,11 +208,33 @@ function openActionForm(existingName, existingAction) {
   const areas = listAreaIds();
   const defaultDestArea = parsed.destArea || areas[0] || "room";
 
+  const actionKind = existingAction?.kind || "interact";
+
   modalTitle.textContent = isEdit
     ? `Edit action — ${existingName}`
     : `Add action — ${manageObject.name}`;
   modalForm.innerHTML = "";
   modalError.textContent = "";
+
+  const kindWrap = document.createElement("label");
+  kindWrap.className = "modal-field";
+  const kindLabel = document.createElement("span");
+  kindLabel.textContent = "Kind";
+  kindWrap.appendChild(kindLabel);
+  const kindSelect = document.createElement("select");
+  kindSelect.name = "kind";
+  for (const choice of [
+    { id: "interact", label: "interact — LLM compound-turn action" },
+    { id: "trigger", label: "trigger — fires on path step (area event)" },
+  ]) {
+    const opt = document.createElement("option");
+    opt.value = choice.id;
+    opt.textContent = choice.label;
+    if (choice.id === actionKind) opt.selected = true;
+    kindSelect.appendChild(opt);
+  }
+  kindWrap.appendChild(kindSelect);
+  modalForm.appendChild(kindWrap);
 
   const fields = [
     {
@@ -211,22 +246,27 @@ function openActionForm(existingName, existingAction) {
     {
       name: "range",
       label: "Range (Chebyshev tiles)",
-      value: String(existingAction?.range ?? 1),
+      value: String(existingAction?.range ?? (actionKind === "trigger" ? 0 : 1)),
       type: "number",
       required: true,
     },
     {
       name: "result",
       label: "Result (agent sees)",
-      value: existingAction?.result ?? "You interact with it.",
+      value: existingAction?.result ?? (actionKind === "trigger" ? "(trigger)" : "You interact with it."),
       type: "textarea",
       required: true,
       templateHelp: true,
+      interactOnly: true,
     },
     {
       name: "passive",
-      label: "Passive result (witnesses see)",
-      value: existingAction?.passive_result ?? "{actor} interacts with it.",
+      label: "Passive / area event text",
+      value:
+        existingAction?.passive_result ??
+        (actionKind === "trigger"
+          ? "{actor} triggers it."
+          : "{actor} interacts with it."),
       type: "textarea",
       required: true,
       templateHelp: true,
@@ -236,6 +276,11 @@ function openActionForm(existingName, existingAction) {
   for (const field of fields) {
     const wrap = document.createElement("label");
     wrap.className = "modal-field";
+    if (field.interactOnly) {
+      wrap.classList.add("modal-field-conditional");
+      wrap.dataset.showWhenField = "kind";
+      wrap.dataset.showWhenValues = "interact";
+    }
     const label = document.createElement("span");
     label.className = "modal-field-label-row";
     label.textContent = field.label;
@@ -258,8 +303,51 @@ function openActionForm(existingName, existingAction) {
     modalForm.appendChild(wrap);
   }
 
+  const triggerFields = document.createElement("div");
+  triggerFields.className = "action-trigger-fields";
+
+  const haltWrap = document.createElement("label");
+  haltWrap.className = "modal-field";
+  const haltLabel = document.createElement("span");
+  haltLabel.textContent = "Halt movement on trigger";
+  haltWrap.appendChild(haltLabel);
+  const haltInput = document.createElement("input");
+  haltInput.type = "checkbox";
+  haltInput.name = "haltMovement";
+  haltInput.checked = existingAction?.halt_movement ?? true;
+  haltWrap.appendChild(haltInput);
+  triggerFields.appendChild(haltWrap);
+
+  const deleteWrap = document.createElement("label");
+  deleteWrap.className = "modal-field";
+  const deleteLabel = document.createElement("span");
+  deleteLabel.textContent = "Delete object after trigger";
+  deleteWrap.appendChild(deleteLabel);
+  const deleteInput = document.createElement("input");
+  deleteInput.type = "checkbox";
+  deleteInput.name = "deleteAfterTrigger";
+  deleteInput.checked = existingAction?.delete_after_trigger !== false;
+  deleteWrap.appendChild(deleteInput);
+  triggerFields.appendChild(deleteWrap);
+
+  const exceptionsWrap = document.createElement("label");
+  exceptionsWrap.className = "modal-field";
+  const exceptionsLabel = document.createElement("span");
+  exceptionsLabel.textContent = "Trigger exceptions (agent ids)";
+  exceptionsWrap.appendChild(exceptionsLabel);
+  const exceptionsInput = document.createElement("input");
+  exceptionsInput.type = "text";
+  exceptionsInput.name = "triggerExceptions";
+  exceptionsInput.value = (existingAction?.trigger_exceptions || []).join(", ");
+  exceptionsWrap.appendChild(exceptionsInput);
+  triggerFields.appendChild(exceptionsWrap);
+
+  modalForm.appendChild(triggerFields);
+
   const effectWrap = document.createElement("label");
-  effectWrap.className = "modal-field";
+  effectWrap.className = "modal-field modal-field-conditional";
+  effectWrap.dataset.showWhenField = "kind";
+  effectWrap.dataset.showWhenValues = "interact";
   const effectLabel = document.createElement("span");
   effectLabel.textContent = "Effect";
   effectWrap.appendChild(effectLabel);
@@ -276,7 +364,9 @@ function openActionForm(existingName, existingAction) {
   modalForm.appendChild(effectWrap);
 
   const moveFields = document.createElement("div");
-  moveFields.className = "action-move-fields";
+  moveFields.className = "action-move-fields modal-field-conditional";
+  moveFields.dataset.showWhenField = "kind";
+  moveFields.dataset.showWhenValues = "interact";
 
   const destAreaWrap = document.createElement("label");
   destAreaWrap.className = "modal-field";
@@ -328,8 +418,21 @@ function openActionForm(existingName, existingAction) {
   const toggleMoveFields = () => {
     moveFields.classList.toggle("hidden", effectSelect.value !== "move_area");
   };
-  effectSelect.addEventListener("change", toggleMoveFields);
-  toggleMoveFields();
+  const syncKindFields = () => {
+    const isTrigger = kindSelect.value === "trigger";
+    triggerFields.classList.toggle("hidden", !isTrigger);
+    for (const wrap of modalForm.querySelectorAll(".modal-field-conditional")) {
+      const allowed = (wrap.dataset.showWhenValues || "")
+        .split(",")
+        .map((v) => v.trim());
+      const current = wrap.dataset.showWhenField === "kind" ? kindSelect.value : effectSelect.value;
+      wrap.hidden = !allowed.includes(String(current));
+    }
+    toggleMoveFields();
+  };
+  effectSelect.addEventListener("change", syncKindFields);
+  kindSelect.addEventListener("change", syncKindFields);
+  syncKindFields();
 
   const actions = document.createElement("div");
   actions.className = "modal-actions";
@@ -353,12 +456,16 @@ function openActionForm(existingName, existingAction) {
     const data = {
       name: modalForm.elements.name.value.trim(),
       range: modalForm.elements.range.value.trim(),
-      result: modalForm.elements.result.value.trim(),
+      kind: modalForm.elements.kind.value,
+      result: modalForm.elements.result?.value?.trim() || "(trigger)",
       passive: modalForm.elements.passive.value.trim(),
-      effect: modalForm.elements.effect.value,
-      destArea: modalForm.elements.destArea.value,
-      destX: modalForm.elements.destX.value.trim(),
-      destY: modalForm.elements.destY.value.trim(),
+      effect: modalForm.elements.effect?.value || "none",
+      destArea: modalForm.elements.destArea?.value,
+      destX: modalForm.elements.destX?.value?.trim(),
+      destY: modalForm.elements.destY?.value?.trim(),
+      haltMovement: modalForm.elements.haltMovement?.checked ?? true,
+      deleteAfterTrigger: modalForm.elements.deleteAfterTrigger?.checked ?? true,
+      triggerExceptions: modalForm.elements.triggerExceptions?.value?.trim() ?? "",
     };
     if (!data.name) {
       modalError.textContent = "Action name is required.";
@@ -374,6 +481,10 @@ function openActionForm(existingName, existingAction) {
           range: data.range,
           result: data.result,
           passive: data.passive,
+          kind: data.kind,
+          haltMovement: data.kind === "trigger" ? data.haltMovement : undefined,
+          deleteAfterTrigger: data.kind === "trigger" ? data.deleteAfterTrigger : undefined,
+          triggerExceptions: data.kind === "trigger" ? data.triggerExceptions : undefined,
           effect: data.effect,
           destArea: data.destArea,
           destX: data.destX,

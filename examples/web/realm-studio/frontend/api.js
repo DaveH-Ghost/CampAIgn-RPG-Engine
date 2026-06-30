@@ -248,6 +248,7 @@ export function buildCreateObject({
   height = 1,
   blocksMovement = true,
   movementExceptions = "",
+  hidden = false,
 }) {
   let line =
     `create-object name ${cliQuote(name)} pdesc ${cliQuote(pdesc)} ` +
@@ -263,11 +264,20 @@ export function buildCreateObject({
   if (blocksMovement === false) {
     line += " blocks-movement false";
   }
+  if (hidden) {
+    line += " hidden true";
+  }
   const exceptions = String(movementExceptions ?? "").trim();
   if (blocksMovement !== false && exceptions) {
     line += ` movement-exception ${cliQuote(exceptions)}`;
   }
   return line;
+}
+
+/** Extract object id from a successful create-object CLI response. */
+export function parseCreatedObjectId(message) {
+  const match = /^Created object (obj_\S+)/.exec(String(message ?? "").trim());
+  return match ? match[1] : null;
 }
 
 export async function getMemoryModules() {
@@ -368,6 +378,7 @@ export function buildEditObject({
   height,
   blocksMovement,
   movementExceptions,
+  hidden,
 }) {
   const parts = [`edit-object ${id}`];
   if (name) parts.push(`name ${cliQuote(name)}`);
@@ -380,6 +391,9 @@ export function buildEditObject({
   if (blocksMovement !== undefined) {
     const exceptions = String(movementExceptions ?? "").trim();
     parts.push(`movement-exception ${cliQuote(exceptions)}`);
+  }
+  if (hidden !== undefined) {
+    parts.push(`hidden ${hidden ? "true" : "false"}`);
   }
   const targetArea = String(areaId ?? "").trim();
   const originArea = String(sourceAreaId ?? "").trim();
@@ -463,8 +477,27 @@ export function buildAddObjectAction(objectId, {
   destArea,
   destX,
   destY,
+  kind = "interact",
+  haltMovement,
+  deleteAfterTrigger,
+  triggerExceptions,
 }) {
   const parts = [`edit-object ${objectId} add-action ${name} range ${range}`];
+  if (kind && kind !== "interact") {
+    parts.push(`kind ${kind}`);
+  }
+  if (kind === "trigger") {
+    if (haltMovement !== undefined) {
+      parts.push(`halt-movement ${haltMovement ? "true" : "false"}`);
+    }
+    if (deleteAfterTrigger !== undefined) {
+      parts.push(`delete-after-trigger ${deleteAfterTrigger ? "true" : "false"}`);
+    }
+    const exceptions = String(triggerExceptions ?? "").trim();
+    if (exceptions) {
+      parts.push(`trigger-exception ${cliQuote(exceptions)}`);
+    }
+  }
   if (effect && effect !== "none") {
     parts.push(`effect ${effect}`);
     if (effect === "move_area") {
@@ -473,6 +506,45 @@ export function buildAddObjectAction(objectId, {
   }
   parts.push(`result ${cliQuote(result)}`, `passive ${cliQuote(passive)}`);
   return parts.join(" ");
+}
+
+/** CLI lines to create a hidden object plus a trigger action. */
+export function buildCreateHiddenTrigger({
+  name,
+  x,
+  y,
+  width = 1,
+  height = 1,
+  areaEvent,
+  actionName = "trip",
+  range = 0,
+  haltMovement = true,
+  deleteAfterTrigger = true,
+  triggerExceptions = "",
+}) {
+  const createLine = buildCreateObject({
+    name,
+    pdesc: "Hidden trigger.",
+    desc: "A hidden floor trigger for testing.",
+    x,
+    y,
+    width,
+    height,
+    blocksMovement: false,
+    hidden: true,
+  });
+  const actionLine = buildAddObjectAction("__OBJECT_ID__", {
+    name: actionName,
+    range,
+    result: "(trigger)",
+    passive: areaEvent,
+    kind: "trigger",
+    haltMovement,
+    deleteAfterTrigger,
+    triggerExceptions,
+    effect: "none",
+  });
+  return { createLine, actionLine };
 }
 
 export function buildRemoveObjectAction(objectId, actionName) {

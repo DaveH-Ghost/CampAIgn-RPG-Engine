@@ -232,6 +232,12 @@ def _path_agent_for_interact(
 
     action: ObjectAction,
 
+    *,
+
+    session: Session | None = None,
+
+    trigger_fired=None,
+
 ) -> tuple[tuple[int, int] | None, ActionOutcome | None]:
 
     """
@@ -272,7 +278,23 @@ def _path_agent_for_interact(
 
             return goal, _too_far_message(obj, action)
 
-        agent.position = goal
+        path = find_path(agent.position, goal, area, agent.id)
+        if session is not None and trigger_fired is not None and len(path) > 1:
+            from src.triggers import advance_agent_along_path
+
+            advance_agent_along_path(
+                agent,
+                area,
+                path,
+                session=session,
+                trigger_fired=trigger_fired,
+            )
+        else:
+            agent.position = goal
+            if session is not None and trigger_fired is not None:
+                from src.triggers import evaluate_triggers_at_position
+
+                evaluate_triggers_at_position(session, agent, area, trigger_fired)
 
         if _in_range(agent, obj, action):
 
@@ -282,7 +304,7 @@ def _path_agent_for_interact(
 
 
 
-    final_pos, _reached, _path = walk_with_pathfinding(
+    final_pos, _reached, path = walk_with_pathfinding(
 
         agent.position,
 
@@ -296,7 +318,18 @@ def _path_agent_for_interact(
 
     )
 
-    agent.position = final_pos
+    if session is not None and trigger_fired is not None:
+        from src.triggers import advance_agent_along_path
+
+        final_pos, _halted = advance_agent_along_path(
+            agent,
+            area,
+            path,
+            session=session,
+            trigger_fired=trigger_fired,
+        )
+    else:
+        agent.position = final_pos
 
     if _in_range(agent, obj, action):
 
@@ -424,6 +457,8 @@ def interact_phases(
 
     source_area_id: str | None = None,
 
+    trigger_fired=None,
+
 ) -> InteractPhaseResult:
 
     """Run interact with separate path-move and action outcomes for compound turns."""
@@ -464,6 +499,26 @@ def interact_phases(
 
 
 
+    if action.kind == "trigger":
+
+        return InteractPhaseResult(
+
+            path_move=None,
+
+            outcome=ActionOutcome(
+
+                result=(
+
+                    f"'{action_name}' is a trigger, not an interact action on {obj.name}."
+
+                ),
+
+            ),
+
+        )
+
+
+
     if not is_object_in_passive_vision(agent, area, target_id):
 
         return InteractPhaseResult(
@@ -482,7 +537,14 @@ def interact_phases(
 
     start_pos = agent.position
 
-    standable_goal, path_err = _path_agent_for_interact(agent, area, obj, action)
+    standable_goal, path_err = _path_agent_for_interact(
+        agent,
+        area,
+        obj,
+        action,
+        session=session,
+        trigger_fired=trigger_fired,
+    )
 
     path_move = _build_interact_path_move_outcome(
 

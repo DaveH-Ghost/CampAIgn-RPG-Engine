@@ -127,7 +127,12 @@ def create_app() -> FastAPI:
             return dispatch_area_cli_command(session, cmd, arg)
 
         result = session.run_command(line)
-        return {"ok": result.ok, "message": result.message}
+        payload: dict[str, object] = {"ok": result.ok, "message": result.message}
+        if result.ok:
+            payload["snapshot"] = normalize_state_snapshot(
+                session.snapshot(include_private=True)
+            )
+        return payload
 
     @app.post("/api/create-area")
     def post_create_area(body: CreateAreaRequest) -> dict[str, object]:

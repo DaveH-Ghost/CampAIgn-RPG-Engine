@@ -366,7 +366,13 @@ class ManualStepper(cmd.Cmd):
             move=arg.strip(),
             action="none",
         )
-        for step in execute_nav_phase(self.agent, self.session.get_area_for_agent(self.agent), nav):
+        for step in execute_nav_phase(
+            self.agent,
+            self.session.get_area_for_agent(self.agent),
+            nav,
+            session=self.session,
+            trigger_fired=set(),
+        ):
             print(step.result)
 
     def do_step_action(self, arg):
