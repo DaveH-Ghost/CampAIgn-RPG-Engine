@@ -108,6 +108,7 @@ def deserialize_object(data: dict[str, Any]) -> Object:
         width=int(data.get("width", 1)),
         height=int(data.get("height", 1)),
         hidden=bool(data.get("hidden", False)),
+        private_data=data.get("private_data", ""),
     )
 
 
@@ -148,6 +149,7 @@ def serialize_agent_for_save(agent: Agent, *, area_id: str) -> dict[str, Any]:
         "blocks_movement": agent.blocks_movement,
         "movement_exceptions": list(agent.movement_exceptions),
         "is_player": agent.is_player,
+        "private_data": agent.private_data,
         "area_id": area_id,
         "memory": {
             "looked_at": sorted(agent.memory.looked_at),
@@ -184,6 +186,7 @@ def deserialize_agent(data: dict[str, Any]) -> Agent:
         blocks_movement=bool(data.get("blocks_movement", False)),
         movement_exceptions=list(data.get("movement_exceptions", [])),
         is_player=bool(data.get("is_player", False)),
+        private_data=data.get("private_data", ""),
     )
 
 

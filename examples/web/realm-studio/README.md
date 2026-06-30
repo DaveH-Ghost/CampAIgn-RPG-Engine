@@ -4,7 +4,7 @@ Example web app for [Realm-Fabric](https://github.com/) — wraps the engine `Se
 
 **Location:** `examples/web/realm-studio` in the Realm-Fabric repo.
 
-**Status:** **V0.5.0** — lorebooks tab, optional `lorebook` prompt block, ST JSON import.
+**Status:** **V0.6.0** — grid simulation UI: footprints, blocking, hidden triggers, player agents, grouped entity modals.
 
 ## Quick start
 
@@ -31,8 +31,19 @@ Use `--no-browser` to skip opening the browser.
 
 - Python ≥3.11
 - [uv](https://docs.astral.sh/uv/)
-- Realm-Fabric engine at repo root (path dependency on `realm-fabric`)
+- Realm-Fabric engine at repo root (path dependency on `realm-fabric` **`0.6.0`**)
 - **OpenRouter API key** for LLM turns (area edits and object actions work without it)
+
+## Grid simulation (V0.6.0)
+
+- **Footprint overlay** — multi-tile objects and agents on `#grid-overlay`
+- **Blocking** — create/edit object: Simulation group → blocks movement + exceptions
+- **Hidden objects** — ghost markers; **Hide** / **Reveal** in context menu
+- **Create hidden trigger…** — hidden object + `trigger` action in one flow (width/height for tripwires / room zones)
+- **Manage actions…** — `interact` vs `trigger` kinds
+- **Player agents** — manual compound-turn form instead of LLM on **Run turn ▶**
+- **Entity modals** — collapsible groups (Basic, Descriptions, Placement, Simulation, Advanced)
+- **Private data** (Advanced) — app-owned text via API; not used by studio simulation or prompts
 
 ## Lorebooks (V0.5.0)
 
@@ -44,7 +55,7 @@ To inject lore into prompts:
 2. On **Main**, open **Prompt layout** → add a **Dynamic slot** → choose **lorebook** → pick which book.
 3. Save layout. Matched entries appear as `World info:` in the prompt (constants always; others when keywords match).
 
-Lorebooks are saved in session JSON (`snapshot_version: 2`).
+Lorebooks are saved in session JSON. New saves from **0.6.0** use **`snapshot_version: 3`** (v1–v2 import still works).
 
 ## Settings (V0.4.6)
 
@@ -57,9 +68,9 @@ Create-agent memory dropdown lists **only loaded modules** (three built-ins alwa
 
 ## UI
 
-- **Grid** — pannable map for the **active area**; token images from `appearance`; active agent ★
+- **Grid** — pannable map for the **active area**; token images from `appearance`; active agent ★; ghost styling for hidden objects
 - **Header** — save/load session, **settings gear**, area toolbar, **Run turn ▶**
-- **Right-click** — create/edit/delete; **Manage actions…** on objects
+- **Right-click** — create/edit/delete; **Create hidden trigger…**; **Manage actions…** on objects
 - **Create agent** — memory module dropdown from `GET /api/memory-modules` + module-specific options
 - **Sidebar** — session meta (Units), events, turn log, **Prompt layout**, debug panels
 
@@ -87,9 +98,11 @@ See [examples/custom_memory/README.md](../../../examples/custom_memory/README.md
 | `GET` | `/api/session/export` | Full save JSON |
 | `POST` | `/api/session/import` | Load save (validates modules) |
 | `POST` | `/api/turn` | LLM compound turn |
-| `POST` | `/api/command` | `{ "line": "create-object ..." }` |
+| `POST` | `/api/turn/manual` | Player agent compound turn JSON |
+| `POST` | `/api/command` | CLI-style command; returns **snapshot** on success |
+| `PUT` | `/api/entity-private-data` | Set `private_data` on agent/object (not CLI) |
 
-Full route list and older features: see git history or [v0.4.5-changelog](../../../docs/v0.4.5-changelog.md).
+Full route list and older features: [v0.6.0-changelog](../../../docs/v0.6.0-changelog.md), [v0.4.5-changelog](../../../docs/v0.4.5-changelog.md).
 
 ## Tests
 
@@ -117,4 +130,4 @@ uv run pytest
 
 ## What's next
 
-**V0.5+** — richer ST parity, swappable turn schemas — see [ROADMAP.md](../../../docs/ROADMAP.md).
+**V0.6.1** — pluggable interaction handlers (interact + trigger effects) — see [ROADMAP.md](../../../docs/ROADMAP.md).

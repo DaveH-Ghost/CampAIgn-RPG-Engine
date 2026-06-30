@@ -26,8 +26,9 @@ These are currently out of scope. They represent the kind of experiences we even
 - [ ] Multiple agents that can observe each other, start conversations, form relationships, and influence one another over time  
   *(V0.1 added shared-grid multi-agent with passive vision, `look` at other agents, and observable speech/movement via `passive_result` — but no relationships, beliefs, speak targeting, or agent-driven world edits. That is a stepping stone, not this goal.)*
 - [ ] Objects that have their own behaviors and actions (examples: food that can be eaten and gives a taste description, a puzzle box with interactive mechanisms, a door that can be locked/unlocked, etc.)  
-  *(**V0.2 shipped (`v0.2.0`)** — declarative `interact`, effect registry (`delete_self`, `random_move_self`), ball `kick`. Puzzle doors, taste text, and richer effect types remain future work.)*
-- [ ] Rectangular / multi-tile objects (e.g. long walls, large furniture, 2x2 trees with 6x6 shadows) where objects occupy multiple grid tiles using size + bounding box definitions instead of single-tile objects
+  *(**V0.2 shipped (`v0.2.0`)** — declarative `interact`, effect registry (`delete_self`, `random_move_self`), ball `kick`. **V0.6.0** adds engine-fired **triggers** for zones and cutscenes; handler-driven behavior deferred to **V0.6.1**.)*
+- [x] **Rectangular / multi-tile objects (V0.6.0d, `0.6.0`)**  
+  Axis-aligned footprints (`width` / `height`), blocking on all tiles, Chebyshev range to nearest footprint tile. See [v0.6.0-changelog.md](docs/v0.6.0-changelog.md).
 - [ ] A visual interface similar to Roll20 — a grid with tokens representing agents and objects, plus chat bubbles when agents speak
 - [ ] **Roll20 plugin support**  
   Integrate the agent with real Roll20 games (via Mod/API Scripts + chat bridge). Enable the agent to perceive live map state and control tokens representing D&D characters, NPCs, and enemies. The external agent handles reasoning/LLM calls; a companion Roll20 script executes token movement, sheet updates, etc. (Roll20 Pro required for the scripting side; communication constrained by the sandbox model.)
@@ -66,6 +67,9 @@ This section is for goals that have actually been completed. When something move
 
 - [x] **Lorebook / world-info injection (V0.5.0, `0.5.0`)**  
   SillyTavern JSON import, session-level lorebooks, keyword/constant matching, optional per-book `lorebook` prompt slot, realm-studio Lorebooks tab. See [v0.5.0-changelog.md](docs/v0.5.0-changelog.md).
+
+- [x] **Tactical grid simulation (V0.6.0, `0.6.0`)**  
+  Movement blocking, BFS pathfinding, interact pathing, merged passive-vision prompts, multi-tile footprints, hidden objects, path-step triggers, `snapshot_version: 3`. See [v0.6.0-changelog.md](docs/v0.6.0-changelog.md).
 
 - [x] **Coordinate and entity-target move (V0.4.0 + V0.4.4 JSON)**  
   Compound turns accept coordinate `"x,y"` or entity id (`obj_*` / `agent_*`) as move targets; optional `move_speed` pathing. V0.4.4 compact JSON field `move`. See [v0.4.0-changelog.md](docs/v0.4.0-changelog.md).

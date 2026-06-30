@@ -85,4 +85,12 @@ class Agent:
     Human-controlled agent (realm-studio manual turns).
 
     Same simulation rules as other agents; skips LLM when running a turn.
-  """
+    """
+
+    private_data: str = ""
+    """
+    Opaque app-owned text (health, stats, etc.).
+
+    Serialized in snapshots/saves for custom clients. Not used by the engine,
+    LLM prompts, or CLI.
+    """

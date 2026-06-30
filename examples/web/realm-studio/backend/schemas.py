@@ -71,3 +71,8 @@ class VisionUnitsRequest(BaseModel):
 class LlmSettingsRequest(BaseModel):
     api_key: str | None = None
     model: str | None = None
+
+
+class EntityPrivateDataRequest(BaseModel):
+    entity_id: str = Field(min_length=1)
+    private_data: str = ""

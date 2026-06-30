@@ -69,6 +69,14 @@ class Object:
     hidden: bool = False
     """When True, hidden from agent passive vision and look (GM tooling still sees it)."""
 
+    private_data: str = ""
+    """
+    Opaque app-owned text (health, durability, etc.).
+
+    Serialized in snapshots/saves for custom clients. Not used by the engine,
+    LLM prompts, or CLI.
+    """
+
 
 def object_footprint_tiles(obj: Object) -> list[tuple[int, int]]:
     """Return every grid tile occupied by *obj*."""

@@ -13,6 +13,8 @@ import {
   getState,
   memoryOptionFieldName,
   parseCreatedObjectId,
+  parseCreatedAgentId,
+  postEntityPrivateData,
   postActiveAgent,
   postActiveArea,
   postCommand,
@@ -340,36 +342,47 @@ function syncConditionalModalFields(form) {
   }
 }
 
-function ensureAdvancedSection(form) {
-  let details = form.querySelector(".modal-advanced");
+const MODAL_GROUPS = {
+  basic: { title: "Basic", open: true },
+  descriptions: { title: "Descriptions", open: false },
+  placement: { title: "Placement", open: false },
+  simulation: { title: "Simulation", open: false },
+  memory: { title: "Memory options", open: false },
+  advanced: { title: "Advanced", open: false },
+};
+
+function resolveFieldGroup(field) {
+  if (field.group) return field.group;
+  if (field.location) return "placement";
+  if (field.advanced) return "advanced";
+  return "basic";
+}
+
+function ensureModalGroup(form, groupId) {
+  const config = MODAL_GROUPS[groupId] ?? { title: groupId, open: false };
+  let details = form.querySelector(`.modal-group[data-group="${groupId}"]`);
   if (!details) {
     details = document.createElement("details");
-    details.className = "modal-advanced";
+    details.className = "modal-group";
+    details.dataset.group = groupId;
+    if (config.open) details.open = true;
     const summary = document.createElement("summary");
-    summary.textContent = "Advanced";
+    summary.textContent = config.title;
     details.appendChild(summary);
     const body = document.createElement("div");
-    body.className = "modal-advanced-body";
+    body.className = "modal-group-body";
     details.appendChild(body);
     form.appendChild(details);
   }
-  return details.querySelector(".modal-advanced-body");
+  return details.querySelector(".modal-group-body");
+}
+
+function ensureAdvancedSection(form) {
+  return ensureModalGroup(form, "advanced");
 }
 
 function ensureLocationSection(form) {
-  let details = form.querySelector(".modal-location");
-  if (!details) {
-    details = document.createElement("details");
-    details.className = "modal-location";
-    const summary = document.createElement("summary");
-    summary.textContent = "Location";
-    details.appendChild(summary);
-    const body = document.createElement("div");
-    body.className = "modal-location-body";
-    details.appendChild(body);
-    form.appendChild(details);
-  }
-  return details.querySelector(".modal-location-body");
+  return ensureModalGroup(form, "placement");
 }
 
 function appendModalField(form, field) {
@@ -377,7 +390,7 @@ function appendModalField(form, field) {
     const context = document.createElement("p");
     context.className = "modal-context";
     context.textContent = field.text ?? "";
-    form.appendChild(context);
+    ensureModalGroup(form, resolveFieldGroup(field)).appendChild(context);
     return;
   }
 
@@ -428,11 +441,8 @@ function appendModalField(form, field) {
   if (field.placeholder) input.placeholder = field.placeholder;
   wrap.appendChild(input);
 
-  const parent = field.location
-    ? ensureLocationSection(form)
-    : field.advanced
-      ? ensureAdvancedSection(form)
-      : form;
+  const groupId = resolveFieldGroup(field);
+  const parent = ensureModalGroup(form, groupId);
   parent.appendChild(wrap);
 }
 
@@ -486,8 +496,29 @@ function objectHiddenField(hidden = false) {
     label: "Hidden from agent vision",
     type: "checkbox",
     value: !!hidden,
-    advanced: true,
+    group: "simulation",
   };
+}
+
+function privateDataField(value = "") {
+  return {
+    name: "privateData",
+    label: "Private data (custom apps only)",
+    value: value ?? "",
+    type: "textarea",
+    rows: 3,
+    placeholder: "Health, durability, JSON — not used by the engine or LLM",
+    group: "advanced",
+  };
+}
+
+async function persistPrivateDataIfChanged(entityId, value, previous) {
+  const next = String(value ?? "");
+  const prev = String(previous ?? "");
+  if (next === prev) return null;
+  const result = await postEntityPrivateData(entityId, next);
+  if (!result.ok) throw new Error(result.message);
+  return result;
 }
 
 function objectMovementFields({ blocksMovement, movementExceptions }) {
@@ -498,6 +529,7 @@ function objectMovementFields({ blocksMovement, movementExceptions }) {
       label: "Blocks movement",
       type: "checkbox",
       value: blocking,
+      group: "simulation",
     },
     {
       name: "movementExceptions",
@@ -505,27 +537,56 @@ function objectMovementFields({ blocksMovement, movementExceptions }) {
       value: movementExceptions ?? "",
       placeholder: "agent_01, obj_door_01",
       showWhen: { field: "blocksMovement", values: ["true"] },
+      group: "simulation",
     },
   ];
 }
 
 function openCreateObjectModal(x, y) {
   openModal("Create object", [
-    { name: "name", label: "Name", value: "New Object", required: true },
-    { name: "pdesc", label: "Passive description", value: "An object.", type: "textarea" },
-    { name: "desc", label: "Detailed description", value: "A new object.", type: "textarea" },
+    { name: "name", label: "Name", value: "New Object", required: true, group: "basic" },
+    {
+      name: "pdesc",
+      label: "Passive description",
+      value: "An object.",
+      type: "textarea",
+      group: "descriptions",
+    },
+    {
+      name: "desc",
+      label: "Detailed description",
+      value: "A new object.",
+      type: "textarea",
+      group: "descriptions",
+    },
+    { name: "x", label: "X", value: String(x), type: "number", required: true, group: "placement" },
+    { name: "y", label: "Y", value: String(y), type: "number", required: true, group: "placement" },
+    {
+      name: "width",
+      label: "Width (tiles)",
+      value: "1",
+      type: "number",
+      required: true,
+      group: "placement",
+    },
+    {
+      name: "height",
+      label: "Height (tiles)",
+      value: "1",
+      type: "number",
+      required: true,
+      group: "placement",
+    },
+    ...objectMovementFields({ blocksMovement: true, movementExceptions: "" }),
+    objectHiddenField(false),
     {
       name: "appearance",
       label: "Token image path",
       value: "",
       placeholder: "tokens/my-object.svg",
+      group: "advanced",
     },
-    { name: "x", label: "X", value: String(x), type: "number", required: true },
-    { name: "y", label: "Y", value: String(y), type: "number", required: true },
-    { name: "width", label: "Width (tiles)", value: "1", type: "number", required: true },
-    { name: "height", label: "Height (tiles)", value: "1", type: "number", required: true },
-    ...objectMovementFields({ blocksMovement: true, movementExceptions: "" }),
-    objectHiddenField(false),
+    privateDataField(),
   ], async (data) => {
     const line = buildCreateObject({
       name: data.name,
@@ -542,8 +603,15 @@ function openCreateObjectModal(x, y) {
     });
     const result = await postCommand(line);
     if (!result.ok) throw new Error(result.message);
-    showToast(result.message, false);
-    await onStateChanged();
+    const objectId = parseCreatedObjectId(result.message);
+    if (!objectId) throw new Error("Created object id not found in response.");
+    const privateResult = await persistPrivateDataIfChanged(
+      objectId,
+      data.privateData,
+      "",
+    );
+    showToast(privateResult?.message ?? result.message, false);
+    await onStateChanged(privateResult?.snapshot ?? result.snapshot);
   });
 }
 
@@ -661,13 +729,14 @@ function openCreateAgentModal(x, y) {
     }
 
     const fields = [
-      { name: "name", label: "Name", value: "New Agent", required: true },
+      { name: "name", label: "Name", value: "New Agent", required: true, group: "basic" },
       {
         name: "personality",
         label: "Personality (LLM)",
         value: "You are a calm agent in a small room.",
         type: "textarea",
         rows: 2,
+        group: "basic",
       },
       {
         name: "memoryModule",
@@ -678,28 +747,22 @@ function openCreateAgentModal(x, y) {
           value: mod.id,
           label: mod.label || mod.id,
         })),
+        group: "basic",
       },
-      { type: "context", text: `Creating at (${x}, ${y})` },
+      { type: "context", text: `Creating at (${x}, ${y})`, group: "basic" },
       {
         name: "pdesc",
         label: "Passive description",
         value: "A figure.",
         type: "textarea",
-        advanced: true,
+        group: "descriptions",
       },
       {
         name: "desc",
         label: "Detailed description",
         value: "A new agent.",
         type: "textarea",
-        advanced: true,
-      },
-      {
-        name: "appearance",
-        label: "Token image path",
-        value: "",
-        placeholder: "tokens/my-agent.svg",
-        advanced: true,
+        group: "descriptions",
       },
       {
         name: "moveSpeed",
@@ -707,15 +770,23 @@ function openCreateAgentModal(x, y) {
         value: "",
         type: "number",
         placeholder: "blank = unlimited (teleport)",
-        advanced: true,
+        group: "simulation",
       },
       {
         name: "isPlayer",
         label: "Player (manual turns, no LLM)",
         type: "checkbox",
         value: false,
-        advanced: true,
+        group: "simulation",
       },
+      {
+        name: "appearance",
+        label: "Token image path",
+        value: "",
+        placeholder: "tokens/my-agent.svg",
+        group: "advanced",
+      },
+      privateDataField(),
     ];
 
     const memoryOptionFields = [];
@@ -730,6 +801,7 @@ function openCreateAgentModal(x, y) {
           value: String(opt.default),
           placeholder,
           showWhen: { field: "memoryModule", values: [mod.id] },
+          group: "memory",
         });
       }
     }
@@ -758,8 +830,15 @@ function openCreateAgentModal(x, y) {
       });
       const result = await postCommand(line);
       if (!result.ok) throw new Error(result.message);
-      showToast(result.message, false);
-      await onStateChanged();
+      const agentId = parseCreatedAgentId(result.message);
+      if (!agentId) throw new Error("Created agent id not found in response.");
+      const privateResult = await persistPrivateDataIfChanged(
+        agentId,
+        data.privateData,
+        "",
+      );
+      showToast(privateResult?.message ?? result.message, false);
+      await onStateChanged(privateResult?.snapshot ?? result.snapshot);
     });
   })();
 }
@@ -770,24 +849,20 @@ function openEditObjectModal(entity, areaId) {
   const areaOptions = listAreaOptions();
 
   openModal(`Edit object — ${entity.name}`, [
-    { name: "name", label: "Name", value: entity.name, required: true },
+    { name: "name", label: "Name", value: entity.name, required: true, group: "basic" },
     {
       name: "pdesc",
       label: "Passive description",
       value: entity.passive_description ?? "",
       type: "textarea",
+      group: "descriptions",
     },
     {
       name: "desc",
       label: "Detailed description",
       value: entity.description ?? "",
       type: "textarea",
-    },
-    {
-      name: "appearance",
-      label: "Token image path",
-      value: entity.appearance ?? "",
-      placeholder: "tokens/my-object.svg",
+      group: "descriptions",
     },
     {
       name: "areaId",
@@ -795,7 +870,7 @@ function openEditObjectModal(entity, areaId) {
       type: "select",
       value: resolvedAreaId,
       options: areaOptions,
-      location: true,
+      group: "placement",
     },
     {
       name: "x",
@@ -803,7 +878,7 @@ function openEditObjectModal(entity, areaId) {
       value: String(entity.position[0]),
       type: "number",
       required: true,
-      location: true,
+      group: "placement",
     },
     {
       name: "y",
@@ -811,7 +886,7 @@ function openEditObjectModal(entity, areaId) {
       value: String(entity.position[1]),
       type: "number",
       required: true,
-      location: true,
+      group: "placement",
     },
     {
       name: "width",
@@ -819,7 +894,7 @@ function openEditObjectModal(entity, areaId) {
       value: String(entity.width ?? 1),
       type: "number",
       required: true,
-      location: true,
+      group: "placement",
     },
     {
       name: "height",
@@ -827,13 +902,21 @@ function openEditObjectModal(entity, areaId) {
       value: String(entity.height ?? 1),
       type: "number",
       required: true,
-      location: true,
+      group: "placement",
     },
     ...objectMovementFields({
       blocksMovement: entity.blocks_movement !== false,
       movementExceptions: (entity.movement_exceptions || []).join(", "),
     }),
     objectHiddenField(!!entity.hidden),
+    {
+      name: "appearance",
+      label: "Token image path",
+      value: entity.appearance ?? "",
+      placeholder: "tokens/my-object.svg",
+      group: "advanced",
+    },
+    privateDataField(entity.private_data),
   ], async (data) => {
     const line = buildEditObject({
       id: entity.id,
@@ -853,8 +936,13 @@ function openEditObjectModal(entity, areaId) {
     });
     const result = await postCommand(line);
     if (!result.ok) throw new Error(result.message);
-    showToast(result.message, false);
-    await onStateChanged();
+    const privateResult = await persistPrivateDataIfChanged(
+      entity.id,
+      data.privateData,
+      entity.private_data,
+    );
+    showToast(privateResult?.message ?? result.message, false);
+    await onStateChanged(privateResult?.snapshot ?? result.snapshot);
   });
 }
 
@@ -864,30 +952,27 @@ function openEditAgentModal(entity, areaId) {
   const areaOptions = listAreaOptions();
 
   openModal(`Edit agent — ${entity.name}`, [
-    { name: "name", label: "Name", value: entity.name, required: true },
+    { name: "name", label: "Name", value: entity.name, required: true, group: "basic" },
+    {
+      name: "personality",
+      label: "Personality (LLM)",
+      value: entity.personality ?? "",
+      type: "textarea",
+      group: "basic",
+    },
     {
       name: "pdesc",
       label: "Passive description",
       value: entity.passive_description ?? "",
       type: "textarea",
+      group: "descriptions",
     },
     {
       name: "desc",
       label: "Detailed description",
       value: entity.description ?? "",
       type: "textarea",
-    },
-    {
-      name: "personality",
-      label: "Personality (LLM)",
-      value: entity.personality ?? "",
-      type: "textarea",
-    },
-    {
-      name: "appearance",
-      label: "Token image path",
-      value: entity.appearance ?? "",
-      placeholder: "tokens/my-agent.svg",
+      group: "descriptions",
     },
     {
       name: "moveSpeed",
@@ -895,18 +980,21 @@ function openEditAgentModal(entity, areaId) {
       value: entity.move_speed != null ? String(entity.move_speed) : "",
       type: "number",
       placeholder: "blank = unlimited (teleport)",
+      group: "simulation",
     },
     {
       name: "isPlayer",
       label: "Player (manual turns, no LLM)",
       type: "checkbox",
       value: Boolean(entity.is_player),
+      group: "simulation",
     },
     {
       name: "memoryModule",
       label: "Memory module (set at creation)",
       type: "readonly",
       value: entity.memory_module ?? "recent_turns",
+      group: "simulation",
     },
     {
       name: "areaId",
@@ -914,7 +1002,7 @@ function openEditAgentModal(entity, areaId) {
       type: "select",
       value: resolvedAreaId,
       options: areaOptions,
-      location: true,
+      group: "placement",
     },
     {
       name: "x",
@@ -922,7 +1010,7 @@ function openEditAgentModal(entity, areaId) {
       value: String(entity.position[0]),
       type: "number",
       required: true,
-      location: true,
+      group: "placement",
     },
     {
       name: "y",
@@ -930,8 +1018,16 @@ function openEditAgentModal(entity, areaId) {
       value: String(entity.position[1]),
       type: "number",
       required: true,
-      location: true,
+      group: "placement",
     },
+    {
+      name: "appearance",
+      label: "Token image path",
+      value: entity.appearance ?? "",
+      placeholder: "tokens/my-agent.svg",
+      group: "advanced",
+    },
+    privateDataField(entity.private_data),
   ], async (data) => {
     const line = buildEditAgent({
       id: entity.id,
@@ -949,8 +1045,13 @@ function openEditAgentModal(entity, areaId) {
     });
     const result = await postCommand(line);
     if (!result.ok) throw new Error(result.message);
-    showToast(result.message, false);
-    await onStateChanged();
+    const privateResult = await persistPrivateDataIfChanged(
+      entity.id,
+      data.privateData,
+      entity.private_data,
+    );
+    showToast(privateResult?.message ?? result.message, false);
+    await onStateChanged(privateResult?.snapshot ?? result.snapshot);
   });
 }
 

@@ -766,15 +766,9 @@ button:hover {
   color: #9898a8;
 }
 
-.modal-advanced {
-  margin: 0.25rem 0 0.75rem;
-  font-size: 0.85rem;
-  border: 1px solid #333;
-  border-radius: 4px;
-  padding: 0.35rem 0.5rem 0.5rem;
-}
-
-.modal-location {
+.modal-advanced,
+.modal-location,
+.modal-group {
   margin: 0.25rem 0 0.75rem;
   font-size: 0.85rem;
   border: 1px solid #333;
@@ -783,21 +777,24 @@ button:hover {
 }
 
 .modal-location summary,
-.modal-advanced summary {
+.modal-advanced summary,
+.modal-group summary {
   cursor: pointer;
   color: #b8b8c8;
   user-select: none;
 }
 
 .modal-location-body,
-.modal-advanced-body {
+.modal-advanced-body,
+.modal-group-body {
   margin-top: 0.5rem;
   padding-top: 0.35rem;
   border-top: 1px solid #333;
 }
 
 .modal-location-body .modal-field:last-child,
-.modal-advanced-body .modal-field:last-child {
+.modal-advanced-body .modal-field:last-child,
+.modal-group-body .modal-field:last-child {
   margin-bottom: 0;
 }
 

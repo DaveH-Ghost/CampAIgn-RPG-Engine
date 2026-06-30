@@ -62,6 +62,7 @@ def serialize_object(obj: Object, *, include_private: bool = False) -> dict[str,
         "width": obj.width,
         "height": obj.height,
         "hidden": obj.hidden,
+        "private_data": obj.private_data,
     }
     if include_private:
         data["passive_description"] = obj.passive_description
@@ -87,6 +88,7 @@ def serialize_agent(
         "blocks_movement": agent.blocks_movement,
         "movement_exceptions": list(agent.movement_exceptions),
         "is_player": agent.is_player,
+        "private_data": agent.private_data,
     }
     if area_id is not None:
         data["area_id"] = area_id

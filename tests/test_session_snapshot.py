@@ -175,6 +175,7 @@ def test_serialize_agent_public_fields():
         "blocks_movement",
         "movement_exceptions",
         "is_player",
+        "private_data",
     }
 
 

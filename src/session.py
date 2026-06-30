@@ -383,6 +383,37 @@ class Session:
         )
         return SessionResult(ok=True, message=f"Area event: {record.text}")
 
+    def set_entity_private_data(self, entity_id: str, private_data: str) -> SessionResult:
+        """
+        Set app-owned private data on an agent or object.
+
+        Not exposed via CLI; intended for custom clients and realm-studio storage.
+        """
+        cleaned_id = entity_id.strip()
+        if not cleaned_id:
+            return SessionResult(ok=False, message="Entity id is required.")
+
+        for area in self.areas.values():
+            obj = area.get_object_by_id(cleaned_id)
+            if obj is not None:
+                obj.private_data = private_data
+                return SessionResult(
+                    ok=True,
+                    message=f"Updated private data for {cleaned_id}.",
+                )
+            agent = area.get_agent_by_id(cleaned_id)
+            if agent is not None:
+                agent.private_data = private_data
+                return SessionResult(
+                    ok=True,
+                    message=f"Updated private data for {cleaned_id}.",
+                )
+
+        return SessionResult(
+            ok=False,
+            message=f"Entity {cleaned_id!r} not found.",
+        )
+
     # ------------------------------------------------------------------
     # Prompts
     # ------------------------------------------------------------------

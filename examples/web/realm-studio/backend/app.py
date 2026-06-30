@@ -14,6 +14,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from src.llm.token_estimate import estimate_prompt_tokens
 
+from backend.entity_private_data_api import put_entity_private_data
 from backend.area_api import create_area as api_create_area
 from backend.area_api import delete_area as api_delete_area
 from backend.area_api import dispatch_area_cli_command
@@ -25,6 +26,7 @@ from backend.schemas import (
     CreateAreaRequest,
     DeleteAreaRequest,
     EditAreaRequest,
+    EntityPrivateDataRequest,
     EventRequest,
     LlmSettingsRequest,
     PromptBlocksPreviewRequest,
@@ -78,7 +80,7 @@ async def _app_lifespan(_app: FastAPI):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="realm-studio", version="0.5.0", lifespan=_app_lifespan)
+    app = FastAPI(title="realm-studio", version="0.6.0", lifespan=_app_lifespan)
 
     app.add_middleware(
         CORSMiddleware,
@@ -133,6 +135,15 @@ def create_app() -> FastAPI:
                 session.snapshot(include_private=True)
             )
         return payload
+
+    @app.put("/api/entity-private-data")
+    def put_entity_private_data_route(body: EntityPrivateDataRequest) -> dict[str, object]:
+        """Set app-owned private_data on an agent or object (not CLI / LLM)."""
+        return put_entity_private_data(
+            get_session_store().session,
+            entity_id=body.entity_id.strip(),
+            private_data=body.private_data,
+        )
 
     @app.post("/api/create-area")
     def post_create_area(body: CreateAreaRequest) -> dict[str, object]:

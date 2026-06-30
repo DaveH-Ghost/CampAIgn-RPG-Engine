@@ -382,19 +382,32 @@ See [v0.5.0-changelog.md](v0.5.0-changelog.md).
 
 **Focus:** **Grid simulation depth** — multi-tile objects, movement blocking, interact pathing, merged passive-vision prompt, hidden objects and triggers. Builds on V0.5.0.
 
-**Status:** 🚧 **In progress** — **0.6.0a–d** done; **0.6.0e** planned.
+**Status:** ✅ **Shipped** — tag **`v0.6.0`**.
 
-**Implementation order (proposed):**
-
-| Slice | Theme | Depends on |
-|-------|--------|------------|
+| Slice | Theme | Status |
+|-------|--------|--------|
 | **0.6.0a** | Movement blocking + pathfinder | ✅ Done |
 | **0.6.0b** | Interact pathing (overwrites move) | ✅ Done |
 | **0.6.0c** | Merge look + interact into passive vision | ✅ Done |
 | **0.6.0d** | Multi-tile object footprints | ✅ Done |
-| **0.6.0e** | Hidden objects + step-aware triggers | 📋 Planned |
+| **0.6.0e** | Hidden objects + step-aware triggers | ✅ Done |
+| **0.6.0f** | Release prep (`private_data`, studio modals) | ✅ Done |
+
+**Shipped highlights:**
+
+- BFS pathfinding + per-entity blocking / `movement_exceptions`
+- Interact pathing overwrites compound `move`; passive vision includes interaction hints
+- Multi-tile footprints; hidden objects; `trigger` actions on path steps
+- **`snapshot_version: 3`** (v1–v2 import supported)
+- **`private_data`** on agents/objects for custom apps (not CLI / LLM)
+- realm-studio: footprint overlay, hidden-trigger wizard, grouped modals, player agents
 
 See [v0.6.0-changelog.md](v0.6.0-changelog.md).
+
+### Historical slice notes (0.6.0a–e)
+
+<details>
+<summary>Original implementation notes (archived)</summary>
 
 ### 0.6.0a — Movement blocking + pathfinder
 
@@ -439,10 +452,11 @@ See [v0.6.0-changelog.md](v0.6.0-changelog.md).
 
 ### Cross-cutting (0.6.0)
 
-- Likely **`snapshot_version: 3`** — object footprint, blocking, hidden, action kinds, handler ids (if staged early)
-- **Tests** — pathfinder fixtures, interact-path edge cases, step triggers, multi-tile range
-- **CLI** — extend `create-object` / `edit-object` for blocking, hidden, footprint (or document studio-first for some flags)
-- **Deferred within 0.6.x** — line-of-sight vision, hearing range, tag-based movement exceptions (ids only in v1)
+- **`snapshot_version: 3`** — footprint, blocking, hidden, trigger action kinds, `private_data`
+- **Tests** — pathfinder, interact-path, triggers, multi-tile range, `private_data`
+- **Deferred within 0.6.x** — line-of-sight vision, hearing range, tag-based movement exceptions
+
+</details>
 
 ---
 

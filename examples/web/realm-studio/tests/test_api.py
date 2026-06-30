@@ -631,6 +631,33 @@ def test_post_command_add_trigger_action(client):
     assert detail["delete_after_trigger"] is True
 
 
+def test_put_entity_private_data(client):
+    create = client.post(
+        "/api/command",
+        json={"line": 'create-object name "Statue" pdesc "A statue." at 2,2'},
+    )
+    assert create.json()["ok"] is True
+    obj_id = parse_created_object_id(create.json()["message"])
+
+    response = client.put(
+        "/api/entity-private-data",
+        json={"entity_id": obj_id, "private_data": '{"hp": 25}'},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] is True
+
+    state = client.get("/api/state").json()
+    obj = next(o for o in _room(state)["objects"] if o["id"] == obj_id)
+    assert obj["private_data"] == '{"hp": 25}'
+
+
+def parse_created_object_id(message: str) -> str:
+    prefix = "Created object "
+    assert message.startswith(prefix)
+    return message[len(prefix) :].split()[0]
+
+
 def test_post_command_edit_object_movement_exceptions(client):
     create = client.post(
         "/api/command",

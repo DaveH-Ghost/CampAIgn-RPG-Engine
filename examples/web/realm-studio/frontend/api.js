@@ -280,6 +280,28 @@ export function parseCreatedObjectId(message) {
   return match ? match[1] : null;
 }
 
+/** Extract agent id from a successful create-agent CLI response. */
+export function parseCreatedAgentId(message) {
+  const match = /^Created agent (agent_\S+)/.exec(String(message ?? "").trim());
+  return match ? match[1] : null;
+}
+
+export async function postEntityPrivateData(entityId, privateData) {
+  const res = await fetch("/api/entity-private-data", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      entity_id: entityId,
+      private_data: privateData ?? "",
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || `PUT /api/entity-private-data failed: HTTP ${res.status}`);
+  }
+  return data;
+}
+
 export async function getMemoryModules() {
   const res = await fetch("/api/memory-modules");
   const data = await res.json();

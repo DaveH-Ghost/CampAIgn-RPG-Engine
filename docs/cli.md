@@ -45,10 +45,13 @@ Add a `lorebook` prompt block in realm-studio Prompt layout (or custom `prompt_b
 
 ```
 create-object name "Crate" pdesc "A crate." desc "Wooden." at 0,0
-create-object name "Table" pdesc "A large table." at 1,1 width 2 height 2
+create-object name "Table" pdesc "A large table." at 1,1 width 2 height 2 blocks-movement true
+create-object name "Trap" pdesc "Hidden." at 2,2 hidden true blocks-movement false
 create-object name "Door" pdesc "A door." at 1,1 action enter range 0 effect move_area dest-area hall dest-at 0,0 result "You walk through." passive "{actor} walks through."
 edit-object obj_sign_01 desc "New sign text."
 edit-object obj_table_01 width 3 height 1
+edit-object obj_trap_01 hidden false
+edit-object obj_trap_01 add-action trip range 0 kind trigger halt-movement true delete-after-trigger false result "(trigger)" passive "{actor} steps on the trap."
 delete-object obj_crate_01
 
 create-area id attic desc "A dusty attic." width 6 height 6
@@ -57,13 +60,16 @@ delete-area attic
 active-area hall
 
 create-agent name "Goblin" personality "Grumpy." move-speed 2 at 0,3
+create-agent name "Player" personality "You." player true at 1,1
 create-agent name "Archivist" personality "Remembers." memory rolling_summary memory-summary-interval 15 at 1,1
 create-agent name "Scribe" personality "Quiet." memory salient_turns memory-budget 2500 at 2,2
 edit-agent agent_01 personality "Updated."
 delete-agent agent_goblin_01
 ```
 
-Object actions support template placeholders (`{actor}`, `{object}`, …). See `effects` or realm-studio **Manage actions…** help.
+Object actions support template placeholders (`{actor}`, `{object}`, …). Trigger actions use `kind trigger` and fire on path steps (area event from `passive`). See `effects` or realm-studio **Manage actions…** help.
+
+**`private_data`** on agents/objects is snapshot-only (custom apps); not set via CLI.
 
 ## Turns
 
