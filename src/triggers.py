@@ -1,4 +1,4 @@
-"""Path-step triggers for V0.6.0e."""
+"""Path-step triggers for V0.6.0e / V0.6.1."""
 
 from __future__ import annotations
 
@@ -7,9 +7,9 @@ from typing import TYPE_CHECKING
 from src.agent import Agent
 from src.area import Area
 from src.interact_templates import InteractTemplateContext, format_interact_template
+from src.interaction_handlers.registry import run_interaction_handler
 from src.object import Object, chebyshev_distance_to_object
 from src.object_action import ObjectAction
-from src.object_effects import EffectContext, apply_effects
 
 if TYPE_CHECKING:
     from src.session import Session
@@ -113,12 +113,7 @@ def _fire_trigger(
     if text:
         session.emit_area_event(text)
 
-    if action.effects:
-        ctx = EffectContext(
-            area=area,
-            session=session,
-            source_area_id=source_area_id,
-        )
-        apply_effects(ctx, agent, obj, list(action.effects))
+    if action.handler_id:
+        run_interaction_handler(session, area, agent, obj, action)
     elif action.delete_after_trigger and area.get_object_by_id(obj.id) is not None:
         area.remove_object(obj.id)

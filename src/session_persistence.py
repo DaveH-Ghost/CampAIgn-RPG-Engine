@@ -2,8 +2,7 @@
 session_persistence.py
 
 V0.4.5 — full session save/load (world + memory + prompt blocks).
-
-Distinct from ``snapshot.build_session_snapshot`` (API view for web clients).
+V0.6.1 — snapshot v4 with interaction handlers.
 """
 
 from __future__ import annotations
@@ -13,8 +12,8 @@ from typing import Any
 from src.agent import Agent
 from src.area import Area, GridBounds
 from src.area_event import AreaEventRecord
-from src.effect_spec import EffectSpec
 from src.game_profile import load_profile
+from src.interaction_handlers.registry import is_handler_registered
 from src.memory import Memory
 from src.memory_modules.registry import (
     create_module_from_state,
@@ -22,19 +21,20 @@ from src.memory_modules.registry import (
     is_module_loaded,
 )
 from src.object import Object
-from src.object_action import ObjectAction
+from src.object_action import ObjectAction, migrate_legacy_effects_to_handler
 from src.lorebook.models import Lorebook
 from src.prompt_blocks import prompt_blocks_from_dicts
 from src.snapshot import serialize_area_block, serialize_object
 
-SNAPSHOT_VERSION = 3
-SUPPORTED_SNAPSHOT_VERSIONS = frozenset({1, 2, 3})
+SNAPSHOT_VERSION = 4
+SUPPORTED_SNAPSHOT_VERSIONS = frozenset({1, 2, 3, 4})
 
 __all__ = [
     "SNAPSHOT_VERSION",
     "build_save_snapshot",
     "load_session_from_snapshot",
     "validate_snapshot_modules",
+    "validate_snapshot_handlers",
 ]
 
 
@@ -58,6 +58,26 @@ def validate_snapshot_modules(data: dict[str, Any]) -> None:
         )
 
 
+def validate_snapshot_handlers(data: dict[str, Any]) -> None:
+    """Ensure every object action handler_id in a save is currently registered."""
+    missing: list[str] = []
+    seen: set[str] = set()
+    for area_data in (data.get("areas") or {}).values():
+        for obj_data in area_data.get("objects", []):
+            for detail in (obj_data.get("actions_detail") or {}).values():
+                handler_id = detail.get("handler_id")
+                if not handler_id or handler_id in seen:
+                    continue
+                seen.add(handler_id)
+                if not is_handler_registered(handler_id):
+                    missing.append(handler_id)
+    for handler_id in missing:
+        raise ValueError(
+            f"Interaction handler '{handler_id}' is not registered. "
+            "Register the handler before loading this save."
+        )
+
+
 def _engine_version() -> str:
     try:
         from realm_fabric import __version__
@@ -72,16 +92,23 @@ def _position_tuple(position: list[int]) -> tuple[int, int]:
 
 
 def deserialize_object_action(name: str, data: dict[str, Any]) -> ObjectAction:
-    effects = [
-        EffectSpec(name=e["name"], params=dict(e.get("params", {})))
-        for e in data.get("effects", [])
-    ]
+    if "handler_id" in data or "handler_params" in data:
+        handler_id = data.get("handler_id")
+        handler_params = {
+            str(k): str(v) for k, v in dict(data.get("handler_params", {})).items()
+        }
+    else:
+        handler_id, handler_params = migrate_legacy_effects_to_handler(
+            list(data.get("effects", []))
+        )
+
     return ObjectAction(
         name=name,
         range=int(data["range"]),
         result=data["result"],
         passive_result=data["passive_result"],
-        effects=effects,
+        handler_id=handler_id,
+        handler_params=handler_params,
         kind=data.get("kind", "interact"),
         halt_movement=bool(data.get("halt_movement", False)),
         delete_after_trigger=bool(data.get("delete_after_trigger", True)),
@@ -255,6 +282,7 @@ def load_session_from_snapshot(data: dict[str, Any]):
         )
 
     validate_snapshot_modules(data)
+    validate_snapshot_handlers(data)
 
     profile_id = data.get("profile_id")
     if not profile_id:

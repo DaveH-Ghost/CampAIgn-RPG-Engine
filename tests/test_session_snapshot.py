@@ -39,7 +39,7 @@ def test_snapshot_default_shape():
     assert ball["appearance"] == "tokens/ball.svg"
     assert "kick" in ball["actions"]
     assert ball["actions_detail"]["kick"]["range"] == 1
-    assert ball["actions_detail"]["kick"]["effects"][0]["name"] == "random_move_self"
+    assert ball["actions_detail"]["kick"]["handler_id"] == "random_move_self"
 
 
 def test_snapshot_is_json_serializable():
@@ -108,7 +108,7 @@ def test_snapshot_after_create_object():
     session = Session.from_default()
     session.run_command(
         'create-object name "Cookie" pdesc "A cookie." at 3,3 '
-        'action eat range 0 effect delete_self '
+        'action eat range 0 handler delete_self '
         'result "You ate it." passive "{actor} ate it."'
     )
     snap = session.snapshot()

@@ -666,7 +666,7 @@ class Session:
         Parse and run a stepper-style command line.
 
         Supports area edits (``create-object``, ``edit-agent``, …) and
-        read-only listings (``list``, ``objects``, ``agents``, ``effects``,
+        read-only listings (``list``, ``objects``, ``agents``, ``handlers``,
         ``memory-modules``). ``emit-event`` broadcasts room-wide events.
         Does not run ``step-compound`` or LLM turns — use ``run_compound_turn``
         for those.
@@ -689,7 +689,8 @@ class Session:
             "objects": self._cmd_objects,
             "agents": self._cmd_agents,
             "list": self._cmd_list,
-            "effects": self._cmd_effects,
+            "handlers": self._cmd_handlers,
+            "effects": self._cmd_handlers,
             "memory_modules": self._cmd_memory_modules,
             "emit_event": self._cmd_emit_event,
             "active_area": self._cmd_active_area,
@@ -829,10 +830,10 @@ class Session:
             message=format_full_list(self.area, self.get_active_agent()),
         )
 
-    def _cmd_effects(self, _arg: str) -> CommandResult:
-        from src.object_effects import format_effects_list
+    def _cmd_handlers(self, _arg: str) -> CommandResult:
+        from src.interaction_handlers.registry import format_handlers_list
 
-        return CommandResult(ok=True, message=format_effects_list())
+        return CommandResult(ok=True, message=format_handlers_list())
 
     def _cmd_memory_modules(self, _arg: str) -> CommandResult:
         from src.memory_modules.registry import format_memory_modules_list

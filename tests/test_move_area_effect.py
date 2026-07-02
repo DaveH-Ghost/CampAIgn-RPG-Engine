@@ -1,10 +1,9 @@
-"""move_area object effect (V0.4.0d)."""
+"""move_area interaction handler (V0.4.0d / V0.6.1)."""
 
 from src.actions.interact import interact
 from src.agent import Agent
 from src.area import Area
 from src.area_edit import create_object_from_args
-from src.effect_spec import EffectSpec
 from src.llm.schemas import AgentCompoundTurn
 from src.session import Session
 from src.simulation import run_compound_turn
@@ -22,7 +21,7 @@ def _two_room_with_door() -> Session:
     room.add_agent(explorer)
     door_args = (
         'name "Door" pdesc "A wooden door." desc "It leads to the hall." at 1,1 '
-        "action walk_through range 0 effect move_area dest-area hall dest-at 0,0 "
+        "action walk_through range 0 handler move_area dest-area hall dest-at 0,0 "
         'result "You walk through the door." '
         'passive "{actor} walks through the door."'
     )
@@ -35,15 +34,13 @@ def _two_room_with_door() -> Session:
     )
 
 
-def test_create_object_move_area_parses_effect_params():
+def test_create_object_move_area_parses_handler_params():
     session = _two_room_with_door()
     door = session.areas["room"].get_objects()[0]
     action = door.actions["walk_through"]
-    assert len(action.effects) == 1
-    spec = action.effects[0]
-    assert spec.name == "move_area"
-    assert spec.params["dest-area"] == "hall"
-    assert spec.params["dest-at"] == "0,0"
+    assert action.handler_id == "move_area"
+    assert action.handler_params["dest-area"] == "hall"
+    assert action.handler_params["dest-at"] == "0,0"
 
 
 def test_interact_move_area_transfers_agent():
@@ -72,10 +69,10 @@ def test_interact_move_area_unknown_destination_fails():
     room = session.areas["room"]
     explorer = room.get_agent()
     door = room.get_objects()[0]
-    door.actions["walk_through"].effects[0] = EffectSpec(
-        name="move_area",
-        params={"dest-area": "attic", "dest-at": "0,0"},
-    )
+    door.actions["walk_through"].handler_params = {
+        "dest-area": "attic",
+        "dest-at": "0,0",
+    }
 
     outcome = interact(
         explorer,
@@ -94,10 +91,10 @@ def test_interact_move_area_out_of_bounds_fails():
     room = session.areas["room"]
     explorer = room.get_agent()
     door = room.get_objects()[0]
-    door.actions["walk_through"].effects[0] = EffectSpec(
-        name="move_area",
-        params={"dest-area": "hall", "dest-at": "9,9"},
-    )
+    door.actions["walk_through"].handler_params = {
+        "dest-area": "hall",
+        "dest-at": "9,9",
+    }
 
     outcome = interact(
         explorer,
@@ -115,7 +112,7 @@ def test_create_object_move_area_missing_dest_rejected():
     session = Session.from_default()
     obj, err = create_object_from_args(
         session.area,
-        'name "Door" at 1,1 action use range 0 effect move_area '
+        'name "Door" at 1,1 action use range 0 handler move_area '
         'result "Go." passive "{actor} goes."',
     )
     assert obj is None

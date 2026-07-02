@@ -1,16 +1,17 @@
 /**
- * Manage object actions modal (V0.4.0e).
+ * Manage object actions modal (V0.4.0e / V0.6.1 handlers).
  */
 
 import {
   buildAddObjectAction,
   buildRemoveObjectAction,
+  fetchInteractionHandlers,
   postCommand,
 } from "./api.js";
 import { normalizeSnapshot } from "./snapshot.js";
 import { attachTemplateVarHelp } from "./templateVarsHelp.js";
 
-const EFFECT_CHOICES = [
+const FALLBACK_HANDLER_CHOICES = [
   { id: "none", label: "None" },
   { id: "delete_self", label: "delete_self — remove object" },
   { id: "random_move_self", label: "random_move_self — move object randomly" },
@@ -29,6 +30,26 @@ let closeModal;
 /** @type {{ id: string, name: string, actions?: string[], actions_detail?: Record<string, object> } | null} */
 let manageObject = null;
 
+let handlerChoicesCache = null;
+
+async function getHandlerChoices() {
+  if (handlerChoicesCache) return handlerChoicesCache;
+  try {
+    const data = await fetchInteractionHandlers();
+    const handlers = data?.handlers || [];
+    handlerChoicesCache = [
+      { id: "none", label: "None" },
+      ...handlers.map((h) => ({
+        id: h.id,
+        label: h.description ? `${h.id} — ${h.description}` : h.id,
+      })),
+    ];
+  } catch {
+    handlerChoicesCache = FALLBACK_HANDLER_CHOICES;
+  }
+  return handlerChoicesCache;
+}
+
 export function initObjectActions(deps) {
   getSnapshot = deps.getSnapshotFn;
   onStateChanged = deps.onStateChangedFn;
@@ -46,25 +67,21 @@ function listAreaIds() {
   return Object.keys(snap.areas).sort();
 }
 
-function formatEffectSummary(action) {
-  const effects = action?.effects || [];
-  if (effects.length === 0) return "no effect";
-  return effects
-    .map((effect) => {
-      if (effect.name === "move_area") {
-        const area = effect.params?.["dest-area"] || "?";
-        const at = effect.params?.["dest-at"] || "?";
-        return `move_area → ${area} (${at})`;
-      }
-      return effect.name;
-    })
-    .join(", ");
+function formatHandlerSummary(action) {
+  const handlerId = action?.handler_id;
+  if (!handlerId) return "no handler";
+  if (handlerId === "move_area") {
+    const area = action.handler_params?.["dest-area"] || "?";
+    const at = action.handler_params?.["dest-at"] || "?";
+    return `move_area → ${area} (${at})`;
+  }
+  return handlerId;
 }
 
 function formatActionSummary(action) {
   const kind = action?.kind || "interact";
   const kindLabel = kind === "trigger" ? "trigger" : "interact";
-  let suffix = formatEffectSummary(action);
+  let suffix = formatHandlerSummary(action);
   if (kind === "trigger") {
     const flags = [];
     if (action?.halt_movement) flags.push("halt");
@@ -105,48 +122,41 @@ async function runCommand(line) {
 }
 
 function showManageModal() {
-  if (!manageObject) return;
-
   modalTitle.textContent = `Manage actions — ${manageObject.name}`;
   modalForm.innerHTML = "";
   modalError.textContent = "";
 
+  const detail = manageObject?.actions_detail || {};
   const names = actionNames();
+
   if (names.length === 0) {
     const empty = document.createElement("p");
-    empty.className = "panel-empty";
-    empty.textContent = "No actions yet.";
+    empty.className = "modal-hint";
+    empty.textContent = "No actions yet. Add one below.";
     modalForm.appendChild(empty);
   } else {
     const list = document.createElement("ul");
     list.className = "action-list";
-    const detail = manageObject.actions_detail || {};
-
     for (const name of names) {
       const action = detail[name] || {};
       const li = document.createElement("li");
       li.className = "action-list-item";
+      const summary = document.createElement("span");
+      summary.textContent = `${name} — ${formatActionSummary(action)}`;
+      li.appendChild(summary);
 
-      const label = document.createElement("span");
-      label.className = "action-list-label";
-      label.textContent = `${name} (range ${action.range ?? "?"}) · ${formatActionSummary(action)}`;
-
-      const buttons = document.createElement("div");
+      const buttons = document.createElement("span");
       buttons.className = "action-list-buttons";
-
       const editBtn = document.createElement("button");
       editBtn.type = "button";
       editBtn.textContent = "Edit";
       editBtn.addEventListener("click", () => openActionForm(name, action));
-
       const removeBtn = document.createElement("button");
       removeBtn.type = "button";
       removeBtn.textContent = "Remove";
       removeBtn.addEventListener("click", () => removeAction(name));
-
       buttons.appendChild(editBtn);
       buttons.appendChild(removeBtn);
-      li.appendChild(label);
       li.appendChild(buttons);
       list.appendChild(li);
     }
@@ -182,31 +192,31 @@ async function removeAction(name) {
   }
 }
 
-function parseEffectFromAction(action) {
-  const effects = action?.effects || [];
-  if (effects.length === 0) {
-    return { effect: "none", destArea: "", destX: "0", destY: "0" };
+function parseHandlerFromAction(action) {
+  const handlerId = action?.handler_id;
+  if (!handlerId) {
+    return { handler: "none", destArea: "", destX: "0", destY: "0" };
   }
-  const first = effects[0];
-  if (first.name === "move_area") {
-    const parts = String(first.params?.["dest-at"] || "0,0").split(",");
+  if (handlerId === "move_area") {
+    const parts = String(action.handler_params?.["dest-at"] || "0,0").split(",");
     return {
-      effect: "move_area",
-      destArea: first.params?.["dest-area"] || "",
+      handler: "move_area",
+      destArea: action.handler_params?.["dest-area"] || "",
       destX: (parts[0] || "0").trim(),
       destY: (parts[1] || "0").trim(),
     };
   }
-  return { effect: first.name, destArea: "", destX: "0", destY: "0" };
+  return { handler: handlerId, destArea: "", destX: "0", destY: "0" };
 }
 
-function openActionForm(existingName, existingAction) {
+async function openActionForm(existingName, existingAction) {
   const isEdit = existingName != null;
   const parsed = isEdit
-    ? parseEffectFromAction(existingAction)
-    : { effect: "none", destArea: "", destX: "0", destY: "0" };
+    ? parseHandlerFromAction(existingAction)
+    : { handler: "none", destArea: "", destX: "0", destY: "0" };
   const areas = listAreaIds();
   const defaultDestArea = parsed.destArea || areas[0] || "room";
+  const handlerChoices = await getHandlerChoices();
 
   const actionKind = existingAction?.kind || "interact";
 
@@ -344,29 +354,25 @@ function openActionForm(existingName, existingAction) {
 
   modalForm.appendChild(triggerFields);
 
-  const effectWrap = document.createElement("label");
-  effectWrap.className = "modal-field modal-field-conditional";
-  effectWrap.dataset.showWhenField = "kind";
-  effectWrap.dataset.showWhenValues = "interact";
-  const effectLabel = document.createElement("span");
-  effectLabel.textContent = "Effect";
-  effectWrap.appendChild(effectLabel);
-  const effectSelect = document.createElement("select");
-  effectSelect.name = "effect";
-  for (const choice of EFFECT_CHOICES) {
+  const handlerWrap = document.createElement("label");
+  handlerWrap.className = "modal-field";
+  const handlerLabel = document.createElement("span");
+  handlerLabel.textContent = "Handler";
+  handlerWrap.appendChild(handlerLabel);
+  const handlerSelect = document.createElement("select");
+  handlerSelect.name = "handler";
+  for (const choice of handlerChoices) {
     const opt = document.createElement("option");
     opt.value = choice.id;
     opt.textContent = choice.label;
-    if (choice.id === parsed.effect) opt.selected = true;
-    effectSelect.appendChild(opt);
+    if (choice.id === parsed.handler) opt.selected = true;
+    handlerSelect.appendChild(opt);
   }
-  effectWrap.appendChild(effectSelect);
-  modalForm.appendChild(effectWrap);
+  handlerWrap.appendChild(handlerSelect);
+  modalForm.appendChild(handlerWrap);
 
   const moveFields = document.createElement("div");
-  moveFields.className = "action-move-fields modal-field-conditional";
-  moveFields.dataset.showWhenField = "kind";
-  moveFields.dataset.showWhenValues = "interact";
+  moveFields.className = "action-move-fields";
 
   const destAreaWrap = document.createElement("label");
   destAreaWrap.className = "modal-field";
@@ -416,7 +422,7 @@ function openActionForm(existingName, existingAction) {
   modalForm.appendChild(moveFields);
 
   const toggleMoveFields = () => {
-    moveFields.classList.toggle("hidden", effectSelect.value !== "move_area");
+    moveFields.classList.toggle("hidden", handlerSelect.value !== "move_area");
   };
   const syncKindFields = () => {
     const isTrigger = kindSelect.value === "trigger";
@@ -425,12 +431,12 @@ function openActionForm(existingName, existingAction) {
       const allowed = (wrap.dataset.showWhenValues || "")
         .split(",")
         .map((v) => v.trim());
-      const current = wrap.dataset.showWhenField === "kind" ? kindSelect.value : effectSelect.value;
+      const current = kindSelect.value;
       wrap.hidden = !allowed.includes(String(current));
     }
     toggleMoveFields();
   };
-  effectSelect.addEventListener("change", syncKindFields);
+  handlerSelect.addEventListener("change", syncKindFields);
   kindSelect.addEventListener("change", syncKindFields);
   syncKindFields();
 
@@ -459,7 +465,7 @@ function openActionForm(existingName, existingAction) {
       kind: modalForm.elements.kind.value,
       result: modalForm.elements.result?.value?.trim() || "(trigger)",
       passive: modalForm.elements.passive.value.trim(),
-      effect: modalForm.elements.effect?.value || "none",
+      handler: modalForm.elements.handler?.value || "none",
       destArea: modalForm.elements.destArea?.value,
       destX: modalForm.elements.destX?.value?.trim(),
       destY: modalForm.elements.destY?.value?.trim(),
@@ -485,7 +491,7 @@ function openActionForm(existingName, existingAction) {
           haltMovement: data.kind === "trigger" ? data.haltMovement : undefined,
           deleteAfterTrigger: data.kind === "trigger" ? data.deleteAfterTrigger : undefined,
           triggerExceptions: data.kind === "trigger" ? data.triggerExceptions : undefined,
-          effect: data.effect,
+          handler: data.handler,
           destArea: data.destArea,
           destX: data.destX,
           destY: data.destY,

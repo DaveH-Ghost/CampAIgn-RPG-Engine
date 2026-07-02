@@ -2,7 +2,7 @@
 
 Grid-based LLM agent simulation engine: multi-area worlds, compound turns (move → look → speak → interact/emote), pluggable memory modules, and a stable `realm_fabric` library API. The `realm` CLI and [realm-studio](examples/web/realm-studio) are reference clients — apps build on the engine with their own UI and scenarios.
 
-**Current version:** **V0.6.0** (`0.6.0` in `pyproject.toml`) — tactical grid simulation: movement blocking, pathfinding, interact pathing, multi-tile footprints, hidden objects, and path-step triggers.
+**Current version:** **V0.6.1** (`0.6.1` in `pyproject.toml`) — pluggable interaction handlers; interacts and triggers share one handler surface. Apps register world-change behavior at runtime (reference handlers ship with CLI and realm-studio only).
 
 ## Quick start
 
@@ -44,6 +44,14 @@ restored = Session.from_snapshot(save_doc)
 Copy [`.env.example`](.env.example) to `.env` and set `OPENROUTER_API_KEY` for LLM turns. Optional `OPENROUTER_MODEL` (default `deepseek/deepseek-v4-flash`). Manual commands work without a key.
 
 realm-studio **Settings** (gear icon) can set API key and model **in memory for the current server process only** — nothing is written to disk.
+
+## V0.6.1 highlights
+
+- **Pluggable handlers** — `register_interaction_handler()`; `ObjectAction.handler_id` + `handler_params`
+- **Reference handlers** — `delete_self`, `random_move_self`, `move_area` in `examples/reference_handlers/` (CLI + realm-studio register at startup)
+- **Interacts + triggers** — same handler surface for LLM interacts and path-step triggers
+- **Saves** — `snapshot_version: 4` (v1–v3 import supported; `effects` migrates to handlers)
+- **Breaking** — CLI `effect` → `handler`; `effects` command → `handlers` (alias kept)
 
 ## V0.6.0 highlights
 
@@ -90,11 +98,12 @@ No API key or network required — LLM calls are mocked in tests.
 
 | Doc | Topic |
 |-----|--------|
+| [V0.6.1 changelog](docs/v0.6.1-changelog.md) | Pluggable interaction handlers, snapshot v4 |
 | [V0.6.0 changelog](docs/v0.6.0-changelog.md) | Grid simulation, triggers, snapshot v3 |
 | [V0.5.0 changelog](docs/v0.5.0-changelog.md) | Lorebooks, prompt slot, Lorebooks tab |
 | [V0.4.6 changelog](docs/v0.4.6-changelog.md) | Custom memory modules, settings |
 | [V0.4.5 changelog](docs/v0.4.5-changelog.md) | Session save/load |
-| [Roadmap](docs/ROADMAP.md) | Version plans (next: V0.6.1 handlers) |
+| [Roadmap](docs/ROADMAP.md) | Version plans (next: V0.7.0 platform SDK) |
 | [realm-studio](examples/web/realm-studio/README.md) | Web UI, API, settings |
 | [Long-term goals](LONG_TERM_GOALS.md) | Aspirational features |
 | [CLI reference](docs/cli.md) | `realm` stepper commands |

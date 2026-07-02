@@ -464,7 +464,7 @@ See [v0.6.0-changelog.md](v0.6.0-changelog.md).
 
 **Focus:** **Pluggable interaction handlers** — remove hardcoded effect registry from the engine; apps register world-change behavior at runtime (same sustainability goal as custom memory modules).
 
-**Status:** 📋 **Planned** — ship **after** 0.6.0 triggers so interacts and triggers share one hook story.
+**Status:** ✅ **Shipped** — tag **`v0.6.1`**. See [v0.6.1-changelog.md](v0.6.1-changelog.md).
 
 ### Engine
 
@@ -489,7 +489,7 @@ See [v0.6.0-changelog.md](v0.6.0-changelog.md).
 - Default profile / demo world registers reference handlers
 - `move_area` becomes a **reference handler**, not special-cased engine code
 
-See `docs/v0.6.1-changelog.md` (create when implementation starts).
+See [v0.6.1-changelog.md](v0.6.1-changelog.md).
 
 ---
 

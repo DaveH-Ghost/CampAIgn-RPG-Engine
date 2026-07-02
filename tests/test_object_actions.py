@@ -5,10 +5,9 @@ V0.2 Section 3: declarative object interactions.
 """
 
 from src.actions.interact import interact
-from src.effect_spec import EffectSpec
 from src.llm.prompt import build_compound_prompt
 from src.llm.schemas import AgentCompoundTurn
-from src.object_effects import format_effects_list
+from src.interaction_handlers.registry import format_handlers_list
 from src.perception import build_passive_vision, PASSIVE_VISION_LOOK_RULE, perform_look
 from src.simulation import next_turn_number_for_agent, run_compound_turn
 from src.area import create_initial_area
@@ -23,7 +22,7 @@ from src.area_edit import (
 
 COOKIE_ARGS = (
     'name "Cookie" pdesc "A cookie." desc "A tasty cookie." at 2,2 '
-    'action eat range 1 effect delete_self '
+    'action eat range 1 handler delete_self '
     'result "You ate the cookie, it was delicious." '
     'passive "{actor} ate the cookie."'
 )
@@ -31,7 +30,7 @@ COOKIE_ARGS = (
 
 COOKIE_FAR_ARGS = (
     'name "Cookie" pdesc "A cookie." desc "A tasty cookie." at 4,4 '
-    'action eat range 1 effect delete_self '
+    'action eat range 1 handler delete_self '
     'result "You ate the cookie, it was delicious." '
     'passive "{actor} ate the cookie."'
 )
@@ -51,8 +50,8 @@ def _create_goblin(area, at="0,3"):
     return agent
 
 
-def test_effects_command_lists_registered_effects():
-    text = format_effects_list()
+def test_handlers_command_lists_registered_handlers():
+    text = format_handlers_list()
     assert "delete_self" in text
     assert "random_move_self" in text
     assert "move_area" in text
@@ -60,10 +59,13 @@ def test_effects_command_lists_registered_effects():
     assert "different random in-bounds grid position" in text
 
 
-def test_effect_registry_descriptions_match_handlers():
-    from src.object_effects import EFFECT_DESCRIPTIONS, _EFFECT_HANDLERS
+def test_handler_registry_descriptions_match_registration():
+    from src.interaction_handlers.registry import get_handler_registration, list_registered_handlers
 
-    assert set(EFFECT_DESCRIPTIONS) == set(_EFFECT_HANDLERS)
+    for handler_id in list_registered_handlers():
+        reg = get_handler_registration(handler_id)
+        assert reg is not None
+        assert reg.description
 
 
 def test_create_cookie_shows_action_in_objects_list():
@@ -125,7 +127,7 @@ def test_multiple_actions_on_one_object():
     )
     assert edit_object_from_args(
         area,
-        f'{obj.id} add-action eat range 1 effect delete_self '
+        f'{obj.id} add-action eat range 1 handler delete_self '
         'result "Yum." passive "{actor} ate it."',
     ).startswith("Added action")
     assert edit_object_from_args(
@@ -143,10 +145,10 @@ def test_create_object_accepts_random_move_self_effect():
     obj, msg = create_object_from_args(
         area,
         'name "Marble" desc "Round." at 1,1 action roll range 0 '
-        'effect random_move_self result "It rolls." passive "{actor} rolls it."',
+        'handler random_move_self result "It rolls." passive "{actor} rolls it."',
     )
     assert obj is not None
-    assert obj.actions["roll"].effects == [EffectSpec.from_name("random_move_self")]
+    assert obj.actions["roll"].handler_id == "random_move_self"
     assert "Created object" in msg
 
 
@@ -158,7 +160,7 @@ def test_interact_templates_substitute_object_start_and_end(monkeypatch):
     assert ball.position == (2, 2)
 
     monkeypatch.setattr(
-        "src.object_effects.random.choice",
+        "reference_handlers.handlers.random_move_self.random.choice",
         lambda _positions: (4, 0),
     )
 
@@ -324,15 +326,15 @@ def test_eat_clears_explorer_look_memory_for_cookie():
     assert not explorer.memory.has_ever_looked_at(cookie.id)
 
 
-def test_create_object_unknown_effect_rejected():
+def test_create_object_unknown_handler_rejected():
     area = create_initial_area()
     obj, msg = create_object_from_args(
         area,
-        'name "Cookie" desc "x" at 2,2 action eat range 1 effect vanish '
+        'name "Cookie" desc "x" at 2,2 action eat range 1 handler vanish '
         'result "x" passive "x"',
     )
     assert obj is None
-    assert "Unknown effect" in msg
+    assert "Unknown handler" in msg
 
 
 def test_result_only_interact_leaves_object():
@@ -368,7 +370,7 @@ def test_edit_object_add_and_remove_action():
     )
     msg = edit_object_from_args(
         area,
-        f'{obj.id} add-action eat range 1 effect delete_self '
+        f'{obj.id} add-action eat range 1 handler delete_self '
         'result "Yum." passive "{actor} ate it."',
     )
     assert "Added action" in msg
@@ -391,11 +393,11 @@ def test_delete_object_clears_look_memory():
     assert not agent.memory.has_ever_looked_at("obj_ball_01")
 
 
-def test_stepper_effects_command(capsys):
+def test_stepper_handlers_command(capsys):
     from src.main import ManualStepper
 
     stepper = ManualStepper()
-    stepper.onecmd("effects")
+    stepper.onecmd("handlers")
     out = capsys.readouterr().out
     assert "delete_self" in out
     assert "random_move_self" in out
@@ -409,7 +411,7 @@ def test_random_move_self_moves_ball(monkeypatch):
     original = ball.position
 
     monkeypatch.setattr(
-        "src.object_effects.random.choice",
+        "reference_handlers.handlers.random_move_self.random.choice",
         lambda positions: (0, 4),
     )
 
@@ -450,7 +452,7 @@ def test_random_move_self_excludes_current_tile(monkeypatch):
         seen_positions.append(set(positions))
         return (0, 0)
 
-    monkeypatch.setattr("src.object_effects.random.choice", capture_choice)
+    monkeypatch.setattr("reference_handlers.handlers.random_move_self.random.choice", capture_choice)
 
     interact(explorer, area, "obj_ball_01", "kick")
 
@@ -465,7 +467,7 @@ def test_step_compound_kick_ball_moves(monkeypatch):
     stepper = ManualStepper()
     stepper.agent.position = (2, 3)
     monkeypatch.setattr(
-        "src.object_effects.random.choice",
+        "reference_handlers.handlers.random_move_self.random.choice",
         lambda _positions: (4, 0),
     )
     stepper.onecmd("step-compound - interact obj_ball_01 kick")

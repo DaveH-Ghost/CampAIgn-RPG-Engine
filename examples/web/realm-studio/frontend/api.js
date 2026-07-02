@@ -8,6 +8,14 @@ export async function getState() {
   return res.json();
 }
 
+export async function fetchInteractionHandlers() {
+  const res = await fetch("/api/interaction-handlers");
+  if (!res.ok) {
+    throw new Error(`GET /api/interaction-handlers failed: HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
 export async function postCommand(line) {
   const res = await fetch("/api/command", {
     method: "POST",
@@ -496,6 +504,7 @@ export function buildAddObjectAction(objectId, {
   result,
   passive,
   effect,
+  handler,
   destArea,
   destX,
   destY,
@@ -520,9 +529,10 @@ export function buildAddObjectAction(objectId, {
       parts.push(`trigger-exception ${cliQuote(exceptions)}`);
     }
   }
-  if (effect && effect !== "none") {
-    parts.push(`effect ${effect}`);
-    if (effect === "move_area") {
+  const selectedHandler = handler || effect;
+  if (selectedHandler && selectedHandler !== "none") {
+    parts.push(`handler ${selectedHandler}`);
+    if (selectedHandler === "move_area") {
       parts.push(`dest-area ${destArea}`, `dest-at ${destX},${destY}`);
     }
   }

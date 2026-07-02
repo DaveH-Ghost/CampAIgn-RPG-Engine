@@ -35,6 +35,14 @@ def _active_block(state: dict) -> dict:
     return state["areas"][state["active_area_id"]]
 
 
+def test_get_interaction_handlers_lists_reference_set(client):
+    response = client.get("/api/interaction-handlers")
+    assert response.status_code == 200
+    data = response.json()
+    ids = {item["id"] for item in data["handlers"]}
+    assert {"delete_self", "random_move_self", "move_area"} <= ids
+
+
 def test_get_state_includes_vision_units(client):
     response = client.get("/api/state")
     data = response.json()
@@ -108,7 +116,7 @@ def test_state_returns_multi_area_snapshot(client):
     ball = next(o for o in room_objects if o["id"] == "obj_ball_01")
     assert "kick" in ball["actions"]
     assert ball["actions_detail"]["kick"]["range"] == 1
-    assert ball["actions_detail"]["kick"]["effects"][0]["name"] == "random_move_self"
+    assert ball["actions_detail"]["kick"]["handler_id"] == "random_move_self"
     assert isinstance(_room(data)["objects"], list)
     assert isinstance(_room(data)["recent_events"], list)
     assert isinstance(_active_block(data)["objects"], list)

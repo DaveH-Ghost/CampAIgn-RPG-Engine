@@ -15,7 +15,7 @@ def _load_pyproject() -> dict:
 
 def test_pyproject_version_is_semver():
     version = _load_pyproject()["project"]["version"]
-    assert version == "0.6.0"
+    assert version == "0.6.1"
     assert re.fullmatch(r"\d+\.\d+\.\d+", version), version
 
 
@@ -42,7 +42,8 @@ def test_realm_fabric_public_imports():
     assert rf.GameProfile is not None
     assert rf.PromptContext is not None
     assert rf.AgentCompoundTurn is not None
-    assert rf.load_profile is not None
+    assert rf.register_interaction_handler is not None
+    assert rf.list_registered_handlers is not None
     assert rf.default_compound_profile is not None
     assert rf.build_area_snapshot is not None
     assert rf.build_session_snapshot is not None

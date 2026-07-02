@@ -39,7 +39,7 @@ from src.move_target import (
 )
 from src.object import Object, chebyshev_distance_to_object
 from src.object_action import ObjectAction
-from src.object_effects import EffectContext, apply_effects
+from src.interaction_handlers.registry import run_interaction_handler
 from src.occupancy import find_blocker_between, footprint_tiles_for_entity, is_tile_enterable
 
 from src.pathfinding import find_path, walk_with_pathfinding
@@ -385,23 +385,12 @@ def _execute_interact_action(
 
 
 
-    if action.effects:
-
-        ctx = EffectContext(
-
-            area=area,
-
-            session=session,
-
-            source_area_id=source_area_id,
-
+    if action.handler_id:
+        handler_err = run_interaction_handler(
+            session, area, agent, obj, action
         )
-
-        effect_err = apply_effects(ctx, agent, obj, list(action.effects))
-
-        if effect_err:
-
-            return ActionOutcome(result=effect_err)
+        if handler_err:
+            return ActionOutcome(result=handler_err)
 
 
 

@@ -19,24 +19,30 @@ Concrete improvements we expect to build — not current-version scope, but not 
 
 ## Dream Goals
 
-These are currently out of scope. They represent the kind of experiences we eventually want to create.
+These are still distant or unspecified. They are not committed roadmap items.
 
-### More Complex Goals
+*(Most former dream goals have moved to **Achieved** or **Out of scope** below.)*
 
-- [ ] Multiple agents that can observe each other, start conversations, form relationships, and influence one another over time  
-  *(V0.1 added shared-grid multi-agent with passive vision, `look` at other agents, and observable speech/movement via `passive_result` — but no relationships, beliefs, speak targeting, or agent-driven world edits. That is a stepping stone, not this goal.)*
-- [ ] Objects that have their own behaviors and actions (examples: food that can be eaten and gives a taste description, a puzzle box with interactive mechanisms, a door that can be locked/unlocked, etc.)  
-  *(**V0.2 shipped (`v0.2.0`)** — declarative `interact`, effect registry (`delete_self`, `random_move_self`), ball `kick`. **V0.6.0** adds engine-fired **triggers** for zones and cutscenes; handler-driven behavior deferred to **V0.6.1**.)*
-- [x] **Rectangular / multi-tile objects (V0.6.0d, `0.6.0`)**  
-  Axis-aligned footprints (`width` / `height`), blocking on all tiles, Chebyshev range to nearest footprint tile. See [v0.6.0-changelog.md](docs/v0.6.0-changelog.md).
-- [ ] A visual interface similar to Roll20 — a grid with tokens representing agents and objects, plus chat bubbles when agents speak
-- [ ] **Roll20 plugin support**  
-  Integrate the agent with real Roll20 games (via Mod/API Scripts + chat bridge). Enable the agent to perceive live map state and control tokens representing D&D characters, NPCs, and enemies. The external agent handles reasoning/LLM calls; a companion Roll20 script executes token movement, sheet updates, etc. (Roll20 Pro required for the scripting side; communication constrained by the sandbox model.)
-- [ ] Agents that can create or modify objects in the world (with some form of validation or rules)
-- [ ] Richer memory systems (beliefs, relationships, long-term goals, emotional state)  
-  *(**V0.2.5 release-ready (`0.2.5`)** — pluggable memory modules including `rolling_summary` LLM consolidation; `formatting/` + `ConsolidationRunner` refactor. Persistent store and goals/tasks still planned; see [ROADMAP.md](docs/ROADMAP.md).)*
-- [ ] The ability for agents to develop and pursue their own goals over many turns instead of only reacting to the current situation  
-  *(Planned post–V0.2.5: goals/tasks linked to memory IDs; see [ROADMAP.md](docs/ROADMAP.md).)*
+---
+
+## Out of scope (for Realm-Fabric / realm-studio)
+
+Realm-Fabric is a **simulation engine** and **library API**. [realm-studio](examples/web/realm-studio) is a **reference demo** for authoring and testing — not a full game or VTT product. The following experiences are intentionally **not** built into the core project or reference studio. **Apps** built on Realm-Fabric can implement them using pluggable memory modules, interaction handlers (V0.6.1+), lorebooks, and their own UI.
+
+- **Multi-agent social simulation** — agents that observe each other, start targeted conversations, form relationships, and influence one another over time.  
+  V0.1 shipped shared-grid multi-agent with passive vision, `look` at other agents, and observable speech/movement via `passive_result`. That is engine support only. Rich social dynamics belong in **downstream apps** with custom memory modules and app-specific prompts/rules.
+
+- **Roll20-style VTT UI** — grid with tokens, chat bubbles, full tabletop UX.  
+  realm-studio provides a minimal authoring grid and turn runner, not a player-facing VTT. Product UIs are **app scope**.
+
+- **Roll20 plugin / live game bridge** — Mod/API Scripts, chat bridge, token control in real Roll20 games.  
+  Same as above: integrate via a **separate app** that talks to Roll20 and uses `Session` (or snapshots) on the side.
+
+- **Agent-initiated world edits** — agents that create or modify objects in the world (with validation/rules).  
+  V0.6.1 **interaction handlers** give apps a hook to run world changes from interacts and triggers; the engine does not ship agent-driven authoring or a built-in validation policy. Apps decide what agents may change.
+
+- **Rich agent cognition** — beliefs, relationships, long-term goals, emotional state, pursuing objectives over many turns instead of only reacting to the current situation.  
+  V0.2.5 shipped **pluggable memory modules** (`recent_turns`, `salient_turns`, `rolling_summary`, custom modules). Beliefs, goals, and personality depth are **app-owned**: implement in custom modules and prompts, not in the core engine or realm-studio.
 
 ---
 
@@ -54,7 +60,7 @@ This section is for goals that have actually been completed. When something move
   Multiple agents share one grid with independent memory and per-agent turn numbers. `switch` / `run` / typing a name control turns. Other agents appear in passive vision (`pdesc` / `desc` / `[?]`); `personality` is LLM-only. Observable actions (`passive_result`) let agents see each other's recent speech, movement, and looks. Agent names cannot collide with stepper commands. See [v0.1-implementation-readiness-checklist.md](docs/v0.1-implementation-readiness-checklist.md).
 
 - [x] **Declarative object interact — first milestone (V0.2 Section 3, v0.2.0)**  
-  Objects expose named `ObjectAction`s with Chebyshev range, `{actor}`/`{object}` templates, and a central effect registry (`delete_self`, `random_move_self`). Interact runs in the compound action phase; listed in the post-move action prompt when in range. Initial ball includes **`kick`**. Full puzzle/behavior richness remains in Dream Goals above. See [v0.2-implementation-readiness-checklist.md](docs/v0.2-implementation-readiness-checklist.md).
+  Objects expose named `ObjectAction`s with Chebyshev range, `{actor}`/`{object}` templates, and a central effect registry (`delete_self`, `random_move_self`). Interact runs in the compound action phase; listed in the post-move action prompt when in range. Initial ball includes **`kick`**. See [v0.2-implementation-readiness-checklist.md](docs/v0.2-implementation-readiness-checklist.md).
 
 - [x] **Pluggable memory modules (V0.2.5, `0.2.5`)**  
   Per-agent memory modules (`recent_turns`, `salient_turns`, `rolling_summary`) with witnessed-action ingest, condensed render, salience retention, and async rolling LLM consolidation. Single compound LLM call per turn. See [v0.2.5-changelog.md](docs/v0.2.5-changelog.md).
@@ -71,6 +77,12 @@ This section is for goals that have actually been completed. When something move
 - [x] **Tactical grid simulation (V0.6.0, `0.6.0`)**  
   Movement blocking, BFS pathfinding, interact pathing, merged passive-vision prompts, multi-tile footprints, hidden objects, path-step triggers, `snapshot_version: 3`. See [v0.6.0-changelog.md](docs/v0.6.0-changelog.md).
 
+- [x] **Rectangular / multi-tile objects (V0.6.0d, `0.6.0`)**  
+  Axis-aligned footprints (`width` / `height`), blocking on all footprint tiles, Chebyshev range to nearest footprint tile. See [v0.6.0-changelog.md](docs/v0.6.0-changelog.md).
+
+- [x] **Object behaviors and actions (V0.2 + V0.6.0 + V0.6.1)**  
+  Declarative `interact` actions and effect registry (V0.2); engine-fired **triggers** for zones and cutscenes (V0.6.0); **pluggable interaction handlers** so apps register world-change behavior at runtime — food that can be eaten, puzzle boxes, lockable doors, etc. are implemented by **apps** via handlers, not hardcoded in the engine. See [v0.2.0](docs/v0.2-implementation-readiness-checklist.md), [v0.6.0-changelog.md](docs/v0.6.0-changelog.md), [ROADMAP.md](docs/ROADMAP.md) V0.6.1.
+
 - [x] **Coordinate and entity-target move (V0.4.0 + V0.4.4 JSON)**  
   Compound turns accept coordinate `"x,y"` or entity id (`obj_*` / `agent_*`) as move targets; optional `move_speed` pathing. V0.4.4 compact JSON field `move`. See [v0.4.0-changelog.md](docs/v0.4.0-changelog.md).
 
@@ -82,6 +94,7 @@ This section is for goals that have actually been completed. When something move
 - Do **not** use these goals to justify adding scope to the current version.
 - When we decide a dream is worth actively working toward, we should first create a proper design document for it (not just check it off).
 - Moving something from "Dream Goals" to "Achieved" should be celebrated.
+- If a goal is better solved by **downstream apps** than the engine, record it under **Out of scope** instead of Dream Goals.
 
 ---
 

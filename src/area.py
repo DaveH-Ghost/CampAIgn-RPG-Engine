@@ -4,7 +4,6 @@ from typing import Optional
 from src.agent import Agent
 from src.memory import Memory
 from src.object import Object
-from src.effect_spec import EffectSpec
 from src.object_action import ObjectAction
 from src.area_event import (
     DEFAULT_MAX_RECENT_AREA_EVENTS,
@@ -362,7 +361,7 @@ def create_initial_area() -> Area:
                 range=1,
                 result="You kick the {object}. It rolls from {object_start} to {object_end}.",
                 passive_result="{actor} kicks the {object}. It rolls from {object_start} to {object_end}.",
-                effects=[EffectSpec.from_name("random_move_self")],
+                handler_id="random_move_self",
             ),
         },
     )

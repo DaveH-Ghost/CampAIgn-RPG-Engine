@@ -1,5 +1,5 @@
 """
-realm_fabric — public engine API for Realm-Fabric (V0.6.0).
+realm_fabric — public engine API for Realm-Fabric (V0.6.1).
 
 Downstream projects should import from this package. Modules under ``src.*``
 remain importable for the CLI and tests but are not guaranteed stable.
@@ -19,6 +19,13 @@ from src.object import Object
 from src.session import CommandResult, Session, SessionResult, TurnResult
 from src.simulation import run_compound_turn
 from src.session_persistence import build_save_snapshot, load_session_from_snapshot
+from src.interaction_handlers import (
+    format_handlers_list,
+    is_handler_registered,
+    list_registered_handlers,
+    register_interaction_handler,
+    run_interaction_handler,
+)
 from src.snapshot import DEFAULT_AREA_ID, build_area_snapshot, build_session_snapshot
 
 __all__ = [
@@ -37,6 +44,11 @@ __all__ = [
     "build_area_snapshot",
     "build_save_snapshot",
     "build_session_snapshot",
+    "format_handlers_list",
+    "is_handler_registered",
+    "list_registered_handlers",
+    "register_interaction_handler",
+    "run_interaction_handler",
     "DEFAULT_AREA_ID",
     "build_prompt_context",
     "create_area",

@@ -73,7 +73,7 @@ def test_interact_move_area_substitutes_actor_area_placeholders():
     create_object_from_args(
         room,
         'name "Door" pdesc "A door." desc "Hall door." at 1,1 '
-        "action enter range 1 effect move_area dest-area hall dest-at 0,0 "
+        "action enter range 1 handler move_area dest-area hall dest-at 0,0 "
         'result "You leave {actor_start_area} at {actor_start} and arrive in '
         '{actor_end_area} at {actor_end}." '
         'passive "{actor} travels from {actor_start_area} to {actor_end_area}."',

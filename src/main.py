@@ -34,6 +34,9 @@ import sys
 _project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
+_examples_root = os.path.join(_project_root, "examples")
+if _examples_root not in sys.path:
+    sys.path.insert(0, _examples_root)
 
 import cmd
 
@@ -45,6 +48,12 @@ from src.llm.schemas import AgentCompoundTurn
 from src.perception import build_passive_vision
 from src.session import Session
 from src.simulation import execute_action_phase, execute_nav_phase
+
+
+def _ensure_reference_handlers() -> None:
+    from reference_handlers import register_reference_handlers
+
+    register_reference_handlers()
 
 
 class ManualStepper(cmd.Cmd):
@@ -59,8 +68,8 @@ class ManualStepper(cmd.Cmd):
         "- 'run' : LLM turn for the active agent\n"
         "- Type an agent's name (e.g. 'Explorer') : LLM turn for that agent\n"
         "- 'switch <name>' : change active agent (no turn, no LLM)\n"
-        "- 'list' / 'objects' / 'agents' / 'effects' : list area entities (no turn)\n"
-        "- 'create-object' / 'edit-object' / 'delete-object' : edit objects (see 'effects')\n"
+        "- 'list' / 'objects' / 'agents' / 'handlers' : list area entities (no turn)\n"
+        "- 'create-object' / 'edit-object' / 'delete-object' : edit objects (see 'handlers')\n"
         "- 'create-agent' / 'edit-agent' / 'delete-agent' : edit agents (see 'memory-modules')\n"
         "- 'add-memory-module <path>' : load a custom memory module from a .py file\n"
         "- 'load-lorebook <path>' : load a SillyTavern lorebook JSON file\n"
@@ -85,6 +94,7 @@ class ManualStepper(cmd.Cmd):
         session: Session | None = None,
     ):
         super().__init__()
+        _ensure_reference_handlers()
         self.session = session or Session.from_profile(
             default_compound_profile(),
             include_examples=include_examples,
@@ -180,9 +190,13 @@ class ManualStepper(cmd.Cmd):
         """List all objects in the area. Does not consume a turn."""
         self._print_command("objects")
 
+    def do_handlers(self, arg):
+        """List registered interaction handlers (read-only)."""
+        self._print_command("handlers")
+
     def do_effects(self, arg):
-        """List registered object interaction effects (read-only)."""
-        self._print_command("effects")
+        """Deprecated alias for handlers."""
+        self._print_command("handlers")
 
     def do_memory_modules(self, arg):
         """List registered agent memory modules (read-only)."""
@@ -579,6 +593,7 @@ class ManualStepper(cmd.Cmd):
 
 def main():
     """Entry point for the manual stepper (used by ``uv run realm``)."""
+    _ensure_reference_handlers()
     parser = argparse.ArgumentParser(description="Realm-Fabric V0.3 Manual Stepper")
     parser.add_argument(
         "--log",

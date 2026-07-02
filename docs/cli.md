@@ -47,11 +47,11 @@ Add a `lorebook` prompt block in realm-studio Prompt layout (or custom `prompt_b
 create-object name "Crate" pdesc "A crate." desc "Wooden." at 0,0
 create-object name "Table" pdesc "A large table." at 1,1 width 2 height 2 blocks-movement true
 create-object name "Trap" pdesc "Hidden." at 2,2 hidden true blocks-movement false
-create-object name "Door" pdesc "A door." at 1,1 action enter range 0 effect move_area dest-area hall dest-at 0,0 result "You walk through." passive "{actor} walks through."
+create-object name "Door" pdesc "A door." at 1,1 action enter range 0 handler move_area dest-area hall dest-at 0,0 result "You walk through." passive "{actor} walks through."
 edit-object obj_sign_01 desc "New sign text."
 edit-object obj_table_01 width 3 height 1
 edit-object obj_trap_01 hidden false
-edit-object obj_trap_01 add-action trip range 0 kind trigger halt-movement true delete-after-trigger false result "(trigger)" passive "{actor} steps on the trap."
+edit-object obj_trap_01 add-action trip range 0 kind trigger halt-movement true delete-after-trigger false handler delete_self result "(trigger)" passive "{actor} steps on the trap."
 delete-object obj_crate_01
 
 create-area id attic desc "A dusty attic." width 6 height 6
@@ -67,7 +67,7 @@ edit-agent agent_01 personality "Updated."
 delete-agent agent_goblin_01
 ```
 
-Object actions support template placeholders (`{actor}`, `{object}`, …). Trigger actions use `kind trigger` and fire on path steps (area event from `passive`). See `effects` or realm-studio **Manage actions…** help.
+Object actions support template placeholders (`{actor}`, `{object}`, …). Trigger actions use `kind trigger` and fire on path steps (area event from `passive`). Handlers use `handler <id>` (e.g. `handler delete_self`, `handler move_area dest-area hall dest-at 0,0`). List registered handlers with `handlers`. See `examples/reference_handlers/` or realm-studio **Manage actions…** help.
 
 **`private_data`** on agents/objects is snapshot-only (custom apps); not set via CLI.
 

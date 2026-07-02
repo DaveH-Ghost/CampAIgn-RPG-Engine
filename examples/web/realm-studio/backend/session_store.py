@@ -5,9 +5,16 @@ In-memory Session holder for the realm-studio demo (single-player, one process).
 from __future__ import annotations
 
 import os
+import sys
+from pathlib import Path
 
 from realm_fabric import Session, load_profile
 from src.area import Area
+
+_STUDIO_DIR = Path(__file__).resolve().parent.parent
+_EXAMPLES = _STUDIO_DIR.parent.parent
+if str(_EXAMPLES) not in sys.path:
+    sys.path.insert(0, str(_EXAMPLES))
 
 _store: SessionStore | None = None
 
@@ -46,6 +53,9 @@ class SessionStore:
     """Owns one engine ``Session`` for the lifetime of the server process."""
 
     def __init__(self) -> None:
+        from reference_handlers import register_reference_handlers
+
+        register_reference_handlers()
         profile = load_profile("default_compound")
         self._session = Session.from_profile(profile)
         _seed_studio_hall(self._session)

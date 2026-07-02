@@ -13,7 +13,6 @@ from typing import Any
 
 from src.agent import Agent
 from src.area import Area
-from src.effect_spec import EffectSpec
 from src.object import Object
 from src.object_action import ObjectAction
 from src.perception import build_passive_vision
@@ -26,16 +25,13 @@ def _position_list(position: tuple[int, int]) -> list[int]:
     return [x, y]
 
 
-def serialize_effect_spec(spec: EffectSpec) -> dict[str, Any]:
-    return {"name": spec.name, "params": dict(spec.params)}
-
-
 def serialize_object_action(action: ObjectAction) -> dict[str, Any]:
     data: dict[str, Any] = {
         "range": action.range,
         "result": action.result,
         "passive_result": action.passive_result,
-        "effects": [serialize_effect_spec(e) for e in action.effects],
+        "handler_id": action.handler_id,
+        "handler_params": dict(action.handler_params),
         "kind": action.kind,
     }
     if action.kind == "trigger":

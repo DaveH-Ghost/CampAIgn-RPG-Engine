@@ -23,9 +23,8 @@ from src.memory_modules.registry import (
     is_module_loaded,
 )
 from src.object import Object, object_footprint_fits_bounds
-from src.effect_spec import EffectSpec
 from src.object_action import ObjectAction
-from src.object_effects import validate_effect_params
+from src.interaction_handlers.registry import validate_handler_params
 from src.stepper_commands import (
     agent_name_conflicts_with_commands,
     reserved_agent_name_message,
@@ -249,41 +248,41 @@ def format_full_list(area: Area, active_agent: Optional[Agent]) -> str:
     return f"{format_agents_list(area, active_agent)}\n\n{format_objects_list(area)}"
 
 
-def parse_effects_from_fields(
+def parse_handler_from_fields(
     fields: dict[str, str],
-) -> tuple[list[EffectSpec] | None, Optional[str]]:
-    """Build effect specs from optional effect / dest-area / dest-at fields."""
-    effect_name = fields.get("effect")
-    if not effect_name:
+) -> tuple[str | None, dict[str, str], Optional[str]]:
+    """Build handler id + params from optional handler / dest-area / dest-at fields."""
+    handler_id = fields.get("handler") or fields.get("effect")
+    if not handler_id:
         if "dest-area" in fields or "dest-at" in fields:
-            return None, "dest-area and dest-at require effect move_area."
-        return [], None
+            return None, {}, "dest-area and dest-at require handler move_area."
+        return None, {}, None
 
     params: dict[str, str] = {}
-    if effect_name == "move_area":
+    if handler_id == "move_area":
         if "dest-area" not in fields:
-            return None, "move_area effect requires dest-area <area_id>."
+            return None, {}, "move_area handler requires dest-area <area_id>."
         if "dest-at" not in fields:
-            return None, "move_area effect requires dest-at x,y."
+            return None, {}, "move_area handler requires dest-at x,y."
         params["dest-area"] = fields["dest-area"]
         params["dest-at"] = fields["dest-at"]
     elif "dest-area" in fields or "dest-at" in fields:
-        return None, "dest-area and dest-at are only valid with effect move_area."
+        return None, {}, "dest-area and dest-at are only valid with handler move_area."
 
-    err = validate_effect_params(effect_name, params)
+    err = validate_handler_params(handler_id, params)
     if err:
-        return None, err
-    return [EffectSpec(name=effect_name, params=params)], None
+        return None, {}, err
+    return handler_id, params, None
 
 
 def parse_object_action_fields(
     fields: dict[str, str],
 ) -> tuple[dict[str, ObjectAction] | None, Optional[str]]:
     """
-    Build actions dict from optional action/range/effect/result/passive fields.
+    Build actions dict from optional action/range/handler/result/passive fields.
 
     When ``action`` is absent, returns an empty dict. When present, requires
-    result and passive; range defaults to 0; effect is optional.
+    result and passive; range defaults to 0; handler is optional.
     """
     if "action" not in fields:
         return {}, None
@@ -333,17 +332,17 @@ def parse_object_action_fields(
         if "trigger-exception" in fields:
             trigger_exceptions = parse_movement_exceptions(fields["trigger-exception"])
 
-    effects, err = parse_effects_from_fields(fields)
+    handler_id, handler_params, err = parse_handler_from_fields(fields)
     if err:
         return None, err
-    assert effects is not None
 
     action = ObjectAction(
         name=name,
         range=action_range,
         result=result,
         passive_result=passive,
-        effects=effects,
+        handler_id=handler_id,
+        handler_params=handler_params,
         kind=kind,  # type: ignore[arg-type]
         halt_movement=halt_movement,
         delete_after_trigger=delete_after_trigger,
@@ -415,7 +414,7 @@ def create_object_from_args(area: Area, arg: str) -> tuple[Optional[Object], str
 
     Usage: name "..." [pdesc "..."] [desc "..."] [appearance "..."] at x,y
            [width N] [height N]
-           [action NAME range N [effect EFFECT] result "..." passive "..."]
+           [action NAME range N [handler HANDLER] result "..." passive "..."]
     """
     tokens, err = tokenize_args(arg)
     if err:
@@ -437,6 +436,7 @@ def create_object_from_args(area: Area, arg: str) -> tuple[Optional[Object], str
             "at",
             "action",
             "range",
+            "handler",
             "effect",
             "dest-area",
             "dest-at",
@@ -527,6 +527,7 @@ def _edit_object_add_action(obj: Object, tokens: list[str]) -> str:
         tokens[3:],
         {
             "range",
+            "handler",
             "effect",
             "dest-area",
             "dest-at",

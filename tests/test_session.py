@@ -16,7 +16,7 @@ def test_run_command_create_object_adds_to_world():
     session = Session.from_default()
     result = session.run_command(
         'create-object name "Cookie" pdesc "A cookie." desc "Tasty." at 2,2 '
-        'action eat range 1 effect delete_self '
+        'action eat range 1 handler delete_self '
         'result "You ate the cookie." passive "{actor} ate the cookie."'
     )
     assert result.ok
@@ -160,7 +160,7 @@ def test_web_handler_flow_create_then_turn():
 
     create = session.run_command(
         'create-object name "Cookie" pdesc "A cookie." at 4,4 blocks-movement false '
-        'action eat range 0 effect delete_self '
+        'action eat range 0 handler delete_self '
         'result "You ate it." passive "{actor} ate it."'
     )
     assert create.ok

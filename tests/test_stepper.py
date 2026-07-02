@@ -30,7 +30,7 @@ def _clear_custom_registry():
 def test_stepper_intro_documents_key_commands():
     intro = ManualStepper.intro
     assert "step-compound" in intro
-    assert "effects" in intro
+    assert "handlers" in intro
     assert "memory-modules" in intro
     assert "add-memory-module" in intro
     assert "run" in intro

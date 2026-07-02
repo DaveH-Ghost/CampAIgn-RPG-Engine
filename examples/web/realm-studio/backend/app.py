@@ -14,6 +14,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from src.llm.token_estimate import estimate_prompt_tokens
 
+from backend.interaction_handlers_api import get_interaction_handlers_catalog
 from backend.entity_private_data_api import put_entity_private_data
 from backend.area_api import create_area as api_create_area
 from backend.area_api import delete_area as api_delete_area
@@ -71,16 +72,30 @@ _STUDIO_DIR = Path(__file__).resolve().parent.parent
 _FRONTEND_DIR = _STUDIO_DIR / "frontend"
 _REPO_ROOT = _STUDIO_DIR.parent.parent.parent
 _ENGINE_SRC = _REPO_ROOT / "src"
+_EXAMPLES_ROOT = _REPO_ROOT / "examples"
+
+
+def _ensure_reference_handlers() -> None:
+    import sys
+
+    examples_path = str(_EXAMPLES_ROOT)
+    if examples_path not in sys.path:
+        sys.path.insert(0, examples_path)
+    from reference_handlers import register_reference_handlers
+
+    register_reference_handlers()
 
 
 @asynccontextmanager
 async def _app_lifespan(_app: FastAPI):
+    _ensure_reference_handlers()
     load_cached_custom_modules()
     yield
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="realm-studio", version="0.6.0", lifespan=_app_lifespan)
+    _ensure_reference_handlers()
+    app = FastAPI(title="realm-studio", version="0.6.1", lifespan=_app_lifespan)
 
     app.add_middleware(
         CORSMiddleware,
@@ -94,6 +109,10 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.get("/api/interaction-handlers")
+    def get_interaction_handlers() -> dict[str, object]:
+        return get_interaction_handlers_catalog()
 
     @app.get("/api/health")
     def health() -> dict[str, bool]:

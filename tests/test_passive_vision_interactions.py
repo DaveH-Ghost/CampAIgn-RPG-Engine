@@ -66,7 +66,7 @@ def test_interactions_reachable_after_move_budget():
     obj, _ = create_object_from_args(
         area,
         'name "Cookie" pdesc "A cookie." desc "Tasty." at 4,4 '
-        'action eat range 1 effect delete_self '
+        'action eat range 1 handler delete_self '
         'result "Yum." passive "{actor} ate it."',
     )
     goblin, _ = create_agent_from_args(
