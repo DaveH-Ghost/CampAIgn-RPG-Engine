@@ -5,6 +5,7 @@ One AgentCompoundTurn per agent turn: optional move, then optional look, then tu
 V0.4.1a: reasoning and speak content are truncated at sentence boundaries.
 V0.4.4c: compact JSON keys (move, look, say, action, verb); legacy 0.4.3 keys normalized.
 """
+from __future__ import annotations
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Any, Literal, Optional

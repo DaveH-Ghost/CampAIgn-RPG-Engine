@@ -2,7 +2,7 @@
 
 **Realm-Fabric** is a grid-based LLM agent simulation engine with a stable **`realm_fabric`** library API, a `realm` CLI for debugging, and reference applications ([realm-studio](../examples/web/realm-studio/), [minimal-server](../examples/minimal-server/)).
 
-**Current release:** **0.7.1** — see [changelog/v0.7.1-changelog.md](changelog/v0.7.1-changelog.md).
+**Current release:** **0.7.2** — see [changelog/v0.7.2-changelog.md](changelog/v0.7.2-changelog.md).
 
 ---
 

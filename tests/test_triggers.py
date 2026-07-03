@@ -1,5 +1,7 @@
 """Path-step triggers (V0.6.0e)."""
 
+from __future__ import annotations
+
 from src.actions.move import move as do_move
 from src.area import Area, GridBounds
 from src.area_edit import create_object_from_args

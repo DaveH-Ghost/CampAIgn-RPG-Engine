@@ -3,6 +3,7 @@ speak.py
 
 Implementation of the `speak` action for V0.
 """
+from __future__ import annotations
 
 from src.action_outcome import ActionOutcome
 from src.agent import Agent

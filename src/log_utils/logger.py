@@ -12,7 +12,6 @@ Per the readiness checklist Section 9:
 Uses 'rich' for pretty output (already a project dependency).
 For file logs, writes plain text (or can be extended to JSON).
 """
-
 from __future__ import annotations
 
 import os

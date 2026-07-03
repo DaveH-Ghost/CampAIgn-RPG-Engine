@@ -6,6 +6,7 @@ Default compound-turn prompt assembly for V0.2.5+.
 Game/application projects should prefer ``build_prompt_context`` and compose
 their own templates; this module keeps the built-in reference prompt.
 """
+from __future__ import annotations
 
 from src.agent import Agent
 from src.game_profile import default_compound_profile

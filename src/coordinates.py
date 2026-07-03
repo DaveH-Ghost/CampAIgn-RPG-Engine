@@ -8,6 +8,7 @@ Canonical advertised form: "x,y". Parser also accepts "(x,y)" variants silently.
 Grid bounds are defined on ``Area`` (``min_x`` / ``max_x`` / ``min_y`` / ``max_y``);
 this module only parses.
 """
+from __future__ import annotations
 
 class CoordinateParseError(ValueError):
     """Raised when a move target cannot be parsed as grid coordinates."""

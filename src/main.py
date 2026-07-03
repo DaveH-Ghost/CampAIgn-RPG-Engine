@@ -25,6 +25,7 @@ Run with (from the project root):
 
 Inside, use 'fewshots off' to toggle at runtime too.
 """
+from __future__ import annotations
 
 import argparse
 import os

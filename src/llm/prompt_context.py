@@ -8,6 +8,7 @@ The engine supplies factual strings — passive vision, memory, area text, etc. 
 via ``build_prompt_context``. The default compound prompt in ``prompt.py`` is
 one reference assembly; game projects can ignore it and compose their own.
 """
+from __future__ import annotations
 
 from dataclasses import dataclass
 

@@ -1,4 +1,5 @@
 """Pluggable agent memory modules for prompt assembly."""
+from __future__ import annotations
 
 from src.memory_modules.base import (
     MemoryModule,

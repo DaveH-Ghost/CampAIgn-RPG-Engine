@@ -4,7 +4,7 @@ Grid-based LLM agent simulation engine: multi-area worlds, compound turns (move 
 
 **License:** [MIT](LICENSE) — open source.
 
-**Current version:** **V0.7.1** (`0.7.1` in `pyproject.toml`) — movement pathing fix, targeted area events, PyPI `__version__` fix. See [V0.7.1 changelog](docs/changelog/v0.7.1-changelog.md). **V0.7.0** introduced the stable `realm_fabric` exports, typed `Session` world API, [documentation](docs/README.md), and [minimal-server](examples/minimal-server/).
+**Current version:** **V0.7.2** (`0.7.2` in `pyproject.toml`) — Python 3.12 PyPI import fix. See [V0.7.2 changelog](docs/changelog/v0.7.2-changelog.md). **V0.7.1** added movement pathing fix and targeted area events; **V0.7.0** introduced the stable `realm_fabric` API.
 
 ## Quick start
 
@@ -50,6 +50,10 @@ See [documentation](docs/README.md) and [minimal-server](examples/minimal-server
 Copy [`.env.example`](.env.example) to `.env` and set `OPENROUTER_API_KEY` for LLM turns. Optional `OPENROUTER_MODEL` (default `deepseek/deepseek-v4-flash`). Manual commands work without a key.
 
 realm-studio **Settings** (gear icon) can set API key and model **in memory for the current server process only** — nothing is written to disk.
+
+## V0.7.2 highlights
+
+- **Python 3.12 PyPI fix** — `from __future__ import annotations` across all `src/` modules so `import realm_fabric` works on 3.11/3.12
 
 ## V0.7.1 highlights
 
@@ -121,6 +125,7 @@ Start at **[docs/README.md](docs/README.md)** — guides, API overview, and chan
 |-----|--------|
 | [Building on Realm-Fabric](docs/guides/building-on-realm-fabric.md) | App integration (typed API, hosting) |
 | [CLI reference](docs/guides/cli.md) | `realm` stepper commands |
+| [V0.7.2 changelog](docs/changelog/v0.7.2-changelog.md) | Python 3.12 import fix |
 | [V0.7.1 changelog](docs/changelog/v0.7.1-changelog.md) | Movement fix, targeted events, PyPI version |
 | [V0.7.0 changelog](docs/changelog/v0.7.0-changelog.md) | Platform SDK, minimal-server |
 | [Roadmap](docs/ROADMAP.md) | Version plans |

@@ -15,7 +15,7 @@ def _load_pyproject() -> dict:
 
 def test_pyproject_version_is_semver():
     version = _load_pyproject()["project"]["version"]
-    assert version == "0.7.1"
+    assert version == "0.7.2"
     assert re.fullmatch(r"\d+\.\d+\.\d+", version), version
 
 
@@ -97,3 +97,52 @@ def test_load_profile_builtin():
     profile = load_profile("default_compound")
     assert profile.profile_id == "default_compound"
     assert profile.schema_id == "AgentCompoundTurn"
+
+
+def test_src_modules_have_future_annotations():
+    """Regression: PyPI installs on Python 3.12 need deferred annotation evaluation."""
+    future = "from __future__ import annotations"
+    src_root = ROOT / "src"
+    missing = [
+        path.relative_to(ROOT).as_posix()
+        for path in sorted(src_root.rglob("*.py"))
+        if not any(line.strip() == future for line in path.read_text(encoding="utf-8").splitlines())
+    ]
+    assert not missing, f"missing {future!r}: {missing}"
+
+
+def test_realm_fabric_imports_from_built_wheel(tmp_path):
+    """Smoke-test the wheel the way PyPI users install it."""
+    import subprocess
+    import sys
+
+    expected_version = _load_pyproject()["project"]["version"]
+    subprocess.run(["uv", "build"], cwd=ROOT, check=True)
+    wheels = sorted((ROOT / "dist").glob(f"realm_fabric-{expected_version}-*.whl"))
+    assert wheels, f"expected wheel for {expected_version}"
+    wheel = wheels[-1]
+
+    venv_dir = tmp_path / "venv"
+    subprocess.run(["uv", "venv", str(venv_dir)], cwd=ROOT, check=True)
+    if sys.platform == "win32":
+        venv_python = venv_dir / "Scripts" / "python.exe"
+    else:
+        venv_python = venv_dir / "bin" / "python"
+    subprocess.run(
+        ["uv", "pip", "install", "--python", str(venv_python), str(wheel)],
+        cwd=ROOT,
+        check=True,
+    )
+    import_result = subprocess.run(
+        [
+            str(venv_python),
+            "-c",
+            "from realm_fabric import Session, __version__; "
+            "assert Session is not None; print(__version__)",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert import_result.returncode == 0, import_result.stderr
+    assert import_result.stdout.strip() == expected_version

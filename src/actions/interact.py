@@ -13,9 +13,6 @@ Result/passive templates support placeholders documented in
 ``src.interact_templates`` (e.g. ``{actor}``, ``{object}``, ``{object_start}``).
 
 """
-
-
-
 from __future__ import annotations
 
 

@@ -13,6 +13,7 @@ V0.4.0a: ``move_target`` may be ``x,y`` or ``agent_*`` / ``obj_*``.
 V0.4.0b: when ``agent.move_speed`` is set, walk up to N steps (5e pathing).
 
 """
+from __future__ import annotations
 
 
 

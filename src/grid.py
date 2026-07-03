@@ -1,4 +1,5 @@
 """Grid distance helpers."""
+from __future__ import annotations
 
 
 def chebyshev_distance(

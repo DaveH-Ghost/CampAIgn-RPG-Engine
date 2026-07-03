@@ -1,4 +1,5 @@
 """Session-level lorebooks (SillyTavern-style world info, V0.5.0)."""
+from __future__ import annotations
 
 from src.lorebook.import_st import (
     derive_lorebook_id_from_filename,

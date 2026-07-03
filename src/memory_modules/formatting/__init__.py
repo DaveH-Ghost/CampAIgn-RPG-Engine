@@ -1,4 +1,5 @@
 """Memory module text formatting (common render, salient policy, summary batches)."""
+from __future__ import annotations
 
 from src.memory_modules.formatting.common import (
     REASONING_WINDOW,

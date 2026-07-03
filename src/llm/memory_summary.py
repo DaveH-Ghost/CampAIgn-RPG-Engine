@@ -1,4 +1,5 @@
 """LLM rolling memory summary generation (V0.2.5e)."""
+from __future__ import annotations
 
 from src.llm.client import get_text_completion
 from src.log_utils import log_error, log_turn

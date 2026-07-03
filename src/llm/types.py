@@ -3,6 +3,7 @@ types.py
 
 Small shared types for the LLM package.
 """
+from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Optional

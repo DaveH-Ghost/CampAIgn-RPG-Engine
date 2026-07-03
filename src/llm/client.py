@@ -3,6 +3,7 @@ client.py
 
 LLM client for talking to models via OpenRouter (OpenAI-compatible).
 """
+from __future__ import annotations
 
 import os
 from typing import Optional, Type, TypeVar

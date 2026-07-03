@@ -12,6 +12,7 @@ Passive vision lists one line per object using the footprint tile nearest the
 viewer for coordinates and bearing; multi-tile objects also show footprint
 size (e.g. ``3×2 tiles``). Interaction range uses nearest-footprint Chebyshev distance.
 """
+from __future__ import annotations
 
 from src.action_outcome import ActionOutcome
 from src.agent import Agent

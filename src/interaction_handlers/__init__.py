@@ -1,4 +1,5 @@
 """Pluggable object interaction handlers (V0.6.1)."""
+from __future__ import annotations
 
 from src.interaction_handlers.base import InteractionHandler
 from src.interaction_handlers.registry import (

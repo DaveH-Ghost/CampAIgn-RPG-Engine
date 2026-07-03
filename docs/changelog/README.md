@@ -2,7 +2,7 @@
 
 Release notes and historical implementation checklists for Realm-Fabric.
 
-**Current:** [v0.7.1-changelog.md](v0.7.1-changelog.md) — movement pathing fix, targeted area events, PyPI `__version__`.
+**Current:** [v0.7.2-changelog.md](v0.7.2-changelog.md) — Python 3.12 PyPI import fix.
 
 ---
 
@@ -10,6 +10,7 @@ Release notes and historical implementation checklists for Realm-Fabric.
 
 | Version | Summary |
 |---------|---------|
+| [0.7.2](v0.7.2-changelog.md) | `from __future__ import annotations` across `src/` for Python 3.12 |
 | [0.7.1](v0.7.1-changelog.md) | Straight-line movement fix, targeted `emit_area_event`, PyPI version read |
 | [0.7.0](v0.7.0-changelog.md) | Public API, typed `Session` world editing, app docs, minimal-server |
 | [0.6.1](v0.6.1-changelog.md) | Pluggable interaction handlers, snapshot v4 |
