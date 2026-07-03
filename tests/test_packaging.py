@@ -15,7 +15,7 @@ def _load_pyproject() -> dict:
 
 def test_pyproject_version_is_semver():
     version = _load_pyproject()["project"]["version"]
-    assert version == "0.7.0"
+    assert version == "0.7.1"
     assert re.fullmatch(r"\d+\.\d+\.\d+", version), version
 
 
@@ -28,10 +28,28 @@ def test_pyproject_declares_realm_console_script():
 
 def test_hatch_includes_realm_fabric_and_profiles():
     data = _load_pyproject()
-    wheel = data["tool"]["hatch"]["build"]["targets"]["wheel"]
-    assert "realm_fabric" in wheel["packages"]
-    assert "src" in wheel["packages"]
+    hatch = data["tool"]["hatch"]["build"]
+    assert "realm_fabric" in hatch["packages"]
+    assert "src" in hatch["packages"]
+    wheel = hatch["targets"]["wheel"]
     assert wheel["force-include"]["profiles"] == "profiles"
+
+
+def test_built_wheel_contains_engine_code(tmp_path):
+    import subprocess
+    import zipfile
+
+    dist = ROOT / "dist"
+    wheels = sorted(dist.glob("realm_fabric-*.whl"))
+    if not wheels:
+        subprocess.run(["uv", "build"], cwd=ROOT, check=True)
+        wheels = sorted(dist.glob("realm_fabric-*.whl"))
+    assert wheels, "expected a built wheel in dist/"
+    with zipfile.ZipFile(wheels[-1]) as zf:
+        names = zf.namelist()
+    assert any(n.startswith("src/") and n.endswith(".py") for n in names)
+    assert any(n.startswith("realm_fabric/") for n in names)
+    assert not any(".env" in n for n in names)
 
 
 def test_realm_fabric_public_imports():
@@ -52,6 +70,25 @@ def test_realm_fabric_public_imports():
     assert rf.WorldMutationResult is not None
     assert rf.ObjectAction is not None
     assert "WorldMutationResult" in rf.__all__
+
+
+def test_pyproject_pypi_metadata():
+    data = _load_pyproject()["project"]
+    assert data["license"] == "MIT"
+    assert data["authors"][0]["name"] == "DaveH-Ghost"
+    assert data["authors"][0]["email"] == "davidhall.a27@gmail.com"
+    assert "Homepage" in data["urls"]
+    assert "Realm-Fabric" in data["urls"]["Repository"]
+    classifiers = data["classifiers"]
+    assert any("MIT License" in c for c in classifiers)
+
+
+def test_license_file_exists():
+    license_path = ROOT / "LICENSE"
+    assert license_path.is_file()
+    text = license_path.read_text(encoding="utf-8")
+    assert "MIT License" in text
+    assert "DaveH-Ghost" in text
 
 
 def test_load_profile_builtin():

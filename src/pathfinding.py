@@ -2,6 +2,7 @@
 pathfinding.py
 
 V0.6.0a — BFS pathfinding with movement blocking (5e: 8-way, cost 1 per step).
+V0.7.1 — tie-break collinear moves to stay on the shared row/column.
 """
 
 from __future__ import annotations
@@ -10,6 +11,68 @@ from collections import deque
 
 from src.area import Area
 from src.occupancy import NEIGHBOR_DELTAS, is_tile_enterable, resolve_standable_goal
+
+
+def _path_neighbor_priority(
+    current: tuple[int, int],
+    neighbor: tuple[int, int],
+    goal: tuple[int, int],
+    start: tuple[int, int],
+) -> tuple[int, int, int]:
+    """
+    Sort key for BFS neighbor expansion (lower is better).
+
+    When *start* and *goal* share a row or column, prefer staying on that line.
+    Otherwise prefer diagonal steps toward *goal* (5e-style greedy tie-break).
+    """
+    nx, ny = neighbor
+    gx, gy = goal
+    sx, sy = start
+    cx, cy = current
+
+    remaining = max(abs(gx - nx), abs(gy - ny))
+
+    if sy == gy:
+        off_axis = abs(ny - gy)
+    elif sx == gx:
+        off_axis = abs(nx - gx)
+    else:
+        ndx = nx - cx
+        ndy = ny - cy
+        tdx = gx - cx
+        tdy = gy - cy
+        if tdx != 0 and tdy != 0:
+            is_diagonal = ndx != 0 and ndy != 0
+            toward_x = ndx == 0 or (ndx > 0) == (tdx > 0)
+            toward_y = ndy == 0 or (ndy > 0) == (tdy > 0)
+            if is_diagonal and toward_x and toward_y:
+                off_axis = 0
+            elif not is_diagonal and (ndx == 0 or ndy == 0) and toward_x and toward_y:
+                off_axis = 1
+            else:
+                off_axis = 2
+        else:
+            off_axis = 0
+
+    return (off_axis, remaining, abs(gx - nx) + abs(gy - ny))
+
+
+def _sorted_neighbors(
+    current: tuple[int, int],
+    goal: tuple[int, int],
+    start: tuple[int, int],
+) -> list[tuple[int, int]]:
+    ranked: list[tuple[tuple[int, int, int], tuple[int, int]]] = []
+    for dx, dy in NEIGHBOR_DELTAS:
+        neighbor = (current[0] + dx, current[1] + dy)
+        ranked.append(
+            (
+                _path_neighbor_priority(current, neighbor, goal, start),
+                neighbor,
+            )
+        )
+    ranked.sort(key=lambda item: item[0])
+    return [neighbor for _, neighbor in ranked]
 
 
 def find_path(
@@ -50,8 +113,7 @@ def find_path(
             path.reverse()
             return path
 
-        for dx, dy in NEIGHBOR_DELTAS:
-            neighbor = (current[0] + dx, current[1] + dy)
+        for neighbor in _sorted_neighbors(current, standable, start):
             if neighbor in parents:
                 continue
             if not is_tile_enterable(area, neighbor, mover_id):

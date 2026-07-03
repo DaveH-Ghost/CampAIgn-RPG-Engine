@@ -99,3 +99,70 @@ def test_multi_agent_passive_vision_omits_area_events():
 
     assert "Rain taps the roof." not in build_passive_vision(explorer, area)
     assert "Rain taps the roof." not in build_passive_vision(goblin, area)
+
+
+def test_emit_area_event_targeted_agent():
+    session = Session.from_default()
+    session.run_command(
+        'create-agent name "Goblin" personality "Grumpy." at 0,0'
+    )
+    explorer = session.get_agent("Explorer")
+    goblin = session.get_agent("Goblin")
+    assert explorer is not None and goblin is not None
+
+    result = session.emit_area_event(
+        "A whisper only you hear.",
+        agent_ids=["Goblin"],
+    )
+    assert result.ok
+    assert "Goblin" in result.message
+
+    assert "A whisper only you hear." in goblin.memory.render_prompt_block(
+        goblin, session.area
+    )
+    assert "A whisper only you hear." not in explorer.memory.render_prompt_block(
+        explorer, session.area
+    )
+    assert session.area.recent_events == []
+
+
+def test_emit_area_event_targeted_by_id():
+    session = Session.from_default()
+    session.run_command(
+        'create-agent name "Goblin" personality "Grumpy." at 0,0'
+    )
+    goblin = session.get_agent("Goblin")
+    assert goblin is not None
+
+    result = session.emit_area_event(
+        "Private note.",
+        agent_ids=[goblin.id],
+    )
+    assert result.ok
+    assert "Private note." in goblin.memory.render_prompt_block(goblin, session.area)
+
+
+def test_emit_area_event_unknown_agent_fails():
+    session = Session.from_default()
+    result = session.emit_area_event("Hello.", agent_ids=["agent_missing"])
+    assert not result.ok
+    assert "not found" in result.message
+
+
+def test_emit_area_event_empty_agent_ids_broadcasts_all():
+    session = Session.from_default()
+    session.run_command(
+        'create-agent name "Goblin" personality "Grumpy." at 0,0'
+    )
+    explorer = session.get_agent("Explorer")
+    goblin = session.get_agent("Goblin")
+    assert explorer is not None and goblin is not None
+
+    result = session.emit_area_event("Everyone hears this.", agent_ids=[])
+    assert result.ok
+
+    for agent in (explorer, goblin):
+        assert "Everyone hears this." in agent.memory.render_prompt_block(
+            agent, session.area
+        )
+    assert len(session.area.recent_events) == 1

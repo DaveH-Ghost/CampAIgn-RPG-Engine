@@ -421,7 +421,7 @@ def create_app() -> FastAPI:
     @app.post("/api/event")
     def post_event(body: EventRequest) -> dict[str, object]:
         session = get_session_store().session
-        result = session.emit_area_event(body.text)
+        result = session.emit_area_event(body.text, agent_ids=body.agent_ids)
         payload: dict[str, object] = {"ok": result.ok, "message": result.message}
         if result.ok:
             payload["snapshot"] = normalize_state_snapshot(

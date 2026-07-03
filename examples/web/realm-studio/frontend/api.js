@@ -137,11 +137,16 @@ export async function postManualTurn({ agentId, compoundTurn } = {}) {
   return data;
 }
 
-export async function postEvent(text) {
+export async function postEvent(text, agentIds = null) {
+  const body = { text };
+  if (Array.isArray(agentIds) && agentIds.length > 0) {
+    body.agent_ids = agentIds;
+  }
+
   const res = await fetch("/api/event", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text }),
+    body: JSON.stringify(body),
   });
   const data = await res.json();
   if (!res.ok) {

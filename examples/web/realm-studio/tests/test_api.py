@@ -160,6 +160,42 @@ def test_post_event_via_state(client):
     assert _room(state)["recent_events"][-1]["text"] == "A door slams."
 
 
+def test_post_event_targeted_agents(client):
+    client.post(
+        "/api/command",
+        json={"line": 'create-agent name "Goblin" personality "Grumpy." at 0,0'},
+    )
+    state = client.get("/api/state").json()
+    goblin_id = next(
+        a["id"] for a in state["agents"] if a["name"] == "Goblin"
+    )
+
+    response = client.post(
+        "/api/event",
+        json={"text": "A whisper only Goblin hears.", "agent_ids": [goblin_id]},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] is True
+    assert "Goblin" in data["message"]
+    assert _room(data["snapshot"])["recent_events"] == []
+
+
+def test_post_event_empty_agent_ids_broadcasts(client):
+    client.post(
+        "/api/command",
+        json={"line": 'create-agent name "Goblin" personality "Grumpy." at 0,0'},
+    )
+    response = client.post(
+        "/api/event",
+        json={"text": "Everyone hears.", "agent_ids": []},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] is True
+    assert _room(data["snapshot"])["recent_events"] == [
+        {"session_turn": 0, "text": "Everyone hears."}
+    ]
 def test_post_active_area_switch(client):
     response = client.post("/api/active-area", json={"area_id": HALL})
     assert response.status_code == 200

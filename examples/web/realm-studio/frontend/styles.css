@@ -822,6 +822,10 @@ button:hover {
   resize: vertical;
 }
 
+.modal-field select[multiple] {
+  min-height: 6rem;
+}
+
 .modal-actions {
   display: flex;
   gap: 0.5rem;

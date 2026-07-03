@@ -2,9 +2,7 @@
 
 Release notes and historical implementation checklists for Realm-Fabric.
 
-**Current:** [v0.7.0-changelog.md](v0.7.0-changelog.md) — platform SDK, typed world API, minimal-server.
-
-**Planned:** [v0.7.1-changelog.md](v0.7.1-changelog.md) — engine/SDK follow-up from external demo development (demo app versions **0.1.0**+ separately).
+**Current:** [v0.7.1-changelog.md](v0.7.1-changelog.md) — movement pathing fix, targeted area events, PyPI `__version__`.
 
 ---
 
@@ -12,6 +10,7 @@ Release notes and historical implementation checklists for Realm-Fabric.
 
 | Version | Summary |
 |---------|---------|
+| [0.7.1](v0.7.1-changelog.md) | Straight-line movement fix, targeted `emit_area_event`, PyPI version read |
 | [0.7.0](v0.7.0-changelog.md) | Public API, typed `Session` world editing, app docs, minimal-server |
 | [0.6.1](v0.6.1-changelog.md) | Pluggable interaction handlers, snapshot v4 |
 | [0.6.0](v0.6.0-changelog.md) | Grid simulation, blocking, triggers, footprints, snapshot v3 |

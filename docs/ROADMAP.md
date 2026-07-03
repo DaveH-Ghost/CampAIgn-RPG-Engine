@@ -541,7 +541,7 @@ See [v0.6.1-changelog.md](changelog/v0.6.1-changelog.md).
 
 ### Distribution
 
-- Install via path/git dep today; **PyPI publish** optional follow-up (packaging ready in `pyproject.toml`)
+- Install via path/git dep today; **PyPI** — see [releasing.md](releasing.md) (MIT license, metadata in `pyproject.toml`)
 - Changelog: **App developer impact** per release in version changelogs
 
 ### Deferred / optional

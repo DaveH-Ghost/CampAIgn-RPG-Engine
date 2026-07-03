@@ -114,18 +114,16 @@ _ROOT = Path(__file__).resolve().parent.parent
 
 
 def _read_version() -> str:
-    pyproject_version = tomllib.loads(
-        (_ROOT / "pyproject.toml").read_text(encoding="utf-8")
-    )["project"]["version"]
     try:
         from importlib.metadata import version as _pkg_version
 
-        installed = _pkg_version("realm-fabric")
-        if installed == pyproject_version:
-            return installed
+        return _pkg_version("realm-fabric")
     except Exception:
         pass
-    return pyproject_version
+    pyproject_path = _ROOT / "pyproject.toml"
+    if pyproject_path.is_file():
+        return tomllib.loads(pyproject_path.read_text(encoding="utf-8"))["project"]["version"]
+    return "0.0.0"
 
 
 __version__ = _read_version()

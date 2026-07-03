@@ -414,6 +414,20 @@ function appendModalField(form, field) {
     input = document.createElement("textarea");
     input.rows = field.rows || 2;
     input.value = field.value ?? "";
+  } else if (field.type === "multiselect") {
+    input = document.createElement("select");
+    input.multiple = true;
+    const optionCount = field.options?.length || 0;
+    input.size = Math.min(Math.max(optionCount, 3), 8);
+    for (const opt of field.options || []) {
+      const option = document.createElement("option");
+      option.value = opt.value;
+      option.textContent = opt.label;
+      if (field.value?.includes(opt.value)) {
+        option.selected = true;
+      }
+      input.appendChild(option);
+    }
   } else if (field.type === "select") {
     input = document.createElement("select");
     for (const opt of field.options || []) {
@@ -477,7 +491,11 @@ function openModal(title, fields, onSubmit, { submitLabel = "Save" } = {}) {
       const el = modalForm.elements[field.name];
       if (!el) continue;
       data[field.name] =
-        field.type === "checkbox" ? el.checked : el.value.trim();
+        field.type === "checkbox"
+          ? el.checked
+          : field.type === "multiselect"
+            ? Array.from(el.selectedOptions).map((option) => option.value)
+            : el.value.trim();
     }
     try {
       await onSubmit(data);
@@ -1055,21 +1073,41 @@ function openEditAgentModal(entity, areaId) {
   });
 }
 
+function buildAgentMultiselectOptions(snapshot) {
+  const snap = normalizeSnapshot(snapshot);
+  return asArray(snap?.agents).map((agent) => {
+    const areaTag = agent.area_id ? ` [${agent.area_id}]` : "";
+    const playerTag = agent.is_player ? " (player)" : "";
+    return {
+      value: agent.id,
+      label: `${agent.name} (${agent.id})${playerTag}${areaTag}`,
+    };
+  });
+}
+
 function openEmitEventModal() {
+  const agentOptions = buildAgentMultiselectOptions(getSnapshot());
   openModal(
     "Emit area event",
     [
       {
         name: "text",
-        label: "Event text (all agents will remember this)",
+        label: "Event text",
         value: "Thunder rumbles overhead.",
         type: "textarea",
         rows: 3,
         required: true,
       },
+      {
+        name: "agent_ids",
+        label: "Recipients (optional — leave empty for all agents in active area)",
+        type: "multiselect",
+        value: [],
+        options: agentOptions,
+      },
     ],
     async (data) => {
-      const result = await postEvent(data.text);
+      const result = await postEvent(data.text, data.agent_ids);
       if (!result.ok) throw new Error(result.message);
       showToast(result.message, false);
       await onStateChanged(result.snapshot);

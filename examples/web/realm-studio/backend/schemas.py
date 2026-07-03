@@ -27,6 +27,7 @@ class ManualTurnRequest(BaseModel):
 
 class EventRequest(BaseModel):
     text: str = Field(min_length=1)
+    agent_ids: list[str] | None = None
 
 
 class CreateAreaRequest(BaseModel):

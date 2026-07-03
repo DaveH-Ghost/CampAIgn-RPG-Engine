@@ -12,6 +12,7 @@ V0.4.0c1 — multi-area sessions: ``areas``, ``agent_area``, ``active_area_id``.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Optional
 
@@ -370,29 +371,70 @@ class Session:
             ),
         )
 
-    def emit_area_event(self, text: str) -> SessionResult:
+    def emit_area_event(
+        self,
+        text: str,
+        *,
+        agent_ids: Sequence[str] | None = None,
+    ) -> SessionResult:
         """
-        Broadcast a room-wide narrator/GM event to all agents in the active area.
+        Emit a narrator/GM event into agent memory.
 
-        Does not consume a turn or increment ``session_turn``.
+        When *agent_ids* is omitted or empty, all agents in the **active area**
+        receive the event and it is appended to that area's ``recent_events``.
+        When *agent_ids* is set, only those agents receive the event (resolved
+        by id or name across the session); other agents are unaffected and the
+        event is not added to ``recent_events``.
         """
         cleaned = text.strip()
         if not cleaned:
             return SessionResult(ok=False, message="Event text cannot be empty.")
 
-        area = self.area
-        record = area.append_area_event(
-            session_turn=self.session_turn,
-            text=cleaned,
-        )
+        broadcast = not agent_ids
+        if broadcast:
+            recipients = list(self.area.agents)
+        else:
+            recipients = []
+            for raw_id in agent_ids:
+                key = raw_id.strip()
+                if not key:
+                    continue
+                agent = self.get_agent(key)
+                if agent is None:
+                    return SessionResult(
+                        ok=False,
+                        message=f"Agent {key!r} not found.",
+                    )
+                if agent not in recipients:
+                    recipients.append(agent)
+
+            if not recipients:
+                return SessionResult(
+                    ok=False,
+                    message="No agents specified for targeted event.",
+                )
+
+        session_turn = self.session_turn
+        if broadcast:
+            record = self.area.append_area_event(
+                session_turn=session_turn,
+                text=cleaned,
+            )
+            session_turn = record.session_turn
+
         from src.observations import broadcast_area_event
 
         broadcast_area_event(
-            area,
-            session_turn=record.session_turn,
-            text=record.text,
+            session_turn=session_turn,
+            text=cleaned,
+            agents=recipients,
         )
-        return SessionResult(ok=True, message=f"Area event: {record.text}")
+
+        if broadcast:
+            return SessionResult(ok=True, message=f"Area event: {cleaned}")
+
+        names = ", ".join(agent.name for agent in recipients)
+        return SessionResult(ok=True, message=f"Area event to {names}: {cleaned}")
 
     def set_entity_private_data(self, entity_id: str, private_data: str) -> SessionResult:
         """

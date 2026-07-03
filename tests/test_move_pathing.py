@@ -142,3 +142,57 @@ def test_move_speed_line_uses_session_units():
         format_move_speed_line(2, vision_units="", units_per_tile=None)
         == "Your move speed this turn is 2 step(s)."
     )
+
+
+def test_move_speed_straight_horizontal_stays_on_row():
+    """Regression: collinear horizontal moves must not drift diagonally (V0.7.1)."""
+    from src.area import create_area
+    from src.pathfinding import find_path, walk_with_pathfinding
+
+    area = create_area(width=5, height=5)
+    area.agents.clear()
+    from src.agent import Agent
+
+    mover = Agent(id="walker", name="Walker", position=(0, 2), personality="x")
+    area.agents.append(mover)
+    mover.move_speed = 3
+
+    path = find_path((0, 2), (4, 2), area, mover.id)
+    assert path == [(0, 2), (1, 2), (2, 2), (3, 2), (4, 2)]
+
+    final, reached, segment = walk_with_pathfinding(
+        (0, 2), (4, 2), 3, area, mover.id
+    )
+    assert final == (3, 2)
+    assert reached is False
+    assert all(pos[1] == 2 for pos in segment)
+
+    mover.position = (0, 2)
+    outcome = do_move(mover, area, "4,2")
+    assert mover.position == (3, 2)
+    assert "stopping at (3, 2)" in outcome.result
+
+
+def test_move_speed_straight_vertical_stays_on_column():
+    """Regression: collinear vertical moves must not drift diagonally (V0.7.1)."""
+    from src.area import create_area
+    from src.agent import Agent
+    from src.pathfinding import find_path, walk_with_pathfinding
+
+    area = create_area(width=5, height=5)
+    area.agents.clear()
+    mover = Agent(id="walker", name="Walker", position=(2, 0), personality="x")
+    area.agents.append(mover)
+    mover.move_speed = 3
+
+    path = find_path((2, 0), (2, 4), area, mover.id)
+    assert path == [(2, 0), (2, 1), (2, 2), (2, 3), (2, 4)]
+
+    final, _, segment = walk_with_pathfinding((2, 0), (2, 4), 3, area, mover.id)
+    assert final == (2, 3)
+    assert all(pos[0] == 2 for pos in segment)
+
+    mover.position = (2, 0)
+    outcome = do_move(mover, area, "2,4")
+    assert mover.position == (2, 3)
+    assert "stopping at (2, 3)" in outcome.result

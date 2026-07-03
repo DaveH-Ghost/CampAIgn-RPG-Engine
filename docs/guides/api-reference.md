@@ -66,7 +66,7 @@ Returns **`WorldMutationResult`**. CLI/debug: `run_command(line)` — not for ap
 | `set_active_agent(name_or_id)` | Switch active agent |
 | `set_active_area(area_id)` | Switch GM edit scope |
 | `get_area_for_agent(agent)` | Resolve agent's area |
-| `emit_area_event(text)` | GM narration → all agents' memory |
+| `emit_area_event(text, agent_ids=None)` | GM narration → agent memory; all agents in active area when `agent_ids` omitted/empty, otherwise only listed agents |
 
 ---
 

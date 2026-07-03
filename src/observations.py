@@ -97,16 +97,19 @@ def broadcast_actor_turn(
 
 
 def broadcast_area_event(
-    area: Area,
     *,
     session_turn: int,
     text: str,
+    agents: list[Agent],
 ) -> None:
     """
-    Record a room-wide event in every agent's memory module.
+    Record an area event in the given agents' memory modules.
 
     Uses a pseudo-actor so area events are distinct from agent passive_result.
     """
+    if not agents:
+        return
+
     event = WitnessedEvent(
         session_turn=session_turn,
         actor_id=AREA_EVENT_ACTOR_ID,
@@ -114,5 +117,5 @@ def broadcast_area_event(
         text=text,
         actor_position=(-1, -1),
     )
-    for agent in area.agents:
+    for agent in agents:
         agent.memory.record_observation(event, observer_id=agent.id)

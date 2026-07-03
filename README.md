@@ -2,7 +2,9 @@
 
 Grid-based LLM agent simulation engine: multi-area worlds, compound turns (move → look → speak → interact/emote), pluggable memory modules, and a stable `realm_fabric` library API. The `realm` CLI and [realm-studio](examples/web/realm-studio) are reference clients — apps build on the engine with their own UI and scenarios.
 
-**Current version:** **V0.7.0** (`0.7.0` in `pyproject.toml`) — stable `realm_fabric` exports, typed `Session` world API, [documentation](docs/README.md), and [minimal-server](examples/minimal-server/). **0.7.1** on this repo is for engine follow-ups from the external demo; the demo itself will version from **0.1.0** in its own repository.
+**License:** [MIT](LICENSE) — open source.
+
+**Current version:** **V0.7.1** (`0.7.1` in `pyproject.toml`) — movement pathing fix, targeted area events, PyPI `__version__` fix. See [V0.7.1 changelog](docs/changelog/v0.7.1-changelog.md). **V0.7.0** introduced the stable `realm_fabric` exports, typed `Session` world API, [documentation](docs/README.md), and [minimal-server](examples/minimal-server/).
 
 ## Quick start
 
@@ -49,13 +51,18 @@ Copy [`.env.example`](.env.example) to `.env` and set `OPENROUTER_API_KEY` for L
 
 realm-studio **Settings** (gear icon) can set API key and model **in memory for the current server process only** — nothing is written to disk.
 
+## V0.7.1 highlights
+
+- **Straight-line movement** — `move_speed` pathing stays on row/column when moving in a straight line
+- **Targeted area events** — `emit_area_event(text, agent_ids=...)` for per-agent GM narration
+- **PyPI** — `realm_fabric.__version__` reads installed package metadata correctly
+
 ## V0.7.0 highlights
 
 - **Public API** — expanded `realm_fabric` exports (lorebooks, prompt blocks, `ObjectAction`, `WorldMutationResult`, memory registration)
 - **Typed world API** — `session.create_object()`, `create_agent()`, `edit_object()`, areas, actions — no CLI strings in app code
 - **minimal-server** — thin FastAPI reference at `examples/minimal-server/`
 - **Docs** — [docs/README.md](docs/README.md)
-- **V0.7.1** — engine follow-ups from external demo (demo app **0.1.0**+ in its own repo)
 
 ## V0.6.1 highlights
 
@@ -114,6 +121,7 @@ Start at **[docs/README.md](docs/README.md)** — guides, API overview, and chan
 |-----|--------|
 | [Building on Realm-Fabric](docs/guides/building-on-realm-fabric.md) | App integration (typed API, hosting) |
 | [CLI reference](docs/guides/cli.md) | `realm` stepper commands |
+| [V0.7.1 changelog](docs/changelog/v0.7.1-changelog.md) | Movement fix, targeted events, PyPI version |
 | [V0.7.0 changelog](docs/changelog/v0.7.0-changelog.md) | Platform SDK, minimal-server |
 | [Roadmap](docs/ROADMAP.md) | Version plans |
 | [realm-studio](examples/web/realm-studio/README.md) | Full GM reference UI |
