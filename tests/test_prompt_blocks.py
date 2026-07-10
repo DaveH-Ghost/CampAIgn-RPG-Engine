@@ -1,17 +1,17 @@
 """Prompt block model and rendering (V0.4.1b)."""
 
-from src.game_profile import default_compound_profile
-from src.area import create_initial_area
-from src.llm.prompt_context import build_prompt_context
-from src.prompt_blocks import (
+from realm_fabric.game_profile import default_compound_profile
+from realm_fabric.area import create_initial_area
+from realm_fabric.llm.prompt_context import build_prompt_context
+from realm_fabric.prompt_blocks import (
     PromptBlock,
     default_prompt_blocks,
     prompt_block_catalog,
     prompt_blocks_from_dicts,
     render_prompt_blocks,
 )
-from src.prompt_template import PromptTemplate
-from src.session import Session
+from realm_fabric.prompt_template import PromptTemplate
+from realm_fabric.session import Session
 
 
 def test_default_blocks_match_template_render():
@@ -173,7 +173,7 @@ def test_move_instructions_slot_omits_coordinates():
 def test_move_instructions_move_speed_with_units():
     session = Session.from_default()
     session.set_vision_units("ft", 5)
-    session.run_command("edit-agent agent_01 move-speed 2")
+    session.edit_agent("agent_01", move_speed=2)
     agent = session.get_active_agent()
     area = session.get_area_for_agent(agent)
     ctx = build_prompt_context(agent, area)
@@ -293,8 +293,8 @@ def test_lorebook_prompt_slot_requires_id():
 
 
 def test_lorebook_prompt_slot_renders_with_session_book():
-    from src.lorebook import load_lorebook_from_dict
-    from src.prompt_blocks import validate_prompt_blocks
+    from realm_fabric.lorebook import load_lorebook_from_dict
+    from realm_fabric.prompt_blocks import validate_prompt_blocks
 
     session = Session.from_default()
     book = load_lorebook_from_dict(

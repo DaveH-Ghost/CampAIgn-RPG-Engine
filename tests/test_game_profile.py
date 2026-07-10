@@ -1,12 +1,12 @@
 """GameProfile and prompt templates (V0.3.0c)."""
 
-from src.area import create_initial_area
-from src.game_profile import GameProfile, default_compound_profile, load_profile
-from src.llm.prompt import build_compound_prompt
-from src.llm.prompt_context import build_prompt_context
-from src.llm.schemas import AgentCompoundTurn
-from src.prompt_template import PromptTemplate
-from src.session import Session
+from realm_fabric.area import create_initial_area
+from realm_fabric.game_profile import GameProfile, default_compound_profile, load_profile
+from realm_fabric.llm.prompt import build_compound_prompt
+from realm_fabric.llm.prompt_context import build_prompt_context
+from realm_fabric.llm.schemas import AgentCompoundTurn
+from realm_fabric.prompt_template import PromptTemplate
+from realm_fabric.session import Session
 
 
 def test_default_profile_prompt_contains_required_sections():

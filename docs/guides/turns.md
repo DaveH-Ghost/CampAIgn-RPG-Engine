@@ -60,7 +60,7 @@ if result.ok:
 
 **Environment:** set `OPENROUTER_API_KEY` (and optional `OPENROUTER_MODEL`) for reference LLM clients. See root [`.env.example`](../../.env.example).
 
-**Reference implementation:** [minimal-server turn_runner](../../examples/minimal-server/minimal_server/turn_runner.py).
+**Reference implementation:** [Realm-Studio `backend/turn_runner.py`](https://github.com/DaveH-Ghost/Realm-Studio/blob/main/backend/turn_runner.py).
 
 ---
 
@@ -92,7 +92,7 @@ compound_turn = AgentCompoundTurn(
 result = session.run_compound_turn(compound_turn, agent_id=player.id)
 ```
 
-`POST /api/turn/manual` on [minimal-server](../../examples/minimal-server/) accepts the same JSON under `"turn"`.
+`POST /api/turn/manual` on [Realm-Studio](https://github.com/DaveH-Ghost/Realm-Studio) accepts the same JSON under `"turn"`.
 
 ---
 
@@ -118,4 +118,3 @@ Details: [v0.6.0 changelog](../changelog/v0.6.0-changelog.md).
 
 - [Overview](overview.md)
 - [Persistence & snapshots](persistence.md) — `snapshot()` after a turn
-- [CLI reference](cli.md) — `step-compound` for manual debugging

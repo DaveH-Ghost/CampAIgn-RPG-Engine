@@ -4,10 +4,10 @@ test_world_edit.py
 Tests for V0.1 area editing commands (Section 2).
 """
 
-from src.object import Object
-from src.perception import build_passive_vision, perform_look
-from src.area import create_initial_area
-from src.area_edit import (
+from realm_fabric.object import Object
+from realm_fabric.perception import build_passive_vision, perform_look
+from realm_fabric.area import create_initial_area
+from realm_fabric.area_edit import (
     create_agent_from_args,
     create_object_from_args,
     delete_agent_by_id,
@@ -242,16 +242,30 @@ def test_delete_agent_rejects_last_agent():
     assert "last agent" in result.message
 
 
-def test_stepper_parses_hyphenated_commands():
-    """cmd.Cmd must treat '-' as part of the command name, not as an argument."""
-    from src.main import ManualStepper
+def test_session_edit_agent_rename_updates_lookup():
+    from realm_fabric import Session, load_profile
 
-    stepper = ManualStepper()
-    cmd, arg, _ = stepper.parseline(
-        'create-object name "Crate" desc "A wooden crate." at 0,0'
-    )
-    assert cmd == "create-object"
-    assert 'name "Crate"' in arg
+    session = Session.from_profile(load_profile("default_compound"))
+    result = session.edit_agent("agent_01", name="Scout")
+    assert result.ok
+    assert session.get_agent("Explorer") is None
+    scout = session.get_agent("Scout")
+    assert scout is not None
+    assert scout.name == "Scout"
+
+
+def test_session_delete_active_agent_reassigns():
+    from realm_fabric import Session, load_profile
+
+    session = Session.from_profile(load_profile("default_compound"))
+    session.create_agent(name="Goblin", position=(0, 0), personality="x")
+    goblin = session.area.get_agent_by_id("agent_goblin_01")
+    session.set_active_agent(goblin.id)
+    result = session.delete_agent("agent_goblin_01")
+    assert result.ok
+    assert session.get_active_agent().id == "agent_01"
+    assert session.get_agent("Goblin") is None
+    assert "Active agent: Explorer" in result.message
 
 
 def test_create_agent_duplicate_name_rejected():
@@ -308,39 +322,6 @@ def test_empty_object_vision_line_omits_trailing_dash():
     vision = build_passive_vision(agent, area)
     assert "Void (obj_empty_01), (0, 0)" in vision
     assert "Void (obj_empty_01), (0, 0) -" not in vision
-
-
-def test_stepper_sign_command_removed(capsys):
-    from src.main import ManualStepper
-
-    stepper = ManualStepper()
-    assert not hasattr(stepper, "do_sign")
-    stepper.onecmd("sign hello")
-    assert "Unknown syntax" in capsys.readouterr().out
-
-
-def test_stepper_edit_agent_rename_updates_dispatch_dict():
-    from src.main import ManualStepper
-
-    stepper = ManualStepper()
-    stepper.onecmd('edit-agent agent_01 name "Scout"')
-    assert stepper.session.get_agent("Explorer") is None
-    scout = stepper.session.get_agent("Scout")
-    assert scout is not None
-    assert scout.name == "Scout"
-
-
-def test_stepper_delete_active_agent_reassigns(capsys):
-    from src.main import ManualStepper
-
-    stepper = ManualStepper()
-    stepper.onecmd('create-agent name "Goblin" personality "x" at 0,0')
-    goblin = stepper.area.get_agent_by_id("agent_goblin_01")
-    stepper.agent = goblin
-    stepper.onecmd("delete-agent agent_goblin_01")
-    assert stepper.agent.id == "agent_01"
-    assert stepper.session.get_agent("Goblin") is None
-    assert "Active agent: Explorer (agent_01)" in capsys.readouterr().out
 
 
 def test_delete_non_active_agent():

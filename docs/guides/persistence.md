@@ -29,8 +29,7 @@ restored = Session.from_snapshot(save_doc)
 
 **Before import**, register the same **interaction handlers** and **memory modules** referenced in the save.
 
-CLI parity: `export-session` / `import-session`.  
-HTTP: `GET /api/session/export`, `POST /api/session/import` on [minimal-server](../../examples/minimal-server/).
+HTTP: `GET /api/session/export`, `POST /api/session/import` on [Realm-Studio](https://github.com/DaveH-Ghost/Realm-Studio).
 
 ---
 

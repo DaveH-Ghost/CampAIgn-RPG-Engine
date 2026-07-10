@@ -7,10 +7,9 @@ from pathlib import Path
 
 import pytest
 
-_ROOT = Path(__file__).resolve().parents[1]
-_EXAMPLES = _ROOT / "examples"
-if str(_EXAMPLES) not in sys.path:
-    sys.path.insert(0, str(_EXAMPLES))
+_FIXTURES = Path(__file__).resolve().parent / "fixtures"
+if str(_FIXTURES) not in sys.path:
+    sys.path.insert(0, str(_FIXTURES))
 
 
 @pytest.fixture(autouse=True, scope="session")

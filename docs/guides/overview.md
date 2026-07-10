@@ -62,9 +62,8 @@ See [Building on Realm-Fabric](building-on-realm-fabric.md) and [Interaction han
 
 | You are building… | Start with |
 |-------------------|------------|
-| HTTP / web game | [minimal-server](../../examples/minimal-server/) + [Building on Realm-Fabric](building-on-realm-fabric.md) |
+| HTTP / web game | [Realm-Studio](https://github.com/DaveH-Ghost/Realm-Studio) + [Building on Realm-Fabric](building-on-realm-fabric.md) |
 | GM authoring tool | [Realm-Studio](https://github.com/DaveH-Ghost/Realm-Studio) (reference; fork or replace) |
-| CLI debugging | [CLI reference](cli.md) |
 | Headless / tests | `Session` + manual `AgentCompoundTurn` |
 
 ---

@@ -4,11 +4,11 @@ test_multi_agent.py
 Tests for V0.1 Section 3 multi-agent support (updated for V0.2 compound turns).
 """
 
-from src.llm.schemas import AgentCompoundTurn
-from src.perception import build_passive_vision, perform_look
-from src.simulation import next_turn_number_for_agent, run_compound_turn
-from src.area import create_initial_area
-from src.area_edit import create_agent_from_args, edit_object_from_args
+from realm_fabric.llm.schemas import AgentCompoundTurn
+from realm_fabric.perception import build_passive_vision, perform_look
+from realm_fabric.simulation import next_turn_number_for_agent, run_compound_turn
+from realm_fabric.area import create_initial_area
+from realm_fabric.area_edit import create_agent_from_args, edit_object_from_args
 
 
 def _compound(**kwargs) -> AgentCompoundTurn:
@@ -154,7 +154,7 @@ def test_failed_move_does_not_update_passive_result():
 
 
 def test_edit_agent_personality_does_not_invalidate():
-    from src.area_edit import edit_agent_from_args
+    from realm_fabric.area_edit import edit_agent_from_args
 
     area = create_initial_area()
     explorer = area.get_agent()
@@ -184,62 +184,65 @@ def test_cross_agent_invalidation_per_agent():
     assert "[?] [changed]" in build_passive_vision(goblin, area)
 
 
-def test_stepper_switch_changes_active_agent_vision():
-    from src.main import ManualStepper
+def test_set_active_agent_changes_vision():
+    from realm_fabric import Session, load_profile
 
-    stepper = ManualStepper()
-    stepper.onecmd('create-agent name "Goblin" pdesc "A goblin." desc "A green goblin." personality "Secret goblin mind." at 0,3')
-    goblin = stepper.area.get_agent_by_name("Goblin")
-
-    stepper.onecmd("switch Goblin")
-    assert stepper.agent is goblin
-    vision = build_passive_vision(stepper.agent, stepper.area)
+    session = Session.from_profile(load_profile("default_compound"))
+    session.create_agent(
+        name="Goblin",
+        position=(0, 3),
+        passive_description="A goblin.",
+        description="A green goblin.",
+        personality="Secret goblin mind.",
+    )
+    session.set_active_agent("Goblin")
+    vision = build_passive_vision(session.get_active_agent(), session.area)
     assert "You are at (0, 3)." in vision
 
 
-def test_stepper_switch_unknown_agent(capsys):
-    from src.main import ManualStepper
+def test_set_active_agent_unknown_fails():
+    from realm_fabric import Session, load_profile
 
-    stepper = ManualStepper()
-    stepper.onecmd("switch Nobody")
-    out = capsys.readouterr().out
-    assert "not found" in out
-    assert "agents" in out or "list" in out
-
-
-def test_stepper_switch_does_not_increment_session_turn():
-    from src.main import ManualStepper
-
-    stepper = ManualStepper()
-    stepper.onecmd('create-agent name "Goblin" personality "x" at 0,0')
-    before = stepper.session_turn
-    stepper.onecmd("switch Goblin")
-    assert stepper.session_turn == before
-    assert stepper.agent.name == "Goblin"
+    session = Session.from_profile(load_profile("default_compound"))
+    result = session.set_active_agent("Nobody")
+    assert not result.ok
+    assert "not found" in result.message.lower()
 
 
-def test_stepper_manual_compound_uses_per_agent_turn_number():
-    from src.main import ManualStepper
+def test_set_active_agent_does_not_increment_session_turn():
+    from realm_fabric import Session, load_profile
 
-    stepper = ManualStepper()
-    explorer = stepper.agent
-    stepper.onecmd('create-agent name "Goblin" personality "x" at 0,0')
-    stepper.onecmd("switch Explorer")
-    stepper.onecmd("step-compound speak Hi from Explorer.")
-    stepper.onecmd("switch Goblin")
-    stepper.onecmd("step-compound speak Hi from Goblin.")
-    stepper.onecmd("switch Explorer")
-    stepper.onecmd("step-compound speak Explorer turn two.")
+    session = Session.from_profile(load_profile("default_compound"))
+    session.create_agent(name="Goblin", position=(0, 0), personality="x")
+    before = session.session_turn
+    session.set_active_agent("Goblin")
+    assert session.session_turn == before
+    assert session.get_active_agent().name == "Goblin"
+
+
+def test_manual_compound_uses_per_agent_turn_number():
+    from realm_fabric import Session, load_profile
+    from realm_fabric.compound_arg_parse import parse_compound_step_arg
+
+    session = Session.from_profile(load_profile("default_compound"))
+    explorer = session.get_active_agent()
+    session.create_agent(name="Goblin", position=(0, 0), personality="x")
+    session.set_active_agent("Explorer")
+    session.run_compound_turn(parse_compound_step_arg("speak Hi from Explorer.").turn)
+    session.set_active_agent("Goblin")
+    session.run_compound_turn(parse_compound_step_arg("speak Hi from Goblin.").turn)
+    session.set_active_agent("Explorer")
+    session.run_compound_turn(parse_compound_step_arg("speak Explorer turn two.").turn)
 
     assert [t.turn_number for t in explorer.memory.turns] == [1, 2]
-    assert [t.turn_number for t in stepper.area.get_agent_by_name("Goblin").memory.turns] == [1]
+    assert [t.turn_number for t in session.area.get_agent_by_name("Goblin").memory.turns] == [1]
 
 
 def test_create_agent_reserved_command_name_rejected():
     area = create_initial_area()
     agent, msg = create_agent_from_args(area, 'name "vision" personality "x" at 0,0')
     assert agent is None
-    assert "conflicts with a stepper command" in msg
+    assert "conflicts with a reserved command" in msg
 
 
 def test_create_agent_reserved_hyphen_command_rejected():
@@ -252,7 +255,7 @@ def test_create_agent_reserved_hyphen_command_rejected():
 
 
 def test_edit_agent_rename_to_reserved_name_rejected():
-    from src.area_edit import edit_agent_from_args
+    from realm_fabric.area_edit import edit_agent_from_args
 
     area = create_initial_area()
     result = edit_agent_from_args(area, 'agent_01 name "switch"')
@@ -260,59 +263,52 @@ def test_edit_agent_rename_to_reserved_name_rejected():
     assert "conflicts" in result.message
 
 
-def test_run_command_uses_active_agent(monkeypatch):
-    from src.main import ManualStepper
+def test_llm_turn_flow_uses_active_agent(monkeypatch):
+    from realm_fabric import Session, load_profile, get_compound_turn
+    from realm_fabric.llm.types import LLMResponse
 
-    stepper = ManualStepper()
-    called = []
+    session = Session.from_profile(load_profile("default_compound"))
+    active = session.get_active_agent()
 
-    def fake_run(agent):
-        called.append(agent)
+    def fake_compound(_prompt):
+        return LLMResponse(
+            parsed=AgentCompoundTurn(reasoning="x", action="none", say="hi"),
+            raw_response="{}",
+        )
 
-    monkeypatch.setattr(stepper, "_run_llm_turn_for_agent", fake_run)
-    stepper.onecmd("run")
-    assert len(called) == 1
-    assert called[0] is stepper.agent
-
-
-def test_run_after_switch_uses_switched_agent(monkeypatch):
-    from src.main import ManualStepper
-
-    stepper = ManualStepper()
-    stepper.onecmd('create-agent name "Goblin" personality "x" at 0,0')
-    goblin = stepper.area.get_agent_by_name("Goblin")
-    stepper.onecmd("switch Goblin")
-    called = []
-
-    def fake_run(agent):
-        called.append(agent)
-
-    monkeypatch.setattr(stepper, "_run_llm_turn_for_agent", fake_run)
-    stepper.onecmd("run")
-    assert called == [goblin]
+    monkeypatch.setattr("realm_fabric.llm.client.get_compound_turn", fake_compound)
+    response = get_compound_turn(session.build_prompt())
+    result = session.run_compound_turn(response.parsed)
+    assert result.ok
+    assert session.get_active_agent() is active
 
 
-def test_stepper_commands_case_insensitive(monkeypatch):
-    from src.main import ManualStepper
+def test_llm_turn_after_switch_uses_switched_agent(monkeypatch):
+    from realm_fabric import Session, load_profile, get_compound_turn
+    from realm_fabric.llm.types import LLMResponse
 
-    stepper = ManualStepper()
-    called = []
+    session = Session.from_profile(load_profile("default_compound"))
+    session.create_agent(name="Goblin", position=(0, 0), personality="x")
+    goblin = session.get_agent("Goblin")
+    session.set_active_agent("Goblin")
 
-    def fake_run(agent):
-        called.append(agent)
+    def fake_compound(_prompt):
+        return LLMResponse(
+            parsed=AgentCompoundTurn(reasoning="x", action="none", say="hi"),
+            raw_response="{}",
+        )
 
-    monkeypatch.setattr(stepper, "_run_llm_turn_for_agent", fake_run)
-    stepper.onecmd("Run")
-    assert len(called) == 1
+    monkeypatch.setattr("realm_fabric.llm.client.get_compound_turn", fake_compound)
+    response = get_compound_turn(session.build_prompt())
+    result = session.run_compound_turn(response.parsed)
+    assert result.ok
+    assert result.agent is goblin
 
 
-def test_reserved_commands_include_run_and_hyphenated():
-    from src.main import ManualStepper
-    from src.stepper_commands import collect_reserved_command_names, get_reserved_stepper_commands
+def test_reserved_command_names_include_run_and_hyphenated():
+    from realm_fabric.reserved_names import get_reserved_command_names
 
-    derived = collect_reserved_command_names(ManualStepper)
-    cached = get_reserved_stepper_commands()
-    assert derived == cached
+    cached = get_reserved_command_names()
     assert "run" in cached
     assert "create-agent" in cached
     assert "step-compound" in cached
@@ -321,46 +317,46 @@ def test_reserved_commands_include_run_and_hyphenated():
 
 
 def test_llm_failure_does_not_increment_session_turn(monkeypatch):
-    from src.main import ManualStepper
+    from realm_fabric import Session, load_profile, get_compound_turn
 
-    stepper = ManualStepper()
-    agent = stepper.agent
-    before_session = stepper.session_turn
+    session = Session.from_profile(load_profile("default_compound"))
+    agent = session.get_active_agent()
+    before_session = session.session_turn
     before_turns = agent.memory.turn_count
 
     def fail_llm(_prompt):
         raise RuntimeError("LLM unavailable")
 
-    monkeypatch.setattr("src.llm.client.get_compound_turn", fail_llm)
-    stepper._run_llm_turn_for_agent(agent)
+    monkeypatch.setattr("realm_fabric.llm.client.get_compound_turn", fail_llm)
+    try:
+        get_compound_turn(session.build_prompt())
+    except RuntimeError:
+        pass
 
-    assert stepper.session_turn == before_session
+    assert session.session_turn == before_session
     assert agent.memory.turn_count == before_turns
 
 
-def test_step_compound_increments_session_turn_once():
-    from src.main import ManualStepper
+def test_compound_turn_increments_session_turn_once():
+    from realm_fabric import Session, load_profile
+    from realm_fabric.compound_arg_parse import parse_compound_step_arg
 
-    stepper = ManualStepper()
-    before = stepper.session_turn
-    stepper.onecmd("step-compound 2,3")
-    assert stepper.session_turn == before + 1
+    session = Session.from_profile(load_profile("default_compound"))
+    before = session.session_turn
+    session.run_compound_turn(parse_compound_step_arg("2,3").turn)
+    assert session.session_turn == before + 1
 
 
-def test_llm_failure_still_sets_active_agent(monkeypatch):
-    from src.main import ManualStepper
+def test_set_active_agent_by_name():
+    from realm_fabric import Session, load_profile
 
-    stepper = ManualStepper()
-    stepper.onecmd('create-agent name "Goblin" personality "x" at 0,0')
-    goblin = stepper.area.get_agent_by_name("Goblin")
-    assert stepper.agent.name == "Explorer"
+    session = Session.from_profile(load_profile("default_compound"))
+    session.create_agent(name="Goblin", position=(0, 0), personality="x")
+    goblin = session.get_agent("Goblin")
+    assert session.get_active_agent().name == "Explorer"
 
-    def fail_llm(_prompt):
-        raise RuntimeError("LLM unavailable")
-
-    monkeypatch.setattr("src.llm.client.get_compound_turn", fail_llm)
-    stepper.default("Goblin")
-    assert stepper.agent is goblin
+    session.set_active_agent("Goblin")
+    assert session.get_active_agent() is goblin
 
 
 def test_look_at_agent_reveals_description_not_personality():
@@ -381,7 +377,7 @@ def test_look_at_agent_reveals_description_not_personality():
 
 
 def test_edit_agent_desc_invalidates_other_agents():
-    from src.area_edit import edit_agent_from_args
+    from realm_fabric.area_edit import edit_agent_from_args
 
     area = create_initial_area()
     explorer = area.get_agent()

@@ -39,7 +39,7 @@ register_interaction_handler("eat_food", eat_food, label="Consume object")
 
 Return **`None`** on success, or an **error message string** to abort the action.
 
-**Reference implementations:** [examples/reference_handlers](../../examples/reference_handlers/) (`delete_self`, `random_move_self`, `move_area`).
+Reference handlers: [Realm-Studio/reference_handlers](https://github.com/DaveH-Ghost/Realm-Studio/tree/main/reference_handlers) (`delete_self`, `random_move_self`, `move_area`).
 
 ---
 
@@ -87,4 +87,4 @@ Triggers can emit area events, run handlers, and optionally delete the object af
 
 - [Building on Realm-Fabric](building-on-realm-fabric.md)
 - [Overview](overview.md) — compound turn action phase
-- [CLI reference](cli.md) — `handlers` command lists registered ids
+- [API reference](api-reference.md) — `list_registered_handlers()`

@@ -1,8 +1,8 @@
 """Default prompt token budget regression tests (V0.4.4)."""
 
-from src.llm.prompt_context import build_prompt_context
-from src.llm.token_estimate import DEFAULT_PROMPT_TOKEN_BUDGET, estimate_prompt_tokens
-from src.session import Session
+from realm_fabric.llm.prompt_context import build_prompt_context
+from realm_fabric.llm.token_estimate import DEFAULT_PROMPT_TOKEN_BUDGET, estimate_prompt_tokens
+from realm_fabric.session import Session
 
 
 def test_default_prompt_token_budget():

@@ -2,9 +2,10 @@
 
 import json
 
-from src.llm.schemas import AgentCompoundTurn
-from src.session import Session
-from src.snapshot import DEFAULT_AREA_ID, build_area_snapshot, build_session_snapshot, serialize_agent
+from realm_fabric import ObjectAction
+from realm_fabric.llm.schemas import AgentCompoundTurn
+from realm_fabric.session import Session
+from realm_fabric.snapshot import DEFAULT_AREA_ID, build_area_snapshot, build_session_snapshot, serialize_agent
 
 
 def _room(snap: dict) -> dict:
@@ -106,10 +107,19 @@ def test_snapshot_after_move_updates_position_and_session_turn():
 
 def test_snapshot_after_create_object():
     session = Session.from_default()
-    session.run_command(
-        'create-object name "Cookie" pdesc "A cookie." at 3,3 '
-        'action eat range 0 handler delete_self '
-        'result "You ate it." passive "{actor} ate it."'
+    session.create_object(
+        name="Cookie",
+        position=(3, 3),
+        passive_description="A cookie.",
+        actions={
+            "eat": ObjectAction(
+                name="eat",
+                range=0,
+                result="You ate it.",
+                passive_result="{actor} ate it.",
+                handler_id="delete_self",
+            ),
+        },
     )
     snap = session.snapshot()
     names = {o["name"] for o in _room(snap)["objects"]}
@@ -118,8 +128,10 @@ def test_snapshot_after_create_object():
 
 def test_snapshot_active_agent_after_switch():
     session = Session.from_default()
-    session.run_command(
-        'create-agent name "Goblin" personality "Grumpy." at 0,0'
+    session.create_agent(
+        name="Goblin",
+        position=(0, 0),
+        personality="Grumpy.",
     )
     session.set_active_agent("Goblin")
     snap = session.snapshot()
@@ -149,9 +161,11 @@ def test_build_session_snapshot_from_session():
 
 def test_snapshot_appearance_round_trip():
     session = Session.from_default()
-    session.run_command('edit-agent agent_01 appearance "tokens/explorer.png"')
-    session.run_command(
-        'create-object name "Crate" appearance "tokens/crate.png" at 3,3'
+    session.edit_agent("agent_01", appearance="tokens/explorer.png")
+    session.create_object(
+        name="Crate",
+        position=(3, 3),
+        appearance="tokens/crate.png",
     )
     snap = session.snapshot()
     explorer = snap["agents"][0]

@@ -2,19 +2,19 @@
 
 import pytest
 
-from src.memory import Memory
-from src.memory_modules.base import MemoryObserveContext, MemoryRecordContext, MemoryRenderContext
-from src.memory_modules.registry import create_module, format_memory_module_label
-from src.memory_modules.salient_turns import (
+from realm_fabric.memory import Memory
+from realm_fabric.memory_modules.base import MemoryObserveContext, MemoryRecordContext, MemoryRenderContext
+from realm_fabric.memory_modules.registry import create_module, format_memory_module_label
+from realm_fabric.memory_modules.salient_turns import (
     DEFAULT_CHAR_BUDGET,
     OMISSION_LINE,
     SalientTurnsModule,
     storage_salience,
     validate_char_budget,
 )
-from src.turn_record import TurnRecord, TurnStep
-from src.area import create_initial_area
-from src.area_edit import create_agent_from_args
+from realm_fabric.turn_record import TurnRecord, TurnStep
+from realm_fabric.area import create_initial_area
+from realm_fabric.area_edit import create_agent_from_args
 
 
 def _record_ctx(agent_id: str = "agent_01", turn_number: int = 1) -> MemoryRecordContext:
@@ -315,7 +315,7 @@ def test_total_turns_monotonic_despite_storage_eviction():
 
 
 def _witness(text: str):
-    from src.memory_modules.base import WitnessedEvent
+    from realm_fabric.memory_modules.base import WitnessedEvent
 
     return WitnessedEvent(
         session_turn=1,

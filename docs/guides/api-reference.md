@@ -1,6 +1,6 @@
 # API reference
 
-Stable **`realm_fabric`** surface (V0.7.0). Import from this package in application code.
+Stable **`realm_fabric`** surface (**1.0.0**). Import from this package in application code.
 
 ```python
 import realm_fabric
@@ -20,8 +20,8 @@ CI enforces export drift via `tests/test_public_api_surface.py`.
 | `AgentCompoundTurn` | Structured turn input (Pydantic) — see [schemas](../schemas/README.md) |
 | `ObjectAction`, `ActionKind` | Object interaction definitions |
 | `GameProfile`, `load_profile` | Profile loading (`default_compound`) |
-| `WorldMutationResult` | Typed world-edit outcomes |
-| `CommandResult`, `SessionResult`, `TurnResult` | Operation outcomes |
+| `WorldMutationResult`, `AreaMutationResult` | Typed world-edit outcomes |
+| `SessionResult`, `TurnResult` | Operation outcomes |
 
 ---
 
@@ -47,17 +47,20 @@ CI enforces export drift via `tests/test_public_api_surface.py`.
 | `create_object(name, position, *, area_id=None, ...)` | Add object |
 | `create_agent(name, position, *, is_player=False, memory_module=None, ...)` | Add agent |
 | `edit_object(object_id, *, description, position, target_area_id, ...)` | Update object |
+| `edit_agent(agent_id, *, name, personality, position, area_id, ...)` | Update agent |
 | `delete_object(object_id)` | Remove object (any area) |
 | `delete_agent(agent_id)` | Remove agent |
 | `add_object_action(object_id, action)` | Attach `ObjectAction` |
 | `remove_object_action(object_id, action_name)` | Remove action |
 | `create_area(area_id, *, description, width, height)` | New area |
+| `edit_area(area_id, *, description, width, height, ...)` | Update area bounds / description |
+| `delete_area(area_id)` | Remove empty area |
 
-Returns **`WorldMutationResult`**. CLI/debug: `run_command(line)` — not for app bootstrap.
+All return **`WorldMutationResult`** or **`AreaMutationResult`** with `ok` and `message`.
 
 ---
 
-## Session — agents & areas
+## Session — agents, areas & events
 
 | Method | Description |
 |--------|-------------|
@@ -66,7 +69,8 @@ Returns **`WorldMutationResult`**. CLI/debug: `run_command(line)` — not for ap
 | `set_active_agent(name_or_id)` | Switch active agent |
 | `set_active_area(area_id)` | Switch GM edit scope |
 | `get_area_for_agent(agent)` | Resolve agent's area |
-| `emit_area_event(text, agent_ids=None)` | GM narration → agent memory; all agents in active area when `agent_ids` omitted/empty, otherwise only listed agents |
+| `transfer_agent(agent_id, dest_area_id, position)` | Move agent between areas |
+| `emit_area_event(text, agent_ids=None)` | GM narration → agent memory |
 
 ---
 
@@ -91,6 +95,7 @@ Returns **`WorldMutationResult`**. CLI/debug: `run_command(line)` — not for ap
 | `match_lorebook_entries`, `render_lorebook` | Matching / render |
 | `PromptBlock`, `default_prompt_blocks` | Prompt layout |
 | `validate_prompt_blocks`, `prompt_blocks_from_dicts` | Validation |
+| `estimate_prompt_tokens`, `get_compound_turn` | LLM helpers |
 
 ---
 
@@ -104,9 +109,17 @@ Returns **`WorldMutationResult`**. CLI/debug: `run_command(line)` — not for ap
 
 ---
 
-## Unstable (`src.*`)
+## Not in `__all__` (internal / app-owned)
 
-The CLI, tests, and reference apps may import `src.llm.client`, `src.area_edit`, etc. These are **not** covered by semver. Prefer `realm_fabric` exports; request new exports if something is missing.
+| Module | Use |
+|--------|-----|
+| `realm_fabric.area_edit` | String parsers for tests and GM command dispatch |
+| `realm_fabric.area_edit_parse` | `tokenize_args` / `parse_field_tokens` |
+| `realm_fabric.session_area_edit` | Typed area CRUD helpers used by `Session` |
+
+Realm-Studio owns stepper-style command strings in `backend/command_dispatch.py`. Product apps should call typed `Session` methods instead.
+
+**Removed in 1.0:** `Session.run_command()`, `CommandResult`, `realm` console script. See [Migration 0.7 → 1.0](../MIGRATION-0.7-to-1.0.md).
 
 ---
 

@@ -1,6 +1,6 @@
 """ST lorebook entry defaults (V0.5.0)."""
 
-from src.lorebook.st_defaults import ST_ENTRY_DEFAULTS, new_st_entry_dict, with_st_entry_defaults
+from realm_fabric.lorebook.st_defaults import ST_ENTRY_DEFAULTS, new_st_entry_dict, with_st_entry_defaults
 
 
 def test_with_st_entry_defaults_fills_missing_keys():
@@ -45,7 +45,7 @@ def test_new_st_entry_dict_matches_typical_st_shape():
 
 
 def test_minimal_import_export_gains_st_defaults():
-    from src.lorebook import load_lorebook_from_dict
+    from realm_fabric.lorebook import load_lorebook_from_dict
 
     book = load_lorebook_from_dict(
         {
@@ -71,7 +71,7 @@ def test_minimal_import_export_gains_st_defaults():
 def test_real_sample_entry_shape_if_present():
     from pathlib import Path
 
-    from src.lorebook import load_lorebook_from_path
+    from realm_fabric.lorebook import load_lorebook_from_path
 
     sample = Path(r"e:\Tavern\Midway\tri-system-universe.lorebook.json")
     if not sample.is_file():

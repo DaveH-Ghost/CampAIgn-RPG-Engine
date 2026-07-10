@@ -1,14 +1,14 @@
 """private_data on agents and objects (app-owned, not LLM/CLI)."""
 
-from src.area import Area, GridBounds
-from src.area_edit import create_object_from_args
-from src.session import Session
-from src.session_persistence import build_save_snapshot, load_session_from_snapshot
+from realm_fabric.area import Area, GridBounds
+from realm_fabric.area_edit import create_object_from_args
+from realm_fabric.session import Session
+from realm_fabric.session_persistence import build_save_snapshot, load_session_from_snapshot
 
 
 def test_object_private_data_round_trip_in_save():
     area = Area(bounds=GridBounds.square(4))
-    from src.area_edit import create_agent_from_args
+    from realm_fabric.area_edit import create_agent_from_args
 
     create_agent_from_args(
         area,

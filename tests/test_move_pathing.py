@@ -1,11 +1,11 @@
 """D&D 5e pathing and move_speed (V0.4.0b)."""
 
-from src.actions.move import move as do_move
-from src.area import create_initial_area
-from src.area_edit import create_agent_from_args, edit_agent_from_args
-from src.llm.prompt import build_compound_prompt
-from src.pathing import chebyshev_distance, path_step_towards, walk_towards
-from src.session import Session
+from realm_fabric.actions.move import move as do_move
+from realm_fabric.area import create_initial_area
+from realm_fabric.area_edit import create_agent_from_args, edit_agent_from_args
+from realm_fabric.llm.prompt import build_compound_prompt
+from realm_fabric.pathing import chebyshev_distance, path_step_towards, walk_towards
+from realm_fabric.session import Session
 
 
 def test_path_step_diagonal_first():
@@ -113,11 +113,11 @@ def test_edit_agent_invalid_move_speed():
 
 def test_snapshot_includes_move_speed():
     session = Session.from_default()
-    session.run_command("edit-agent agent_01 move-speed 2")
+    session.edit_agent("agent_01", move_speed=2)
     agent = session.snapshot()["agents"][0]
     assert agent["move_speed"] == 2
 
-    session.run_command('edit-agent agent_01 move-speed ""')
+    session.get_active_agent().move_speed = None
     agent = session.snapshot()["agents"][0]
     assert agent["move_speed"] is None
 
@@ -132,7 +132,7 @@ def test_prompt_mentions_move_speed_when_limited():
 
 
 def test_move_speed_line_uses_session_units():
-    from src.move_target import format_move_speed_line
+    from realm_fabric.move_target import format_move_speed_line
 
     assert (
         format_move_speed_line(2, vision_units="ft", units_per_tile=5)
@@ -146,12 +146,12 @@ def test_move_speed_line_uses_session_units():
 
 def test_move_speed_straight_horizontal_stays_on_row():
     """Regression: collinear horizontal moves must not drift diagonally (V0.7.1)."""
-    from src.area import create_area
-    from src.pathfinding import find_path, walk_with_pathfinding
+    from realm_fabric.area import create_area
+    from realm_fabric.pathfinding import find_path, walk_with_pathfinding
 
     area = create_area(width=5, height=5)
     area.agents.clear()
-    from src.agent import Agent
+    from realm_fabric.agent import Agent
 
     mover = Agent(id="walker", name="Walker", position=(0, 2), personality="x")
     area.agents.append(mover)
@@ -175,9 +175,9 @@ def test_move_speed_straight_horizontal_stays_on_row():
 
 def test_move_speed_straight_vertical_stays_on_column():
     """Regression: collinear vertical moves must not drift diagonally (V0.7.1)."""
-    from src.area import create_area
-    from src.agent import Agent
-    from src.pathfinding import find_path, walk_with_pathfinding
+    from realm_fabric.area import create_area
+    from realm_fabric.agent import Agent
+    from realm_fabric.pathfinding import find_path, walk_with_pathfinding
 
     area = create_area(width=5, height=5)
     area.agents.clear()

@@ -1,15 +1,15 @@
 """Interact result/passive template placeholders."""
 
-from src.actions.interact import interact
-from src.agent import Agent
-from src.area import Area
-from src.area_edit import create_object_from_args
-from src.interact_templates import (
+from realm_fabric.actions.interact import interact
+from realm_fabric.agent import Agent
+from realm_fabric.area import Area
+from realm_fabric.area_edit import create_object_from_args
+from realm_fabric.interact_templates import (
     InteractTemplateContext,
     format_interact_template,
     interact_template_var_help,
 )
-from src.session import Session
+from realm_fabric.session import Session
 
 
 def test_interact_template_var_help_lists_all_placeholders():

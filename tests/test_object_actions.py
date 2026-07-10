@@ -4,14 +4,14 @@ test_object_actions.py
 V0.2 Section 3: declarative object interactions.
 """
 
-from src.actions.interact import interact
-from src.llm.prompt import build_compound_prompt
-from src.llm.schemas import AgentCompoundTurn
-from src.interaction_handlers.registry import format_handlers_list
-from src.perception import build_passive_vision, PASSIVE_VISION_LOOK_RULE, perform_look
-from src.simulation import next_turn_number_for_agent, run_compound_turn
-from src.area import create_initial_area
-from src.area_edit import (
+from realm_fabric.actions.interact import interact
+from realm_fabric.llm.prompt import build_compound_prompt
+from realm_fabric.llm.schemas import AgentCompoundTurn
+from realm_fabric.interaction_handlers.registry import format_handlers_list
+from realm_fabric.perception import build_passive_vision, PASSIVE_VISION_LOOK_RULE, perform_look
+from realm_fabric.simulation import next_turn_number_for_agent, run_compound_turn
+from realm_fabric.area import create_initial_area
+from realm_fabric.area_edit import (
     create_agent_from_args,
     create_object_from_args,
     delete_object_by_id,
@@ -60,7 +60,7 @@ def test_handlers_command_lists_registered_handlers():
 
 
 def test_handler_registry_descriptions_match_registration():
-    from src.interaction_handlers.registry import get_handler_registration, list_registered_handlers
+    from realm_fabric.interaction_handlers.registry import get_handler_registration, list_registered_handlers
 
     for handler_id in list_registered_handlers():
         reg = get_handler_registration(handler_id)
@@ -231,17 +231,33 @@ def test_goblin_interact_eat_deletes_cookie():
 
 
 def test_step_compound_move_adjacent_and_eat():
-    from src.main import ManualStepper
+    from realm_fabric import ObjectAction, Session, load_profile
+    from realm_fabric.compound_arg_parse import parse_compound_step_arg
 
-    stepper = ManualStepper()
-    stepper.onecmd(f"create-object {COOKIE_ARGS}")
-    stepper.onecmd('create-agent name "Goblin" personality "x" at 0,0')
-    stepper.onecmd("switch Goblin")
-    cookie_id = stepper.area.get_objects()[-1].id
-    stepper.onecmd(f"step-compound 2,3 interact {cookie_id} eat")
+    session = Session.from_profile(load_profile("default_compound"))
+    session.create_object(
+        name="Cookie",
+        position=(2, 2),
+        passive_description="A cookie.",
+        description="A tasty cookie.",
+        actions={
+            "eat": ObjectAction(
+                name="eat",
+                range=1,
+                result="You ate the cookie, it was delicious.",
+                passive_result="{actor} ate the cookie.",
+                handler_id="delete_self",
+            ),
+        },
+    )
+    session.create_agent(name="Goblin", position=(0, 0), personality="x")
+    session.set_active_agent("Goblin")
+    cookie_id = session.area.get_objects()[-1].id
+    turn = parse_compound_step_arg(f"2,3 interact {cookie_id} eat").turn
+    session.run_compound_turn(turn)
 
-    assert stepper.area.get_object_by_id(cookie_id) is None
-    goblin = stepper.area.get_agent_by_name("Goblin")
+    assert session.area.get_object_by_id(cookie_id) is None
+    goblin = session.area.get_agent_by_name("Goblin")
     assert goblin.position in {(1, 1), (1, 2), (2, 1), (2, 3), (3, 2)}
     assert "You ate the cookie" in goblin.memory.turns[-1].result
 
@@ -268,7 +284,7 @@ def test_not_visible_interact_fails(monkeypatch):
     goblin = _create_goblin(area, at="2,3")
 
     monkeypatch.setattr(
-        "src.actions.interact.is_object_in_passive_vision",
+        "realm_fabric.actions.interact.is_object_in_passive_vision",
         lambda _agent, _world, object_id: object_id != cookie.id,
     )
 
@@ -393,12 +409,8 @@ def test_delete_object_clears_look_memory():
     assert not agent.memory.has_ever_looked_at("obj_ball_01")
 
 
-def test_stepper_handlers_command(capsys):
-    from src.main import ManualStepper
-
-    stepper = ManualStepper()
-    stepper.onecmd("handlers")
-    out = capsys.readouterr().out
+def test_handlers_list_includes_reference_set():
+    out = format_handlers_list()
     assert "delete_self" in out
     assert "random_move_self" in out
 
@@ -462,16 +474,18 @@ def test_random_move_self_excludes_current_tile(monkeypatch):
 
 
 def test_step_compound_kick_ball_moves(monkeypatch):
-    from src.main import ManualStepper
+    from realm_fabric import Session, load_profile
+    from realm_fabric.compound_arg_parse import parse_compound_step_arg
 
-    stepper = ManualStepper()
-    stepper.agent.position = (2, 3)
+    session = Session.from_profile(load_profile("default_compound"))
+    session.get_active_agent().position = (2, 3)
     monkeypatch.setattr(
         "reference_handlers.handlers.random_move_self.random.choice",
         lambda _positions: (4, 0),
     )
-    stepper.onecmd("step-compound - interact obj_ball_01 kick")
+    turn = parse_compound_step_arg("- interact obj_ball_01 kick").turn
+    session.run_compound_turn(turn)
 
-    ball = stepper.area.get_object_by_id("obj_ball_01")
+    ball = session.area.get_object_by_id("obj_ball_01")
     assert ball.position == (4, 0)
-    assert "You kick the Ceramic Ball. It rolls from (2, 2) to (4, 0)." in stepper.agent.memory.turns[-1].result
+    assert "You kick the Ceramic Ball. It rolls from (2, 2) to (4, 0)." in session.get_active_agent().memory.turns[-1].result

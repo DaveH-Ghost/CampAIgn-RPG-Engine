@@ -1,12 +1,12 @@
 """Movement blocking and BFS pathfinding (V0.6.0a)."""
 
-from src.actions.move import move as do_move
-from src.area import Area, GridBounds, create_initial_area
-from src.area_edit import create_object_from_args
-from src.object import Object
-from src.occupancy import is_tile_enterable, resolve_standable_goal
-from src.pathfinding import find_path, walk_with_pathfinding
-from src.session import Session
+from realm_fabric.actions.move import move as do_move
+from realm_fabric.area import Area, GridBounds, create_initial_area
+from realm_fabric.area_edit import create_object_from_args
+from realm_fabric.object import Object
+from realm_fabric.occupancy import is_tile_enterable, resolve_standable_goal
+from realm_fabric.pathfinding import find_path, walk_with_pathfinding
+from realm_fabric.session import Session
 
 
 def test_objects_block_by_default_agents_do_not():
@@ -32,8 +32,8 @@ def test_teleport_targets_standable_tile_not_blocking_object_center():
 
 def test_pathfinds_around_blocking_wall_object():
     area = Area(bounds=GridBounds.square(5))
-    from src.agent import Agent
-    from src.memory import Memory
+    from realm_fabric.agent import Agent
+    from realm_fabric.memory import Memory
 
     mover = Agent(
         id="agent_test_01",
@@ -79,7 +79,7 @@ def test_move_to_entity_stops_adjacent_to_blocking_object():
 def test_agents_can_share_tile_by_default():
     area = create_initial_area()
     agent = area.get_agent()
-    from src.area_edit import create_agent_from_args
+    from realm_fabric.area_edit import create_agent_from_args
 
     other, _ = create_agent_from_args(
         area,
@@ -114,7 +114,10 @@ def test_create_object_blocks_movement_flag():
 
 def test_snapshot_includes_blocking_fields():
     session = Session.from_default()
-    session.run_command("edit-object obj_ball_01 movement-exception agent_01")
+    session.edit_object(
+        "obj_ball_01",
+        movement_exceptions=["agent_01"],
+    )
     obj = session.snapshot(include_private=True)["areas"]["room"]["objects"]
     ball = next(item for item in obj if item["id"] == "obj_ball_01")
     assert ball["blocks_movement"] is True

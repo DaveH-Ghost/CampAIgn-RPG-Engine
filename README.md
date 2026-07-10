@@ -1,21 +1,32 @@
 # Realm Fabric
 
-Grid-based LLM agent simulation engine: multi-area worlds, compound turns (move → look → speak → interact/emote), pluggable memory modules, and a stable `realm_fabric` library API. The `realm` CLI and [Realm-Studio](https://github.com/DaveH-Ghost/Realm-Studio) are reference clients — apps build on the engine with their own UI and scenarios.
+Grid-based LLM agent simulation engine: multi-area worlds, compound turns (move → look → speak → interact/emote), pluggable memory modules, and a stable **`realm_fabric`** library API. Build your own UI and scenarios on the engine; use [Realm-Studio](https://github.com/DaveH-Ghost/Realm-Studio) as a full GM reference app.
 
 **License:** [MIT](LICENSE) — open source.
 
-**Current version:** **V0.7.2** (`0.7.2` in `pyproject.toml`) — Python 3.12 PyPI import fix. See [V0.7.2 changelog](docs/changelog/v0.7.2-changelog.md). **V0.7.1** added movement pathing fix and targeted area events; **V0.7.0** introduced the stable `realm_fabric` API.
+**Current version:** **1.0.0** — library-first package (`realm_fabric` only; no CLI). See [Migration from 0.7](docs/MIGRATION-0.7-to-1.0.md) and the [changelog index](docs/changelog/README.md).
 
 ## Quick start
 
 ```powershell
-# Engine + CLI
 cd path\to\Realm-Fabric
 uv sync
-uv run realm
+uv run pytest
 ```
 
-**GM web UI:** clone [Realm-Studio](https://github.com/DaveH-Ghost/Realm-Studio) (separate GitHub repo, not in this tree):
+```python
+from realm_fabric import Session, load_profile, AgentCompoundTurn
+
+session = Session.from_profile(load_profile("default_compound"))
+session.create_agent(name="Scout", position=(0, 0), personality="Curious.")
+session.create_object(name="Chest", position=(2, 1), passive_description="An old chest.")
+prompt = session.build_prompt()
+result = session.run_compound_turn(
+    AgentCompoundTurn(reasoning="look around", action="none"),
+)
+```
+
+**GM web UI:** clone [Realm-Studio](https://github.com/DaveH-Ghost/Realm-Studio) (separate GitHub repo):
 
 ```powershell
 cd path\to\Realm-Studio
@@ -24,99 +35,38 @@ copy .env.example .env   # optional; or use Settings gear in the UI
 uv run realm-studio
 ```
 
-On Windows, if Smart App Control blocks `uv run realm-studio`, use:
-
-```powershell
-uv run python -m backend.main
-```
-
-Open [http://127.0.0.1:8765](http://127.0.0.1:8765).
-
-## Library API
-
-```python
-from realm_fabric import Session, load_profile, AgentCompoundTurn
-
-session = Session.from_profile(load_profile("default_compound"))
-session.create_agent(name="Scout", position=(0, 0), personality="...")
-session.create_object(name="Chest", position=(2, 1), passive_description="...")
-prompt = session.build_prompt()
-result = session.run_compound_turn(AgentCompoundTurn(...))
-save_doc = session.to_save_dict()
-restored = Session.from_snapshot(save_doc)
-```
-
-See [documentation](docs/README.md) and [minimal-server](examples/minimal-server/).
+On Windows, if Smart App Control blocks `uv run realm-studio`, use `uv run python -m backend.main`. Open [http://127.0.0.1:8765](http://127.0.0.1:8765).
 
 ## Environment
 
-Copy [`.env.example`](.env.example) to `.env` and set `OPENROUTER_API_KEY` for LLM turns. Optional `OPENROUTER_MODEL` (default `deepseek/deepseek-v4-flash`). Manual commands work without a key.
+Copy [`.env.example`](.env.example) to `.env` and set `OPENROUTER_API_KEY` for LLM turns. Optional `OPENROUTER_MODEL` (default `deepseek/deepseek-v4-flash`). Engine tests mock the LLM — no key required for `uv run pytest`.
 
 Realm-Studio **Settings** (gear icon) can set API key and model **in memory for the current server process only** — nothing is written to disk.
 
-## V0.7.2 highlights
+## Custom memory modules
 
-- **Python 3.12 PyPI fix** — `from __future__ import annotations` across all `src/` modules so `import realm_fabric` works on 3.11/3.12
+Register `.py` modules at process startup before creating agents or loading saves:
 
-## V0.7.1 highlights
+```python
+from realm_fabric import register_memory_module_from_path
 
-- **Straight-line movement** — `move_speed` pathing stays on row/column when moving in a straight line
-- **Targeted area events** — `emit_area_event(text, agent_ids=...)` for per-agent GM narration
-- **PyPI** — `realm_fabric.__version__` reads installed package metadata correctly
-
-## V0.7.0 highlights
-
-- **Public API** — expanded `realm_fabric` exports (lorebooks, prompt blocks, `ObjectAction`, `WorldMutationResult`, memory registration)
-- **Typed world API** — `session.create_object()`, `create_agent()`, `edit_object()`, areas, actions — no CLI strings in app code
-- **minimal-server** — thin FastAPI reference at `examples/minimal-server/`
-- **Docs** — [docs/README.md](docs/README.md)
-
-## V0.6.1 highlights
-
-- **Pluggable handlers** — `register_interaction_handler()`; `ObjectAction.handler_id` + `handler_params`
-- **Reference handlers** — `delete_self`, `random_move_self`, `move_area` in `examples/reference_handlers/` (CLI + Realm-Studio register at startup)
-- **Interacts + triggers** — same handler surface for LLM interacts and path-step triggers
-- **Saves** — `snapshot_version: 4` (v1–v3 import supported; `effects` migrates to handlers)
-- **Breaking** — CLI `effect` → `handler`; `effects` command → `handlers` (alias kept)
-
-## V0.6.0 highlights
-
-- **Movement blocking** — objects block tiles by default; BFS pathfinding when `move_speed` is set
-- **Interact pathing** — compound `interact` paths toward the object (replaces explicit `move` that turn)
-- **Passive vision** — look guidance and in-range interactions merged into one prompt slot
-- **Multi-tile objects** — `width` / `height` footprints; range uses nearest footprint tile
-- **Hidden objects + triggers** — GM-only placements; engine-fired triggers on path steps (`Session.emit_area_event`)
-- **Saves** — `snapshot_version: 3` (v1–v2 import still supported)
-- **Realm-Studio** — footprint overlay, hidden-trigger wizard, collapsible create/edit modals, `private_data` for custom apps
-
-## Custom memory modules (V0.4.6)
-
-Load `.py` modules at runtime before create-agent or session import:
-
-```text
-add-memory-module path\to\my_module.py
+register_memory_module_from_path("path/to/my_module.py")
+session.create_agent(..., memory_module="my_module_id")
 ```
 
-Saves store `module_id` + state only (no bundled source). Import **fails** if a save references a module that is not loaded. Example: [examples/custom_memory/](examples/custom_memory/).
+Saves store `module_id` + state only (no bundled source). Import **fails** if a save references a module that is not loaded. Sample module and upload UI: [Realm-Studio `fixtures/custom_memory/`](https://github.com/DaveH-Ghost/Realm-Studio/tree/main/fixtures/custom_memory).
 
-## Lorebooks (V0.5.0)
+## Lorebooks
 
-Load SillyTavern-style `.json` lorebooks into the session (CLI `load-lorebook` or Realm-Studio **Lorebooks** tab). Add a `lorebook` prompt block (per book) in Prompt layout to inject matched world info. Not included in the default prompt layout.
-
-## CLI reference
-
-Full command list, world editing, blocking, hidden objects, triggers, and compound-turn examples: [docs/guides/cli.md](docs/guides/cli.md).
+Load SillyTavern-style `.json` lorebooks via `session.load_lorebook_from_path(...)` or Realm-Studio **Lorebooks** tab. Add a `lorebook` prompt block in Prompt layout to inject matched world info. Not included in the default prompt layout.
 
 ## Tests
 
 ```powershell
-# Engine (repo root)
 uv run pytest
 ```
 
 Realm-Studio API tests live in the [Realm-Studio](https://github.com/DaveH-Ghost/Realm-Studio) repo.
-
-No API key or network required — LLM calls are mocked in tests.
 
 ## Documentation
 
@@ -125,12 +75,10 @@ Start at **[docs/README.md](docs/README.md)** — guides, API overview, and chan
 | Doc | Topic |
 |-----|--------|
 | [Building on Realm-Fabric](docs/guides/building-on-realm-fabric.md) | App integration (typed API, hosting) |
-| [CLI reference](docs/guides/cli.md) | `realm` stepper commands |
-| [V0.7.2 changelog](docs/changelog/v0.7.2-changelog.md) | Python 3.12 import fix |
-| [V0.7.1 changelog](docs/changelog/v0.7.1-changelog.md) | Movement fix, targeted events, PyPI version |
-| [V0.7.0 changelog](docs/changelog/v0.7.0-changelog.md) | Platform SDK, minimal-server |
-| [Roadmap](docs/ROADMAP.md) | Version plans |
+| [API reference](docs/guides/api-reference.md) | `realm_fabric` exports and Session methods |
+| [Migration 0.7 → 1.0](docs/MIGRATION-0.7-to-1.0.md) | Breaking changes (CLI removed, package layout) |
 | [Realm-Studio](https://github.com/DaveH-Ghost/Realm-Studio) | Full GM reference UI (GitHub) |
+| [Roadmap](docs/ROADMAP.md) | Version plans |
 | [Long-term goals](LONG_TERM_GOALS.md) | Aspirational features |
 
 Older version notes: [changelog index](docs/changelog/README.md).

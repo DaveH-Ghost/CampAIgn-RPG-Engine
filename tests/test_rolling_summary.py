@@ -4,11 +4,11 @@ import threading
 
 import pytest
 
-from src.memory import Memory
-from src.memory_modules.base import MemoryObserveContext, MemoryRecordContext, MemoryRenderContext
-from src.memory_modules.recent_turns import DEFAULT_WINDOW
-from src.memory_modules.registry import create_module, format_memory_module_label
-from src.memory_modules.rolling_summary import (
+from realm_fabric.memory import Memory
+from realm_fabric.memory_modules.base import MemoryObserveContext, MemoryRecordContext, MemoryRenderContext
+from realm_fabric.memory_modules.recent_turns import DEFAULT_WINDOW
+from realm_fabric.memory_modules.registry import create_module, format_memory_module_label
+from realm_fabric.memory_modules.rolling_summary import (
     DEFAULT_MAX_SUMMARY_CHARS,
     DEFAULT_SUMMARY_INTERVAL,
     DEFAULT_SUMMARY_TAIL,
@@ -18,9 +18,9 @@ from src.memory_modules.rolling_summary import (
     validate_summary_interval,
     validate_summary_tail,
 )
-from src.turn_record import TurnRecord, TurnStep
-from src.area import create_initial_area
-from src.area_edit import create_agent_from_args
+from realm_fabric.turn_record import TurnRecord, TurnStep
+from realm_fabric.area import create_initial_area
+from realm_fabric.area_edit import create_agent_from_args
 
 
 def _record_ctx(
@@ -240,8 +240,8 @@ def test_witnesses_included_in_summary_batch(monkeypatch):
 
 
 def test_generate_rolling_summary_uses_plain_text_completion(monkeypatch):
-    from src.llm.memory_summary import generate_rolling_summary
-    from src.llm.types import LLMResponse
+    from realm_fabric.llm.memory_summary import generate_rolling_summary
+    from realm_fabric.llm.types import LLMResponse
 
     captured: dict[str, str] = {}
     log_calls: list[dict] = []
@@ -253,8 +253,8 @@ def test_generate_rolling_summary_uses_plain_text_completion(monkeypatch):
     def fake_log_turn(turn_number, **kwargs):
         log_calls.append({"turn_number": turn_number, **kwargs})
 
-    monkeypatch.setattr("src.llm.memory_summary.get_text_completion", fake_completion)
-    monkeypatch.setattr("src.llm.memory_summary.log_turn", fake_log_turn)
+    monkeypatch.setattr("realm_fabric.llm.memory_summary.get_text_completion", fake_completion)
+    monkeypatch.setattr("realm_fabric.llm.memory_summary.log_turn", fake_log_turn)
 
     summary = generate_rolling_summary(
         agent_name="Explorer",
@@ -502,7 +502,7 @@ def test_create_agent_custom_summary_tail():
 
 
 def _witness(text: str):
-    from src.memory_modules.base import WitnessedEvent
+    from realm_fabric.memory_modules.base import WitnessedEvent
 
     return WitnessedEvent(
         session_turn=1,

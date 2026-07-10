@@ -7,7 +7,7 @@ Pydantic validation for V0.2.5 compound turn schema.
 import pytest
 from pydantic import ValidationError
 
-from src.llm.schemas import (
+from realm_fabric.llm.schemas import (
     AgentCompoundTurn,
     count_speak_sentences,
     normalize_compound_turn_payload,

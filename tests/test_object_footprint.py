@@ -1,24 +1,24 @@
 """Multi-tile object footprints (V0.6.0d)."""
 
-from src.actions.interact import interact
-from src.actions.move import move as do_move
-from src.agent import Agent
-from src.area import Area, GridBounds
-from src.area_edit import create_object_from_args
-from src.memory import Memory
-from src.move_target import ResolvedMoveTarget, format_move_towards_message
-from src.object import (
+from realm_fabric.actions.interact import interact
+from realm_fabric.actions.move import move as do_move
+from realm_fabric.agent import Agent
+from realm_fabric.area import Area, GridBounds
+from realm_fabric.area_edit import create_object_from_args
+from realm_fabric.memory import Memory
+from realm_fabric.move_target import ResolvedMoveTarget, format_move_towards_message
+from realm_fabric.object import (
     Object,
     chebyshev_distance_to_object,
     nearest_footprint_tile_to,
     object_footprint_tiles,
     object_occupies_tile,
 )
-from src.object_action import ObjectAction
-from src.occupancy import is_tile_enterable, objects_at
-from src.pathfinding import find_path
-from src.perception import build_passive_vision
-from src.snapshot import serialize_object
+from realm_fabric.object_action import ObjectAction
+from realm_fabric.occupancy import is_tile_enterable, objects_at
+from realm_fabric.pathfinding import find_path
+from realm_fabric.perception import build_passive_vision
+from realm_fabric.snapshot import serialize_object
 
 
 def _agent_at(pos: tuple[int, int], *, move_speed: int | None = None) -> Agent:

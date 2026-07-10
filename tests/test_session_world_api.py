@@ -26,12 +26,11 @@ def test_create_object_typed(session: Session) -> None:
     assert result.object.position == (2, 2)
 
 
-def test_create_object_matches_cli(session: Session) -> None:
-    typed = session.create_object(name="A", position=(1, 1), passive_description="pa")
-    cli = session.run_command('create-object name "B" pdesc "pb" at 3,3')
-    assert typed.ok
-    assert cli.ok
-    assert session.area.get_object_by_id(typed.object.id) is not None
+def test_create_object_typed_adds_second_object(session: Session) -> None:
+    first = session.create_object(name="A", position=(1, 1), passive_description="pa")
+    second = session.create_object(name="B", position=(3, 3), passive_description="pb")
+    assert first.ok and second.ok
+    assert session.area.get_object_by_id(first.object.id) is not None
     objects = [o.name for o in session.area.get_objects()]
     assert "A" in objects and "B" in objects
 

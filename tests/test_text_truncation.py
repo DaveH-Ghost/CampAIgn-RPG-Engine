@@ -1,7 +1,7 @@
 """Sentence-aware truncation (V0.4.1a)."""
 
-from src.llm.schemas import AgentCompoundTurn
-from src.llm.text_truncation import (
+from realm_fabric.llm.schemas import AgentCompoundTurn
+from realm_fabric.llm.text_truncation import (
     REASONING_MAX_CHARS,
     SPEAK_MAX_CHARS,
     count_sentences,

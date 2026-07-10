@@ -1,12 +1,12 @@
 """Configurable area grid, room description, and prompt context strings."""
 
-from src.agent import Agent
-from src.llm.prompt_context import PromptContext, build_prompt_context
-from src.llm.prompt import assemble_default_compound_prompt, build_compound_prompt
-from src.llm.schemas import AgentCompoundTurn
-from src.memory import Memory
-from src.session import Session
-from src.area import GridBounds, Area, create_area
+from realm_fabric.agent import Agent
+from realm_fabric.llm.prompt_context import PromptContext, build_prompt_context
+from realm_fabric.llm.prompt import assemble_default_compound_prompt, build_compound_prompt
+from realm_fabric.llm.schemas import AgentCompoundTurn
+from realm_fabric.memory import Memory
+from realm_fabric.session import Session
+from realm_fabric.area import GridBounds, Area, create_area
 
 
 def test_create_area_custom_grid_and_room():

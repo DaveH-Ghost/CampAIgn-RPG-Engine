@@ -1,11 +1,11 @@
 """Witness broadcast for multi-step compound turns (V0.4.3c)."""
 
-from src.area import create_initial_area
-from src.area_edit import create_agent_from_args
-from src.llm.schemas import AgentCompoundTurn
-from src.observations import observable_witness_steps
-from src.simulation import run_compound_turn
-from src.turn_record import TurnStep
+from realm_fabric.area import create_initial_area
+from realm_fabric.area_edit import create_agent_from_args
+from realm_fabric.llm.schemas import AgentCompoundTurn
+from realm_fabric.observations import observable_witness_steps
+from realm_fabric.simulation import run_compound_turn
+from realm_fabric.turn_record import TurnStep
 
 
 def _step(kind: str, passive: str = "", **kwargs) -> TurnStep:

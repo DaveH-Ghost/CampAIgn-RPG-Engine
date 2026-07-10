@@ -1,8 +1,8 @@
 """Interact pathing records a move step when the agent changes tiles."""
 
-from src.area import create_initial_area
-from src.llm.schemas import AgentCompoundTurn
-from src.session import Session
+from realm_fabric.area import create_initial_area
+from realm_fabric.llm.schemas import AgentCompoundTurn
+from realm_fabric.session import Session
 
 
 def test_interact_path_move_appears_in_turn_memory_result():

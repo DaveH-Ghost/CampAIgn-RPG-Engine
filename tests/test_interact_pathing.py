@@ -1,9 +1,9 @@
 """Interact pathing overwrites compound move (V0.6.0b)."""
 
-from src.area import create_initial_area
-from src.llm.schemas import AgentCompoundTurn
-from src.session import Session
-from src.simulation import execute_nav_phase, run_compound_turn
+from realm_fabric.area import create_initial_area
+from realm_fabric.llm.schemas import AgentCompoundTurn
+from realm_fabric.session import Session
+from realm_fabric.simulation import execute_nav_phase, run_compound_turn
 
 
 def test_nav_phase_skips_move_when_interact():

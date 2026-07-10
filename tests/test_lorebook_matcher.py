@@ -1,10 +1,10 @@
 """Lorebook keyword matching (V0.5.0)."""
 
-from src.agent import Agent
-from src.area import Area
-from src.lorebook import load_lorebook_from_dict, match_lorebook_entries, render_lorebook
-from src.lorebook.matcher import build_scan_corpus
-from src.lorebook.models import LoreEntry, Lorebook
+from realm_fabric.agent import Agent
+from realm_fabric.area import Area
+from realm_fabric.lorebook import load_lorebook_from_dict, match_lorebook_entries, render_lorebook
+from realm_fabric.lorebook.matcher import build_scan_corpus
+from realm_fabric.lorebook.models import LoreEntry, Lorebook
 
 _BOOK = load_lorebook_from_dict(
     {

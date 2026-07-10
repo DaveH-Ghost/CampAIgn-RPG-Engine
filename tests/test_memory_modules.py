@@ -1,13 +1,13 @@
 """Tests for pluggable memory modules (recent_turns default)."""
 
-from src.llm.prompt import build_compound_prompt
-from src.llm.schemas import AgentCompoundTurn
-from src.memory import Memory, TurnRecord, TurnStep
-from src.memory_modules.base import WitnessedEvent
-from src.memory_modules.recent_turns import RecentTurnsModule
-from src.simulation import next_turn_number_for_agent, run_compound_turn
-from src.area import create_initial_area
-from src.area_edit import create_agent_from_args
+from realm_fabric.llm.prompt import build_compound_prompt
+from realm_fabric.llm.schemas import AgentCompoundTurn
+from realm_fabric.memory import Memory, TurnRecord, TurnStep
+from realm_fabric.memory_modules.base import WitnessedEvent
+from realm_fabric.memory_modules.recent_turns import RecentTurnsModule
+from realm_fabric.simulation import next_turn_number_for_agent, run_compound_turn
+from realm_fabric.area import create_initial_area
+from realm_fabric.area_edit import create_agent_from_args
 
 
 def _turn(turn_number: int, *, reasoning: str = "thoughts") -> TurnRecord:
@@ -169,19 +169,19 @@ def test_turn_count_uses_total_not_window_size():
 
 
 def _record_ctx(agent_id: str, turn_number: int):
-    from src.memory_modules.base import MemoryRecordContext
+    from realm_fabric.memory_modules.base import MemoryRecordContext
 
     return MemoryRecordContext(agent_id=agent_id, turn_number=turn_number)
 
 
 def _observe_ctx(observer_id: str):
-    from src.memory_modules.base import MemoryObserveContext
+    from realm_fabric.memory_modules.base import MemoryObserveContext
 
     return MemoryObserveContext(observer_id=observer_id)
 
 
 def _render_ctx():
-    from src.memory_modules.base import MemoryRenderContext
+    from realm_fabric.memory_modules.base import MemoryRenderContext
 
     area = create_initial_area()
     return MemoryRenderContext(agent=area.get_agent(), area=area)
@@ -249,7 +249,7 @@ def test_create_agent_unknown_memory_module_rejected():
 
 
 def test_known_module_ids_lists_recent_turns():
-    from src.memory_modules.registry import known_module_ids
+    from realm_fabric.memory_modules.registry import known_module_ids
 
     ids = known_module_ids()
     assert "recent_turns" in ids
@@ -258,7 +258,7 @@ def test_known_module_ids_lists_recent_turns():
 
 
 def test_format_memory_modules_list():
-    from src.memory_modules.registry import format_memory_modules_list
+    from realm_fabric.memory_modules.registry import format_memory_modules_list
 
     text = format_memory_modules_list()
     assert "recent_turns" in text
@@ -276,7 +276,7 @@ def test_get_detail_turns_matches_stored_turns():
 
 
 def test_recent_turns_is_not_turn_gated():
-    from src.memory_modules.base import TurnGatedMemoryModule
+    from realm_fabric.memory_modules.base import TurnGatedMemoryModule
 
     memory = Memory(module_id="recent_turns")
     assert not isinstance(memory.module, TurnGatedMemoryModule)
@@ -284,7 +284,7 @@ def test_recent_turns_is_not_turn_gated():
 
 
 def test_rolling_summary_is_turn_gated():
-    from src.memory_modules.base import TurnGatedMemoryModule
+    from realm_fabric.memory_modules.base import TurnGatedMemoryModule
 
     memory = Memory(module_id="rolling_summary")
     assert isinstance(memory.module, TurnGatedMemoryModule)
@@ -296,7 +296,7 @@ def test_agents_list_shows_memory_module():
         area,
         'name "Scribe" personality "x" memory recent_turns at 0,0',
     )
-    from src.area_edit import format_agents_list
+    from realm_fabric.area_edit import format_agents_list
 
     text = format_agents_list(area, area.get_agent())
     assert "memory=recent_turns" in text

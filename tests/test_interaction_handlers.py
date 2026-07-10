@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from src.area_edit import create_object_from_args
-from src.area_edit import create_object_from_args
-from src.agent import Agent
-from src.area import Area
-from src.interaction_handlers.registry import (
+from realm_fabric.area_edit import create_object_from_args
+from realm_fabric.area_edit import create_object_from_args
+from realm_fabric.agent import Agent
+from realm_fabric.area import Area
+from realm_fabric.interaction_handlers.registry import (
     clear_handlers_for_tests,
     format_handlers_list,
     is_handler_registered,
@@ -17,10 +17,10 @@ from src.interaction_handlers.registry import (
     run_interaction_handler,
     validate_handler_params,
 )
-from src.object import Object
-from src.object_action import ObjectAction, migrate_legacy_effects_to_handler
-from src.session import Session
-from src.session_persistence import (
+from realm_fabric.object import Object
+from realm_fabric.object_action import ObjectAction, migrate_legacy_effects_to_handler
+from realm_fabric.session import Session
+from realm_fabric.session_persistence import (
     SNAPSHOT_VERSION,
     build_save_snapshot,
     load_session_from_snapshot,

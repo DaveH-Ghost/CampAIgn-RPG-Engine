@@ -35,7 +35,7 @@ register_memory_module_from_path("path/to/my_module.py")
 ```
 
 Module must expose `create_module(**config) -> MemoryModule`.  
-Example: [examples/custom_memory](../../examples/custom_memory/).
+Example: [Realm-Studio fixtures/custom_memory](https://github.com/DaveH-Ghost/Realm-Studio/tree/main/fixtures/custom_memory) (upload via Settings in the GM app).
 
 Saves store **`module_id` + state** — not source code. Import fails if the module is not registered.
 

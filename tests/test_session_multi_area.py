@@ -1,10 +1,10 @@
 """Multi-area Session (V0.4.0c1)."""
 
-from src.agent import Agent
-from src.area import Area
-from src.llm.schemas import AgentCompoundTurn
-from src.session import Session
-from src.snapshot import DEFAULT_AREA_ID, build_session_snapshot
+from realm_fabric.agent import Agent
+from realm_fabric.area import Area
+from realm_fabric.llm.schemas import AgentCompoundTurn
+from realm_fabric.session import Session
+from realm_fabric.snapshot import DEFAULT_AREA_ID, build_session_snapshot
 
 
 def _two_area_session() -> Session:
@@ -55,11 +55,13 @@ def test_set_active_area_unknown_rejected():
     assert session.active_area_id == "room"
 
 
-def test_run_command_create_object_scoped_to_active_area():
+def test_create_object_scoped_to_active_area():
     session = _two_area_session()
     session.set_active_area("hall")
-    result = session.run_command(
-        'create-object name "Bench" pdesc "A bench." at 2,2'
+    result = session.create_object(
+        name="Bench",
+        position=(2, 2),
+        passive_description="A bench.",
     )
     assert result.ok
     names = {o.name for o in session.areas["hall"].get_objects()}
@@ -67,11 +69,13 @@ def test_run_command_create_object_scoped_to_active_area():
     assert "Bench" not in {o.name for o in session.areas["room"].get_objects()}
 
 
-def test_run_command_create_agent_registers_area():
+def test_create_agent_registers_area():
     session = _two_area_session()
     session.set_active_area("hall")
-    result = session.run_command(
-        'create-agent name "Visitor" personality "Quiet." at 1,1'
+    result = session.create_agent(
+        name="Visitor",
+        position=(1, 1),
+        personality="Quiet.",
     )
     assert result.ok
     visitor = session.get_agent("Visitor")
@@ -150,23 +154,21 @@ def test_build_session_snapshot_shape():
     assert "passive_vision" in snap
 
 
-def test_run_command_areas_listing():
+def test_session_areas_listing():
     session = _two_area_session()
-    result = session.run_command("areas")
-    assert result.ok
-    assert "room" in result.message
-    assert "hall" in result.message
+    assert set(session.areas) == {"room", "hall"}
+    assert session.active_area_id == "room"
 
 
-def test_run_command_active_area():
+def test_set_active_area_via_api():
     session = _two_area_session()
-    result = session.run_command("active-area hall")
+    result = session.set_active_area("hall")
     assert result.ok
     assert session.active_area_id == "hall"
 
 
 def test_edit_object_moves_between_areas():
-    from src.area_edit import create_object_from_args, edit_object_for_session
+    from realm_fabric.area_edit import create_object_from_args, edit_object_for_session
 
     session = _two_area_session()
     obj, _ = create_object_from_args(
@@ -188,7 +190,7 @@ def test_edit_object_moves_between_areas():
 
 
 def test_edit_object_area_rejected_when_out_of_bounds():
-    from src.area_edit import create_object_from_args, edit_object_for_session
+    from realm_fabric.area_edit import create_object_from_args, edit_object_for_session
 
     session = _two_area_session()
     obj, _ = create_object_from_args(
@@ -203,7 +205,7 @@ def test_edit_object_area_rejected_when_out_of_bounds():
 
 
 def test_edit_agent_moves_between_areas():
-    from src.area_edit import edit_agent_for_session
+    from realm_fabric.area_edit import edit_agent_for_session
 
     session = _two_area_session()
 
@@ -218,7 +220,7 @@ def test_edit_agent_moves_between_areas():
 
 
 def test_edit_agent_area_rejected_when_out_of_bounds():
-    from src.area_edit import edit_agent_for_session
+    from realm_fabric.area_edit import edit_agent_for_session
 
     session = _two_area_session()
 
@@ -228,10 +230,14 @@ def test_edit_agent_area_rejected_when_out_of_bounds():
     assert session.areas["room"].get_agent_by_id("agent_01") is not None
 
 
-def test_run_command_edit_agent_moves_between_areas():
+def test_edit_agent_moves_between_areas_via_session():
     session = _two_area_session()
 
-    result = session.run_command("edit-agent agent_01 area hall pos 1,0")
+    result = session.edit_agent(
+        "agent_01",
+        area_id="hall",
+        position=(1, 0),
+    )
     assert result.ok
     assert session.areas["room"].get_agent_by_id("agent_01") is None
     assert session.areas["hall"].get_agent_by_id("agent_01") is not None

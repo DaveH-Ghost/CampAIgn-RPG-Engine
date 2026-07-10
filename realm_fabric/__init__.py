@@ -1,8 +1,7 @@
 """
-realm_fabric — public engine API for Realm-Fabric (V0.7.0).
+realm_fabric — public engine API for Realm-Fabric (1.0.0).
 
-Downstream projects should import from this package. Modules under ``src.*``
-remain importable for the CLI and tests but are not guaranteed stable.
+Import from this package in application code.
 """
 
 from __future__ import annotations
@@ -10,28 +9,23 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
-from src.agent import Agent
-from src.area import Area, GridBounds, create_area, create_initial_area
-from src.area_edit import (
-    create_agent_from_args,
+from realm_fabric.agent import Agent
+from realm_fabric.area import Area, GridBounds, create_area, create_initial_area
+from realm_fabric.area_edit import (
     delete_agent_by_id,
-    edit_agent_for_session,
-    edit_agent_from_args,
-    edit_object_for_session,
-    edit_object_from_args,
     format_agents_list,
     format_full_list,
     format_objects_list,
     parse_position,
 )
-from src.game_profile import GameProfile, default_compound_profile, load_profile
-from src.interact_templates import interact_template_var_help
-from src.llm.client import LLMParseError, get_compound_turn
-from src.llm.prompt_context import PromptContext, build_prompt_context
-from src.llm.schemas import AgentCompoundTurn
-from src.llm.token_estimate import estimate_prompt_tokens
-from src.llm.types import LLMResponse
-from src.lorebook import (
+from realm_fabric.game_profile import GameProfile, default_compound_profile, load_profile
+from realm_fabric.interact_templates import interact_template_var_help
+from realm_fabric.llm.client import LLMParseError, get_compound_turn
+from realm_fabric.llm.prompt_context import PromptContext, build_prompt_context
+from realm_fabric.llm.schemas import AgentCompoundTurn
+from realm_fabric.llm.token_estimate import estimate_prompt_tokens
+from realm_fabric.llm.types import LLMResponse
+from realm_fabric.lorebook import (
     DEFAULT_LOREBOOK_CHAR_BUDGET,
     Lorebook,
     LoreEntry,
@@ -47,11 +41,11 @@ from src.lorebook import (
     render_lorebook,
     with_st_entry_defaults,
 )
-from src.lorebook.factory import create_empty_lorebook
-from src.memory import TurnRecord
-from src.memory_modules.base import MemoryModule
-from src.memory_modules.recent_turns import DEFAULT_WINDOW, MAX_WINDOW, MIN_WINDOW
-from src.memory_modules.registry import (
+from realm_fabric.lorebook.factory import create_empty_lorebook
+from realm_fabric.memory import TurnRecord
+from realm_fabric.memory_modules.base import MemoryModule
+from realm_fabric.memory_modules.recent_turns import DEFAULT_WINDOW, MAX_WINDOW, MIN_WINDOW
+from realm_fabric.memory_modules.registry import (
     clear_custom_memory_registrations,
     default_module_id,
     format_memory_modules_list,
@@ -60,7 +54,7 @@ from src.memory_modules.registry import (
     register_memory_module_from_path,
     register_memory_module_from_source,
 )
-from src.memory_modules.rolling_summary import (
+from realm_fabric.memory_modules.rolling_summary import (
     DEFAULT_MAX_SUMMARY_CHARS,
     DEFAULT_SUMMARY_INTERVAL,
     DEFAULT_SUMMARY_TAIL,
@@ -70,15 +64,15 @@ from src.memory_modules.rolling_summary import (
     MIN_SUMMARY_TAIL,
     RollingSummaryModule,
 )
-from src.memory_modules.salient_turns import (
+from realm_fabric.memory_modules.salient_turns import (
     DEFAULT_CHAR_BUDGET,
     MAX_CHAR_BUDGET,
     MIN_CHAR_BUDGET,
 )
-from src.object import Object, object_footprint_tiles
-from src.object_action import ActionKind, ObjectAction
-from src.perception import build_passive_vision
-from src.prompt_blocks import (
+from realm_fabric.object import Object, object_footprint_tiles
+from realm_fabric.object_action import ActionKind, ObjectAction
+from realm_fabric.perception import build_passive_vision
+from realm_fabric.prompt_blocks import (
     PromptBlock,
     default_prompt_blocks,
     enrich_blocks_with_previews,
@@ -87,16 +81,14 @@ from src.prompt_blocks import (
     prompt_slot_catalog,
     validate_prompt_blocks,
 )
-from src.session import CommandResult, Session, SessionResult, TurnResult
-from src.session_area_edit import (
+from realm_fabric.session import Session, SessionResult, TurnResult
+from realm_fabric.session_area_edit import (
     AreaMutationResult,
-    create_area_from_args,
     delete_area_by_id,
-    edit_area_from_args,
 )
-from src.simulation import run_compound_turn
-from src.session_persistence import build_save_snapshot, load_session_from_snapshot
-from src.interaction_handlers import (
+from realm_fabric.simulation import run_compound_turn
+from realm_fabric.session_persistence import build_save_snapshot, load_session_from_snapshot
+from realm_fabric.interaction_handlers import (
     format_handlers_list,
     get_handler_registration,
     is_handler_registered,
@@ -104,9 +96,8 @@ from src.interaction_handlers import (
     register_interaction_handler,
     run_interaction_handler,
 )
-from src.area_event import parse_area_event_arg
-from src.snapshot import DEFAULT_AREA_ID, build_area_snapshot, build_session_snapshot
-from src.world_edit_api import WorldMutationResult
+from realm_fabric.snapshot import DEFAULT_AREA_ID, build_area_snapshot, build_session_snapshot
+from realm_fabric.world_edit_api import WorldMutationResult
 
 __all__ = [
     "__version__",
@@ -115,7 +106,6 @@ __all__ = [
     "AgentCompoundTurn",
     "Area",
     "AreaMutationResult",
-    "CommandResult",
     "DEFAULT_AREA_ID",
     "DEFAULT_CHAR_BUDGET",
     "DEFAULT_LOREBOOK_CHAR_BUDGET",
@@ -158,7 +148,6 @@ __all__ = [
     "build_session_snapshot",
     "clear_custom_memory_registrations",
     "create_area",
-    "create_area_from_args",
     "create_empty_lorebook",
     "create_initial_area",
     "default_compound_profile",
@@ -167,9 +156,6 @@ __all__ = [
     "delete_area_by_id",
     "derive_lorebook_id_from_filename",
     "describe_scan_sources",
-    "edit_area_from_args",
-    "edit_agent_for_session",
-    "edit_object_for_session",
     "enrich_blocks_with_previews",
     "estimate_prompt_tokens",
     "format_agents_list",
@@ -191,7 +177,6 @@ __all__ = [
     "match_lorebook_entries",
     "new_st_entry_dict",
     "object_footprint_tiles",
-    "parse_area_event_arg",
     "parse_position",
     "prompt_block_catalog",
     "prompt_blocks_from_dicts",

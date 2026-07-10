@@ -1,6 +1,6 @@
 """Tests for relative compass bearings (V0.4.1c)."""
 
-from src.vision_bearing import (
+from realm_fabric.vision_bearing import (
     format_action_range_label,
     format_relative_bearing_phrase,
     relative_compass_direction,

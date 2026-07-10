@@ -1,8 +1,8 @@
 # Realm-Fabric documentation
 
-**Realm-Fabric** is a grid-based LLM agent simulation engine with a stable **`realm_fabric`** library API, a `realm` CLI for debugging, and reference applications ([Realm-Studio](https://github.com/DaveH-Ghost/Realm-Studio), [minimal-server](../examples/minimal-server/)).
+**Realm-Fabric** is a grid-based LLM agent simulation engine with a stable **`realm_fabric`** library API. The reference GM app is **[Realm-Studio](https://github.com/DaveH-Ghost/Realm-Studio)** (GitHub only).
 
-**Current release:** **0.7.2** — see [changelog/v0.7.2-changelog.md](changelog/v0.7.2-changelog.md).
+**Current release:** **1.0.0** — library-first; no bundled CLI or HTTP examples. See [MIGRATION-0.7-to-1.0.md](MIGRATION-0.7-to-1.0.md).
 
 ---
 
@@ -10,7 +10,7 @@
 
 1. [Overview](guides/overview.md) — mental model (Session, areas, compound turns)
 2. [Building on Realm-Fabric](guides/building-on-realm-fabric.md) — install, typed API, hosting
-3. [minimal-server](../examples/minimal-server/) — runnable thin HTTP example
+3. [Realm-Studio](https://github.com/DaveH-Ghost/Realm-Studio) — runnable reference app (grid, lorebooks, handlers, memory upload)
 
 ---
 
@@ -25,7 +25,6 @@
 | [Persistence & snapshots](guides/persistence.md) | `to_save_dict()` vs `snapshot()` |
 | [Memory & lorebooks](guides/memory-and-lorebooks.md) | Modules, lore injection, prompt blocks |
 | [API reference](guides/api-reference.md) | `realm_fabric` exports and Session methods |
-| [CLI reference](guides/cli.md) | `realm` stepper (debug / GM tooling) |
 | [LLM turn schemas](schemas/README.md) | `AgentCompoundTurn` JSON shape |
 
 ---
@@ -34,25 +33,26 @@
 
 | Doc | Description |
 |-----|-------------|
-| [Roadmap](ROADMAP.md) | Version plans (0.7.1 engine follow-up; external demo 0.1.0+) |
-| [Changelog index](changelog/README.md) | Per-version release notes and old readiness checklists |
+| [Migration 0.7 → 1.0](MIGRATION-0.7-to-1.0.md) | Breaking changes for library-only 1.0 |
+| [Roadmap](ROADMAP.md) | Version plans |
+| [Changelog index](changelog/README.md) | Per-version release notes |
 | [Long-term goals](../LONG_TERM_GOALS.md) | Aspirational / out-of-scope items |
 
 ---
 
-## Examples
+## Examples in this repo
 
-| Example | Role |
-|---------|------|
-| [minimal-server](../examples/minimal-server/) | Thin FastAPI — start here for HTTP apps |
-| [Realm-Studio](https://github.com/DaveH-Ghost/Realm-Studio) | Full GM grid UI (reference only; GitHub repo) |
-| [reference_handlers](../examples/reference_handlers/) | Copy-paste interaction handler pattern |
-| [custom_memory](../examples/custom_memory/) | Custom memory module sample |
+| Path | Role |
+|------|------|
+| [examples/README.md](../examples/README.md) | Points to Realm-Studio for runnable apps |
+| [examples/lorebook/](../examples/lorebook/) | Sample SillyTavern lorebook JSON |
+
+Engine tests use [`tests/fixtures/`](../tests/fixtures/) (not published in the PyPI wheel).
 
 ---
 
 ## Stability
 
-- Import from **`realm_fabric`** in application code.
-- **`src.*`** is for the CLI, tests, and reference clients — not semver-guaranteed.
+- Import from **`realm_fabric`** in application code (`realm_fabric.__all__` is semver-guaranteed).
+- Submodules such as `realm_fabric.area_edit` are for tests and app-owned command dispatch — not top-level exports.
 - Save format version: **`snapshot_version`** in save JSON (currently **4**).

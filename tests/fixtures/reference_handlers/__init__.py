@@ -1,0 +1,36 @@
+"""Test fixtures: reference interaction handlers (canonical copy: Realm-Studio)."""
+
+from __future__ import annotations
+
+from realm_fabric.interaction_handlers.registry import register_interaction_handler
+
+from .handlers.delete_self import delete_self
+from .handlers.move_area import move_area, validate_move_area_params
+from .handlers.random_move_self import random_move_self
+
+__all__ = [
+    "delete_self",
+    "move_area",
+    "random_move_self",
+    "register_reference_handlers",
+]
+
+
+def register_reference_handlers() -> None:
+    """Register demo handlers idempotently (safe to call multiple times)."""
+    register_interaction_handler(
+        "delete_self",
+        delete_self,
+        description="Remove the interacted object from the area",
+    )
+    register_interaction_handler(
+        "random_move_self",
+        random_move_self,
+        description="Move the interacted object to a different random in-bounds grid position",
+    )
+    register_interaction_handler(
+        "move_area",
+        move_area,
+        description="Transfer the interacting agent to another area at dest-at (requires dest-area, dest-at)",
+        validate_params=validate_move_area_params,
+    )

@@ -1,10 +1,10 @@
 """Area-wide GM/narrator events (V0.3.2a)."""
 
-from src.area import create_initial_area
-from src.area_event import DEFAULT_MAX_RECENT_AREA_EVENTS
-from src.perception import build_passive_vision
-from src.session import Session
-from src.snapshot import DEFAULT_AREA_ID
+from realm_fabric.area import create_initial_area
+from realm_fabric.area_event import DEFAULT_MAX_RECENT_AREA_EVENTS
+from realm_fabric.perception import build_passive_vision
+from realm_fabric.session import Session
+from realm_fabric.snapshot import DEFAULT_AREA_ID
 
 
 def test_emit_area_event_not_in_passive_vision():
@@ -29,8 +29,10 @@ def test_emit_area_event_does_not_increment_session_turn():
 
 def test_emit_area_event_ingests_memory_for_all_agents():
     session = Session.from_default()
-    session.run_command(
-        'create-agent name "Goblin" personality "Grumpy." at 0,0'
+    session.create_agent(
+        name="Goblin",
+        position=(0, 0),
+        personality="Grumpy.",
     )
     explorer = session.get_agent("Explorer")
     goblin = session.get_agent("Goblin")
@@ -43,9 +45,9 @@ def test_emit_area_event_ingests_memory_for_all_agents():
         assert "The lights flicker." in memory_text
 
 
-def test_emit_area_event_via_run_command():
+def test_emit_area_event_via_session_api():
     session = Session.from_default()
-    result = session.run_command('emit-event "Wind howls through the room."')
+    result = session.emit_area_event("Wind howls through the room.")
     assert result.ok
     assert "Wind howls" in result.message
 
@@ -58,9 +60,6 @@ def test_emit_area_event_via_run_command():
 def test_emit_area_event_empty_text_fails():
     session = Session.from_default()
     result = session.emit_area_event("   ")
-    assert not result.ok
-
-    result = session.run_command("emit-event")
     assert not result.ok
 
 
@@ -88,8 +87,10 @@ def test_snapshot_includes_recent_events():
 def test_multi_agent_passive_vision_omits_area_events():
     area = create_initial_area()
     session = Session(area)
-    session.run_command(
-        'create-agent name "Goblin" personality "Grumpy." at 0,0'
+    session.create_agent(
+        name="Goblin",
+        position=(0, 0),
+        personality="Grumpy.",
     )
     explorer = session.get_agent("Explorer")
     goblin = session.get_agent("Goblin")
@@ -103,8 +104,10 @@ def test_multi_agent_passive_vision_omits_area_events():
 
 def test_emit_area_event_targeted_agent():
     session = Session.from_default()
-    session.run_command(
-        'create-agent name "Goblin" personality "Grumpy." at 0,0'
+    session.create_agent(
+        name="Goblin",
+        position=(0, 0),
+        personality="Grumpy.",
     )
     explorer = session.get_agent("Explorer")
     goblin = session.get_agent("Goblin")
@@ -128,8 +131,10 @@ def test_emit_area_event_targeted_agent():
 
 def test_emit_area_event_targeted_by_id():
     session = Session.from_default()
-    session.run_command(
-        'create-agent name "Goblin" personality "Grumpy." at 0,0'
+    session.create_agent(
+        name="Goblin",
+        position=(0, 0),
+        personality="Grumpy.",
     )
     goblin = session.get_agent("Goblin")
     assert goblin is not None
@@ -151,8 +156,10 @@ def test_emit_area_event_unknown_agent_fails():
 
 def test_emit_area_event_empty_agent_ids_broadcasts_all():
     session = Session.from_default()
-    session.run_command(
-        'create-agent name "Goblin" personality "Grumpy." at 0,0'
+    session.create_agent(
+        name="Goblin",
+        position=(0, 0),
+        personality="Grumpy.",
     )
     explorer = session.get_agent("Explorer")
     goblin = session.get_agent("Goblin")

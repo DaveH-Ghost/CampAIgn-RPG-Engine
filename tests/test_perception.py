@@ -4,17 +4,17 @@ test_perception.py
 Tests for V0.1 passive/detailed perception and cross-agent invalidation.
 """
 
-from src.agent import Agent
-from src.memory import Memory
-from src.perception import (
+from realm_fabric.agent import Agent
+from realm_fabric.memory import Memory
+from realm_fabric.perception import (
     PASSIVE_VISION_LOOK_RULE,
     PASSIVE_VISION_NO_LOOK_TARGETS,
     build_passive_vision,
     format_object_vision_desc,
     perform_look,
 )
-from src.object import Object
-from src.area import create_initial_area
+from realm_fabric.object import Object
+from realm_fabric.area import create_initial_area
 
 
 def test_initial_sign_shows_passive_not_pre_marked():
@@ -249,7 +249,7 @@ def test_format_object_vision_desc_all_states():
 
 def test_get_available_look_targets_only_question_mark_entities():
     """Look list includes only entities whose vision line shows [?]."""
-    from src.perception import get_available_look_targets
+    from realm_fabric.perception import get_available_look_targets
 
     area = create_initial_area()
     agent = area.get_agent()
@@ -269,7 +269,7 @@ def test_get_available_look_targets_only_question_mark_entities():
 
 def test_get_available_look_targets_excludes_passive_only_objects():
     """Objects without hidden detail ([?]) are omitted from the look list."""
-    from src.perception import get_available_look_targets
+    from realm_fabric.perception import get_available_look_targets
 
     area = create_initial_area()
     agent = area.get_agent()
@@ -289,7 +289,7 @@ def test_get_available_look_targets_excludes_passive_only_objects():
 
 
 def test_build_compound_prompt_look_rule_and_filtered_targets():
-    from src.llm.prompt import build_compound_prompt
+    from realm_fabric.llm.prompt import build_compound_prompt
 
     area = create_initial_area()
     agent = area.get_agent()

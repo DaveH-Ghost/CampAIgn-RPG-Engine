@@ -1,18 +1,18 @@
 """Tests for emote turn action (V0.4.2)."""
 
-from src.actions.emote import emote
-from src.area import create_initial_area
-from src.area_edit import create_agent_from_args
-from src.agent import Agent
-from src.emote_phrasing import (
+from realm_fabric.actions.emote import emote
+from realm_fabric.area import create_initial_area
+from realm_fabric.area_edit import create_agent_from_args
+from realm_fabric.agent import Agent
+from realm_fabric.emote_phrasing import (
     emote_target_phrase_for_actor,
     emote_target_phrase_for_witness,
     emote_target_phrase_neutral,
 )
-from src.llm.prompt import build_compound_prompt
-from src.llm.schemas import AgentCompoundTurn
-from src.simulation import run_compound_turn
-from src.compound_stepper import parse_compound_step_arg
+from realm_fabric.llm.prompt import build_compound_prompt
+from realm_fabric.llm.schemas import AgentCompoundTurn
+from realm_fabric.simulation import run_compound_turn
+from realm_fabric.compound_arg_parse import parse_compound_step_arg
 
 
 def test_emote_at_object():

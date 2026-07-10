@@ -1,12 +1,12 @@
 """move_area interaction handler (V0.4.0d / V0.6.1)."""
 
-from src.actions.interact import interact
-from src.agent import Agent
-from src.area import Area
-from src.area_edit import create_object_from_args
-from src.llm.schemas import AgentCompoundTurn
-from src.session import Session
-from src.simulation import run_compound_turn
+from realm_fabric.actions.interact import interact
+from realm_fabric.agent import Agent
+from realm_fabric.area import Area
+from realm_fabric.area_edit import create_object_from_args
+from realm_fabric.llm.schemas import AgentCompoundTurn
+from realm_fabric.session import Session
+from realm_fabric.simulation import run_compound_turn
 
 
 def _two_room_with_door() -> Session:

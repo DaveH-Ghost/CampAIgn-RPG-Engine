@@ -15,22 +15,21 @@ def _load_pyproject() -> dict:
 
 def test_pyproject_version_is_semver():
     version = _load_pyproject()["project"]["version"]
-    assert version == "0.7.2"
+    assert version == "1.0.0"
     assert re.fullmatch(r"\d+\.\d+\.\d+", version), version
 
 
-def test_pyproject_declares_realm_console_script():
+def test_pyproject_has_no_console_scripts():
     data = _load_pyproject()
-    assert data["project"]["scripts"]["realm"] == "src.main:main"
+    assert "scripts" not in data["project"]
     assert data["tool"]["uv"]["package"] is True
     assert "hatchling" in data["build-system"]["requires"]
 
 
-def test_hatch_includes_realm_fabric_and_profiles():
+def test_hatch_builds_single_realm_fabric_package():
     data = _load_pyproject()
     hatch = data["tool"]["hatch"]["build"]
-    assert "realm_fabric" in hatch["packages"]
-    assert "src" in hatch["packages"]
+    assert hatch["packages"] == ["realm_fabric"]
     wheel = hatch["targets"]["wheel"]
     assert wheel["force-include"]["profiles"] == "profiles"
 
@@ -47,8 +46,8 @@ def test_built_wheel_contains_engine_code(tmp_path):
     assert wheels, "expected a built wheel in dist/"
     with zipfile.ZipFile(wheels[-1]) as zf:
         names = zf.namelist()
-    assert any(n.startswith("src/") and n.endswith(".py") for n in names)
-    assert any(n.startswith("realm_fabric/") for n in names)
+    assert any(n.startswith("realm_fabric/") and n.endswith(".py") for n in names)
+    assert not any(n.startswith("src/") for n in names)
     assert not any(".env" in n for n in names)
 
 
@@ -70,6 +69,7 @@ def test_realm_fabric_public_imports():
     assert rf.WorldMutationResult is not None
     assert rf.ObjectAction is not None
     assert "WorldMutationResult" in rf.__all__
+    assert not hasattr(rf.Session, "run_command")
 
 
 def test_pyproject_pypi_metadata():
@@ -99,13 +99,13 @@ def test_load_profile_builtin():
     assert profile.schema_id == "AgentCompoundTurn"
 
 
-def test_src_modules_have_future_annotations():
+def test_realm_fabric_modules_have_future_annotations():
     """Regression: PyPI installs on Python 3.12 need deferred annotation evaluation."""
     future = "from __future__ import annotations"
-    src_root = ROOT / "src"
+    pkg_root = ROOT / "realm_fabric"
     missing = [
         path.relative_to(ROOT).as_posix()
-        for path in sorted(src_root.rglob("*.py"))
+        for path in sorted(pkg_root.rglob("*.py"))
         if not any(line.strip() == future for line in path.read_text(encoding="utf-8").splitlines())
     ]
     assert not missing, f"missing {future!r}: {missing}"

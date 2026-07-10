@@ -6,8 +6,8 @@ Run: uv run pytest tests/test_area.py -v
 
 import pytest
 
-from src.perception import build_passive_vision, perform_look
-from src.area import create_initial_area, create_area
+from realm_fabric.perception import build_passive_vision, perform_look
+from realm_fabric.area import create_initial_area, create_area
 
 
 def test_initial_area_has_correct_agent():

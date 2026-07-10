@@ -20,7 +20,7 @@ Package name: **`realm-fabric`**. License: **MIT** (`LICENSE`, `pyproject.toml`)
 
 1. [PyPI account](https://pypi.org/account/register/) (and [TestPyPI](https://test.pypi.org/) for dry runs)
 2. API token: PyPI → Account settings → API tokens (scope: whole account or project `realm-fabric`)
-3. Tag the release in git: `git tag v0.7.0 && git push origin v0.7.0`
+3. Tag the release in git: `git tag v1.0.0 && git push origin v1.0.0`
 
 ---
 
@@ -39,7 +39,7 @@ Artifacts land in `dist/` (`.whl` and `.tar.gz`).
 ```powershell
 uv venv .venv-pypi-test
 .\.venv-pypi-test\Scripts\Activate.ps1
-uv pip install dist\realm_fabric-0.7.0-py3-none-any.whl
+uv pip install dist\realm_fabric-1.0.0-py3-none-any.whl
 python -c "from realm_fabric import Session, __version__; print(__version__)"
 ```
 
@@ -57,7 +57,7 @@ uv publish --publish-url https://test.pypi.org/legacy/
 Install from TestPyPI:
 
 ```powershell
-uv pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ realm-fabric==0.7.0
+uv pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ realm-fabric==1.0.0
 ```
 
 (`--extra-index-url` pulls dependencies like pydantic from main PyPI.)
@@ -78,9 +78,9 @@ uv publish
 ## Version bumps
 
 1. Bump `version` in `pyproject.toml` (`realm_fabric.__version__` reads it automatically)
-2. Update `docs/changelog/v0.x.x-changelog.md`
+2. Add or update `docs/changelog/vX.Y.Z-changelog.md` and the [changelog index](changelog/README.md)
 3. `uv build` → `uv publish`
-4. Git tag `v0.x.x`
+4. Git tag `vX.Y.Z`
 
 Do **not** re-upload the same version to PyPI — versions are immutable.
 
@@ -89,7 +89,6 @@ Do **not** re-upload the same version to PyPI — versions are immutable.
 ## What ships in the wheel
 
 - `realm_fabric` (public API)
-- `src` (engine + `realm` CLI entry point)
 - `profiles/` (default game profiles)
 
-**Not** in the wheel: `examples/` (realm-studio, minimal-server), `docs/`, `tests/`, `.env`, or other local dev files.
+**Not** in the wheel: `examples/`, `docs/`, `tests/`, `.env`, or other local dev files. No CLI entry point in 1.0+.

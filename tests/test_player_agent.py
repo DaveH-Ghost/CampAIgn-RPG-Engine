@@ -1,10 +1,10 @@
 """Player agents — human-controlled turns without LLM."""
 
-from src.actions.move import move as do_move
-from src.area import create_initial_area
-from src.area_edit import create_agent_from_args, edit_agent_from_args
-from src.llm.schemas import AgentCompoundTurn
-from src.session import Session
+from realm_fabric.actions.move import move as do_move
+from realm_fabric.area import create_initial_area
+from realm_fabric.area_edit import create_agent_from_args, edit_agent_from_args
+from realm_fabric.llm.schemas import AgentCompoundTurn
+from realm_fabric.session import Session
 
 
 def test_create_agent_with_player_flag():
@@ -35,8 +35,11 @@ def test_edit_agent_player_flag():
 
 def test_session_snapshot_includes_is_player():
     session = Session.from_default()
-    session.run_command(
-        'create-agent name "Tester" personality "x" player true at 0,0'
+    session.create_agent(
+        name="Tester",
+        position=(0, 0),
+        personality="x",
+        is_player=True,
     )
     agent = next(
         item for item in session.snapshot()["agents"] if item["name"] == "Tester"

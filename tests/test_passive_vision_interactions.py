@@ -1,18 +1,18 @@
 """Merged passive vision + interactions (V0.6.0c)."""
 
-from src.area import create_initial_area
-from src.area_edit import create_agent_from_args, create_object_from_args
-from src.llm.prompt import build_compound_prompt
-from src.llm.prompt_context import build_prompt_context
-from src.perception import (
+from realm_fabric.area import create_initial_area
+from realm_fabric.area_edit import create_agent_from_args, create_object_from_args
+from realm_fabric.llm.prompt import build_compound_prompt
+from realm_fabric.llm.prompt_context import build_prompt_context
+from realm_fabric.perception import (
     PASSIVE_VISION_LOOK_RULE,
     PASSIVE_VISION_NO_LOOK_TARGETS,
     build_passive_vision,
     get_object_interactions_reachable_after_move,
     perform_look,
 )
-from src.prompt_blocks import PromptBlock, default_prompt_blocks, render_prompt_blocks
-from src.session import Session
+from realm_fabric.prompt_blocks import PromptBlock, default_prompt_blocks, render_prompt_blocks
+from realm_fabric.session import Session
 
 
 def test_passive_vision_includes_look_rule():

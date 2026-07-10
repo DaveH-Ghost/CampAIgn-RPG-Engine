@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from src.memory_modules.registry import (
+from realm_fabric.memory_modules.registry import (
     create_module,
     export_module_state,
     is_module_loaded,
@@ -14,8 +14,8 @@ from src.memory_modules.registry import (
 )
 
 _EXAMPLE = (
-    Path(__file__).resolve().parent.parent
-    / "examples"
+    Path(__file__).resolve().parent
+    / "fixtures"
     / "custom_memory"
     / "rolling_summary_custom.py"
 )
@@ -23,7 +23,7 @@ _EXAMPLE = (
 
 @pytest.fixture(autouse=True)
 def _clear_custom_registry():
-    from src.memory_modules import registry
+    from realm_fabric.memory_modules import registry
 
     registry._CUSTOM_REGISTRY.clear()
     registry._CUSTOM_METADATA.clear()
@@ -67,8 +67,8 @@ def test_custom_module_create_and_export_round_trip():
 
 
 def test_create_agent_memory_with_custom_module():
-    from src.area import Area
-    from src.area_edit import create_agent_from_args
+    from realm_fabric.area import Area
+    from realm_fabric.area_edit import create_agent_from_args
 
     register_memory_module_from_path(_EXAMPLE)
     area = Area()
@@ -81,8 +81,8 @@ def test_create_agent_memory_with_custom_module():
 
 
 def test_create_agent_rejects_unloaded_custom_module():
-    from src.area import Area
-    from src.area_edit import create_agent_from_args
+    from realm_fabric.area import Area
+    from realm_fabric.area_edit import create_agent_from_args
 
     area = Area()
     agent, msg = create_agent_from_args(

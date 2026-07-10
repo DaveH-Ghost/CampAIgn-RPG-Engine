@@ -407,7 +407,7 @@ wheels = [
 
 [[package]]
 name = "realm-fabric"
-version = "0.7.2"
+version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "openai" },

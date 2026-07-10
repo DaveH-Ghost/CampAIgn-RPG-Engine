@@ -1,12 +1,15 @@
-"""Session-level area CRUD commands (V0.4.0c2+)."""
+"""Session-level area CRUD (typed API)."""
 
-from src.session import Session
+from realm_fabric.session import Session
 
 
 def test_create_area_command():
     session = Session.from_default()
-    result = session.run_command(
-        'create-area id attic desc "A dusty attic." width 6 height 4'
+    result = session.create_area(
+        "attic",
+        description="A dusty attic.",
+        width=6,
+        height=4,
     )
     assert result.ok
     assert "attic" in session.areas
@@ -19,75 +22,77 @@ def test_create_area_command():
 
 def test_create_area_duplicate_rejected():
     session = Session.from_default()
-    first = session.run_command('create-area id hall desc "A hall."')
+    first = session.create_area("hall", description="A hall.")
     assert first.ok
-    second = session.run_command('create-area id hall desc "Again."')
+    second = session.create_area("hall", description="Again.")
     assert not second.ok
 
 
 def test_create_area_invalid_id():
     session = Session.from_default()
-    result = session.run_command('create-area id "Bad Id" desc "Nope."')
+    result = session.create_area("Bad Id", description="Nope.")
     assert not result.ok
 
 
 def test_edit_area_description():
     session = Session.from_default()
-    session.run_command('create-area id cellar desc "Old text."')
-    result = session.run_command('edit-area cellar desc "Damp cellar."')
+    session.create_area("cellar", description="Old text.")
+    result = session.edit_area("cellar", description="Damp cellar.")
     assert result.ok
     assert session.areas["cellar"].area_description == "Damp cellar."
 
 
 def test_edit_area_resize():
     session = Session.from_default()
-    session.run_command('create-area id yard width 3 height 3')
-    result = session.run_command("edit-area yard width 5 height 5")
+    session.create_area("yard", width=3, height=3)
+    result = session.edit_area("yard", width=5, height=5)
     assert result.ok
     assert session.areas["yard"].bounds.width == 5
 
 
 def test_edit_area_resize_blocked_by_agent():
     session = Session.from_default()
-    session.run_command(
-        'create-agent name "Sentinel" personality "Stoic." at 4,4'
+    session.create_agent(
+        name="Sentinel",
+        position=(4, 4),
+        personality="Stoic.",
     )
-    result = session.run_command("edit-area room width 3 height 3")
+    result = session.edit_area("room", width=3, height=3)
     assert not result.ok
     assert "outside" in result.message.lower()
 
 
 def test_delete_empty_area():
     session = Session.from_default()
-    session.run_command('create-area id closet desc "Empty."')
+    session.create_area("closet", description="Empty.")
     assert "closet" in session.areas
-    result = session.run_command("delete-area closet")
+    result = session.delete_area("closet")
     assert result.ok
     assert "closet" not in session.areas
 
 
 def test_delete_area_with_agents_rejected():
     session = Session.from_default()
-    session.run_command('create-area id wing desc "Empty wing."')
+    session.create_area("wing", description="Empty wing.")
     session.set_active_area("room")
-    result = session.run_command("delete-area room")
+    result = session.delete_area("room")
     assert not result.ok
     assert "agent" in result.message.lower()
 
 
 def test_delete_last_area_rejected():
     session = Session.from_default()
-    session.run_command('create-area id spare desc "Spare."')
-    session.run_command("delete-area spare")
-    result = session.run_command("delete-area room")
+    session.create_area("spare", description="Spare.")
+    session.delete_area("spare")
+    result = session.delete_area("room")
     assert not result.ok
     assert "last area" in result.message.lower()
 
 
 def test_delete_active_area_switches_scope():
     session = Session.from_default()
-    session.run_command('create-area id loft desc "Empty loft."')
+    session.create_area("loft", description="Empty loft.")
     session.set_active_area("loft")
-    result = session.run_command("delete-area loft")
+    result = session.delete_area("loft")
     assert result.ok
     assert session.active_area_id == "room"

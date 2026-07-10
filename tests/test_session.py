@@ -1,8 +1,9 @@
 """Session API (V0.3.0a) — engine entry point for turns and commands."""
 
-from src.llm.schemas import AgentCompoundTurn
-from src.session import Session
-from src.area import create_initial_area
+from realm_fabric import ObjectAction
+from realm_fabric.llm.schemas import AgentCompoundTurn
+from realm_fabric.session import Session
+from realm_fabric.area import create_initial_area
 
 
 def test_from_default_matches_initial_world():
@@ -12,12 +13,22 @@ def test_from_default_matches_initial_world():
     assert session.area.get_object_by_id("obj_sign_01") is not None
 
 
-def test_run_command_create_object_adds_to_world():
+def test_create_object_adds_to_world():
     session = Session.from_default()
-    result = session.run_command(
-        'create-object name "Cookie" pdesc "A cookie." desc "Tasty." at 2,2 '
-        'action eat range 1 handler delete_self '
-        'result "You ate the cookie." passive "{actor} ate the cookie."'
+    result = session.create_object(
+        name="Cookie",
+        position=(2, 2),
+        passive_description="A cookie.",
+        description="Tasty.",
+        actions={
+            "eat": ObjectAction(
+                name="eat",
+                range=1,
+                result="You ate the cookie.",
+                passive_result="{actor} ate the cookie.",
+                handler_id="delete_self",
+            ),
+        },
     )
     assert result.ok
     cookies = [
@@ -25,13 +36,6 @@ def test_run_command_create_object_adds_to_world():
     ]
     assert len(cookies) == 1
     assert cookies[0].position == (2, 2)
-
-
-def test_run_command_unknown_returns_failure():
-    session = Session.from_default()
-    result = session.run_command("not-a-command")
-    assert not result.ok
-    assert "Unknown command" in result.message
 
 
 def test_run_compound_turn_moves_agent():
@@ -55,8 +59,10 @@ def test_run_compound_turn_moves_agent():
 
 def test_run_compound_turn_by_agent_id():
     session = Session.from_default()
-    session.run_command(
-        'create-agent name "Goblin" personality "Grumpy." at 0,0'
+    session.create_agent(
+        name="Goblin",
+        position=(0, 0),
+        personality="Grumpy.",
     )
     goblin = session.get_agent("Goblin")
     assert goblin is not None
@@ -76,8 +82,10 @@ def test_run_compound_turn_by_agent_id():
 
 def test_set_active_agent_does_not_consume_turn():
     session = Session.from_default()
-    session.run_command(
-        'create-agent name "Goblin" personality "Grumpy." at 0,0'
+    session.create_agent(
+        name="Goblin",
+        position=(0, 0),
+        personality="Grumpy.",
     )
     before = session.session_turn
 
@@ -103,32 +111,35 @@ def test_build_prompt_for_active_agent():
 
 def test_build_prompt_for_named_agent():
     session = Session.from_default()
-    session.run_command(
-        'create-agent name "Goblin" personality "Grumpy goblin." at 0,0'
+    session.create_agent(
+        name="Goblin",
+        position=(0, 0),
+        personality="Grumpy goblin.",
     )
     prompt = session.build_prompt("Goblin")
     assert "Grumpy goblin." in prompt
 
 
-def test_run_command_list_is_read_only():
+def test_snapshot_is_read_only():
     session = Session.from_default()
     turn_before = session.session_turn
-    result = session.run_command("list")
-    assert result.ok
-    assert "Explorer" in result.message
+    snap = session.snapshot()
+    assert snap["agents"][0]["name"] == "Explorer"
     assert session.session_turn == turn_before
 
 
 def test_delete_active_agent_reassigns():
     session = Session.from_default()
-    session.run_command(
-        'create-agent name "Goblin" personality "Grumpy." at 0,0'
+    session.create_agent(
+        name="Goblin",
+        position=(0, 0),
+        personality="Grumpy.",
     )
     goblin = session.get_agent("Goblin")
     assert goblin is not None
     session.set_active_agent("Goblin")
 
-    result = session.run_command(f"delete-agent {goblin.id}")
+    result = session.delete_agent(goblin.id)
     assert result.ok
     assert session.get_active_agent().name == "Explorer"
     assert "Active agent:" in result.message
@@ -158,10 +169,20 @@ def test_web_handler_flow_create_then_turn():
     """Mirror what a FastAPI handler would do — no HTTP required."""
     session = Session.from_default()
 
-    create = session.run_command(
-        'create-object name "Cookie" pdesc "A cookie." at 4,4 blocks-movement false '
-        'action eat range 0 handler delete_self '
-        'result "You ate it." passive "{actor} ate it."'
+    create = session.create_object(
+        name="Cookie",
+        position=(4, 4),
+        passive_description="A cookie.",
+        blocks_movement=False,
+        actions={
+            "eat": ObjectAction(
+                name="eat",
+                range=0,
+                result="You ate it.",
+                passive_result="{actor} ate it.",
+                handler_id="delete_self",
+            ),
+        },
     )
     assert create.ok
     cookie_id = next(
