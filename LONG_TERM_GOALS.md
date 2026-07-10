@@ -27,7 +27,7 @@ These are still distant or unspecified. They are not committed roadmap items.
 
 ## Out of scope (for Realm-Fabric / realm-studio)
 
-Realm-Fabric is a **simulation engine** and **library API**. [realm-studio](examples/web/realm-studio) is a **reference demo** for authoring and testing — not a full game or VTT product. The following experiences are intentionally **not** built into the core project or reference studio. **Apps** built on Realm-Fabric can implement them using pluggable memory modules, interaction handlers (V0.6.1+), lorebooks, and their own UI.
+Realm-Fabric is a **simulation engine** and **library API**. [Realm-Studio](https://github.com/DaveH-Ghost/Realm-Studio) is a **reference demo** for authoring and testing — not a full game or VTT product. The following experiences are intentionally **not** built into the core project or reference studio. **Apps** built on Realm-Fabric can implement them using pluggable memory modules, interaction handlers (V0.6.1+), lorebooks, and their own UI.
 
 - **Multi-agent social simulation** — agents that observe each other, start targeted conversations, form relationships, and influence one another over time.  
   V0.1 shipped shared-grid multi-agent with passive vision, `look` at other agents, and observable speech/movement via `passive_result`. That is engine support only. Rich social dynamics belong in **downstream apps** with custom memory modules and app-specific prompts/rules.

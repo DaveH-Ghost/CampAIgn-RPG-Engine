@@ -154,5 +154,3 @@ Thumbs.db
 # Project specific
 logs/
 *.log
-examples/web/realm-studio/frontend/tokens/pip.png
-examples/web/realm-studio/.custom_modules/

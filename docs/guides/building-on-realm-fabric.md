@@ -47,9 +47,9 @@ my-realm-game/
     bootstrap.py          # typed world setup
 ```
 
-Keep **scenario content** (handlers, lorebooks, UI) in your repo. Do not fork [realm-studio](../../examples/web/realm-studio/) unless you need a full GM editor.
+Keep **scenario content** (handlers, lorebooks, UI) in your repo. Do not fork [Realm-Studio](https://github.com/DaveH-Ghost/Realm-Studio) unless you need a full GM editor.
 
-The **product-shaped demo** will live in a **separate repository** (app version **0.1.0**+). Engine gaps from that work ship as **0.7.1+** here. Use **minimal-server** until the demo exists.
+**Realm-Studio** is the full GM reference app in a **separate GitHub repository**. Use **minimal-server** for a thin HTTP embedding template.
 
 ---
 
@@ -79,7 +79,7 @@ restored = Session.from_snapshot(save_doc)
 |-------|-----|
 | App bootstrap / gameplay | `session.create_object(...)`, `session.create_agent(...)`, … |
 | Human debugging | `realm` stepper or optional `POST /api/command` |
-| realm-studio GM UI | `run_command` via HTTP (reference only) |
+| realm-studio GM UI | typed dispatch via HTTP (reference only; [Realm-Studio](https://github.com/DaveH-Ghost/Realm-Studio)) |
 
 ---
 
@@ -121,7 +121,7 @@ Reference: [reference_handlers](../../examples/reference_handlers/).
 ## Session hosting
 
 - **One `Session` per match / lobby / campaign**
-- **Singleton** (like realm-studio) is fine for local demos
+- **Singleton** (like Realm-Studio) is fine for local demos
 - **Handlers / memory modules**: process start; shared across sessions in that process
 - **Persistence**: [Persistence guide](persistence.md)
 

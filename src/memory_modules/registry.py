@@ -48,6 +48,12 @@ _CUSTOM_REGISTRY: dict[str, ModuleFactory] = {}
 _CUSTOM_METADATA: dict[str, CustomModuleMetadata] = {}
 
 
+def clear_custom_memory_registrations() -> None:
+    """Remove all custom (uploaded) memory modules from the process registry."""
+    _CUSTOM_REGISTRY.clear()
+    _CUSTOM_METADATA.clear()
+
+
 def default_module_id() -> str:
     return DEFAULT_MODULE_ID
 

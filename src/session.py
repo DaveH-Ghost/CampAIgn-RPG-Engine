@@ -41,6 +41,7 @@ from src.session_area_edit import (
     create_area_in_session,
     delete_area_by_id,
     edit_area_from_args,
+    edit_area_in_session,
 )
 from src.snapshot import DEFAULT_AREA_ID
 from src.object_action import ObjectAction
@@ -1061,6 +1062,185 @@ class Session:
             ok=result.ok,
             message=result.message,
             area_id=result.area_id,
+        )
+
+    def edit_area(
+        self,
+        area_id: str,
+        *,
+        description: str | None = None,
+        width: int | None = None,
+        height: int | None = None,
+        min_x: int | None = None,
+        min_y: int | None = None,
+        max_x: int | None = None,
+        max_y: int | None = None,
+    ) -> WorldMutationResult:
+        result = edit_area_in_session(
+            self,
+            area_id,
+            description=description,
+            width=width,
+            height=height,
+            min_x=min_x,
+            min_y=min_y,
+            max_x=max_x,
+            max_y=max_y,
+        )
+        return WorldMutationResult(
+            ok=result.ok,
+            message=result.message,
+            area_id=result.area_id,
+        )
+
+    def delete_area(self, area_id: str) -> WorldMutationResult:
+        result = delete_area_by_id(self, area_id.strip())
+        return WorldMutationResult(
+            ok=result.ok,
+            message=result.message,
+            area_id=result.area_id,
+        )
+
+    def edit_agent(
+        self,
+        agent_id: str,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+        passive_description: str | None = None,
+        appearance: str | None = None,
+        personality: str | None = None,
+        move_speed: int | None = None,
+        position: tuple[int, int] | None = None,
+        area_id: str | None = None,
+        blocks_movement: bool | None = None,
+        movement_exceptions: list[str] | None = None,
+        is_player: bool | None = None,
+    ) -> WorldMutationResult:
+        from src.area_edit import (
+            _apply_agent_content_fields,
+            _apply_agent_location_fields,
+        )
+
+        cleaned = agent_id.strip()
+        if not cleaned.startswith("agent_"):
+            return WorldMutationResult(
+                ok=False,
+                message=(
+                    f"Commands require agent id (e.g. agent_01), not display name. "
+                    f"Use 'agents' or 'list' to look up ids."
+                ),
+            )
+
+        located_area_id = self.agent_area.get(cleaned)
+        if located_area_id is None or located_area_id not in self.areas:
+            return WorldMutationResult(
+                ok=False,
+                message=(
+                    f"Agent '{cleaned}' not found. Use 'agents' or 'list' to look up ids."
+                ),
+            )
+        area = self.areas[located_area_id]
+        agent = area.get_agent_by_id(cleaned)
+        if agent is None:
+            return WorldMutationResult(
+                ok=False,
+                message=(
+                    f"Agent '{cleaned}' not found. Use 'agents' or 'list' to look up ids."
+                ),
+            )
+
+        fields: dict[str, str] = {}
+        if name is not None:
+            fields["name"] = name
+        if passive_description is not None:
+            fields["pdesc"] = passive_description
+        if description is not None:
+            fields["desc"] = description
+        if appearance is not None:
+            fields["appearance"] = appearance
+        if personality is not None:
+            fields["personality"] = personality
+        if move_speed is not None:
+            fields["move-speed"] = str(move_speed)
+        if position is not None:
+            fields["pos"] = f"{position[0]},{position[1]}"
+        if area_id is not None:
+            fields["area"] = area_id.strip()
+        if blocks_movement is not None:
+            fields["blocks-movement"] = "true" if blocks_movement else "false"
+        if movement_exceptions is not None:
+            fields["movement-exception"] = ",".join(movement_exceptions)
+        if is_player is not None:
+            fields["player"] = "true" if is_player else "false"
+
+        if not fields:
+            return WorldMutationResult(
+                ok=False,
+                message=(
+                    "At least one field to change is required "
+                    "(name, pdesc, desc, appearance, personality, move-speed, area, pos, or player)."
+                ),
+            )
+
+        old_name_lower = agent.name.lower()
+        changes: list[str] = []
+
+        location_err = _apply_agent_location_fields(
+            self, cleaned, located_area_id, agent, fields, changes
+        )
+        if location_err:
+            return WorldMutationResult(ok=False, message=location_err)
+
+        current_area_id = located_area_id
+        if "area" in fields and fields["area"].strip() != located_area_id:
+            current_area_id = fields["area"].strip()
+        current_area = self.areas[current_area_id]
+
+        content_err = _apply_agent_content_fields(
+            current_area, agent, cleaned, fields, changes
+        )
+        if content_err:
+            return WorldMutationResult(ok=False, message=content_err)
+
+        if not changes:
+            return WorldMutationResult(
+                ok=False, message=f"No changes applied to {cleaned}."
+            )
+
+        if "name" in changes:
+            self._rename_agent_in_index(old_name_lower, agent)
+
+        return WorldMutationResult(
+            ok=True,
+            message=f"Updated agent {cleaned} ({', '.join(changes)}).",
+            agent=agent,
+            area_id=current_area_id,
+        )
+
+    def create_object_from_command(self, arg: str) -> WorldMutationResult:
+        """Parse a stepper-style ``create-object`` argument string."""
+        return self._create_object_from_cli_arg(arg)
+
+    def create_agent_from_command(self, arg: str) -> WorldMutationResult:
+        """Parse a stepper-style ``create-agent`` argument string."""
+        return self._create_agent_from_cli_arg(arg)
+
+    def edit_object_from_command(self, arg: str) -> WorldMutationResult:
+        """Parse a stepper-style ``edit-object`` argument string."""
+        message = edit_object_for_session(self, arg)
+        ok = not message.startswith("Error") and not message.startswith("Unknown")
+        return WorldMutationResult(ok=ok, message=message)
+
+    def edit_agent_from_command(self, arg: str) -> WorldMutationResult:
+        """Parse a stepper-style ``edit-agent`` argument string."""
+        result = edit_agent_for_session(self, arg)
+        if result.ok and result.agent is not None and result.old_name_lower:
+            self._rename_agent_in_index(result.old_name_lower, result.agent)
+        return WorldMutationResult(
+            ok=result.ok,
+            message=result.message,
+            agent=result.agent,
         )
 
     def _create_object_from_cli_arg(self, arg: str) -> WorldMutationResult:

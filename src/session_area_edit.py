@@ -191,6 +191,75 @@ def create_area_from_args(session: Session, arg: str) -> AreaMutationResult:
     )
 
 
+def edit_area_in_session(
+    session: Session,
+    area_id: str,
+    *,
+    description: str | None = None,
+    width: int | None = None,
+    height: int | None = None,
+    min_x: int | None = None,
+    min_y: int | None = None,
+    max_x: int | None = None,
+    max_y: int | None = None,
+) -> AreaMutationResult:
+    """Update area description and/or grid bounds (typed API)."""
+    cleaned = area_id.strip()
+    id_err = validate_area_id(cleaned)
+    if id_err:
+        return AreaMutationResult(ok=False, message=id_err)
+    area = session.areas.get(cleaned)
+    if area is None:
+        return AreaMutationResult(ok=False, message=f"Unknown area {cleaned!r}.")
+
+    if (
+        description is None
+        and width is None
+        and height is None
+        and min_x is None
+        and min_y is None
+        and max_x is None
+        and max_y is None
+    ):
+        return AreaMutationResult(
+            ok=False,
+            message="edit-area requires at least one field to change.",
+        )
+
+    if description is not None:
+        area.area_description = description
+
+    if any(
+        v is not None
+        for v in (width, height, min_x, min_y, max_x, max_y)
+    ):
+        merged: dict[str, str] = {}
+        if any(v is not None for v in (min_x, min_y, max_x, max_y)):
+            merged["min-x"] = str(min_x if min_x is not None else area.bounds.min_x)
+            merged["min-y"] = str(min_y if min_y is not None else area.bounds.min_y)
+            merged["max-x"] = str(max_x if max_x is not None else area.bounds.max_x)
+            merged["max-y"] = str(max_y if max_y is not None else area.bounds.max_y)
+        else:
+            merged["min-x"] = str(area.bounds.min_x)
+            merged["min-y"] = str(area.bounds.min_y)
+            merged["width"] = str(width if width is not None else area.bounds.width)
+            merged["height"] = str(height if height is not None else area.bounds.height)
+        bounds, err = _parse_bounds_fields(merged)
+        if err:
+            return AreaMutationResult(ok=False, message=err)
+        assert bounds is not None
+        outside = _entities_outside_bounds(area, bounds)
+        if outside:
+            return AreaMutationResult(ok=False, message=outside)
+        area.bounds = bounds
+
+    return AreaMutationResult(
+        ok=True,
+        message=f"Updated area {cleaned!r}.",
+        area_id=cleaned,
+    )
+
+
 def edit_area_from_args(session: Session, arg: str) -> AreaMutationResult:
     """
     ``edit-area <area_id> [desc "..."] [width N] [height N]`` or corner bounds.

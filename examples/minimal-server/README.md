@@ -1,6 +1,6 @@
 # minimal-server
 
-Thin **FastAPI** reference for embedding Realm-Fabric in an HTTP service. Bootstraps a demo world with the **typed `Session` API** (no CLI strings). For a full GM UI see [realm-studio](../web/realm-studio/).
+Thin **FastAPI** reference for embedding Realm-Fabric in an HTTP service. Bootstraps a demo world with the **typed `Session` API** (no CLI strings). For a full GM UI see [Realm-Studio](https://github.com/DaveH-Ghost/Realm-Studio).
 
 ## Run
 

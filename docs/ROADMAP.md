@@ -532,7 +532,7 @@ See [v0.6.1-changelog.md](changelog/v0.6.1-changelog.md).
 
 - **`examples/minimal-server/`** — thin FastAPI on port 8770: health, state, turn, manual turn, export/import, optional debug `/api/command`
 - Bootstrap uses **typed API only** (no CLI strings)
-- [realm-studio](../examples/web/realm-studio) remains the **full GM reference app**, not the template every project clones
+- [Realm-Studio](https://github.com/DaveH-Ghost/Realm-Studio) remains the **full GM reference app**, not the template every project clones
 
 ### Session hosting
 
@@ -546,8 +546,8 @@ See [v0.6.1-changelog.md](changelog/v0.6.1-changelog.md).
 
 ### Deferred / optional
 
-- realm-studio migration off `run_command` — not required for apps; optional follow-up
-- realm-studio as separate repo — see discussion in project planning; still under `examples/web/realm-studio` today
+- realm-studio migration off `run_command` — done in external Realm-Studio repo
+- ~~realm-studio as separate repo~~ — **Realm-Studio** lives at [github.com/DaveH-Ghost/Realm-Studio](https://github.com/DaveH-Ghost/Realm-Studio); removed from `examples/web/` in this repo
 
 See [v0.7.0-changelog.md](changelog/v0.7.0-changelog.md).
 

@@ -1,1 +1,0 @@
-"""realm-studio FastAPI backend."""

@@ -1,6 +1,6 @@
 # Realm Fabric
 
-Grid-based LLM agent simulation engine: multi-area worlds, compound turns (move → look → speak → interact/emote), pluggable memory modules, and a stable `realm_fabric` library API. The `realm` CLI and [realm-studio](examples/web/realm-studio) are reference clients — apps build on the engine with their own UI and scenarios.
+Grid-based LLM agent simulation engine: multi-area worlds, compound turns (move → look → speak → interact/emote), pluggable memory modules, and a stable `realm_fabric` library API. The `realm` CLI and [Realm-Studio](https://github.com/DaveH-Ghost/Realm-Studio) are reference clients — apps build on the engine with their own UI and scenarios.
 
 **License:** [MIT](LICENSE) — open source.
 
@@ -13,11 +13,14 @@ Grid-based LLM agent simulation engine: multi-area worlds, compound turns (move 
 cd path\to\Realm-Fabric
 uv sync
 uv run realm
+```
 
-# Example web UI
-cd examples\web\realm-studio
+**GM web UI:** clone [Realm-Studio](https://github.com/DaveH-Ghost/Realm-Studio) (separate GitHub repo, not in this tree):
+
+```powershell
+cd path\to\Realm-Studio
 uv sync
-copy ..\..\..\.env.example .env   # optional; or use Settings gear in the UI
+copy .env.example .env   # optional; or use Settings gear in the UI
 uv run realm-studio
 ```
 
@@ -27,7 +30,7 @@ On Windows, if Smart App Control blocks `uv run realm-studio`, use:
 uv run python -m backend.main
 ```
 
-Open [http://127.0.0.1:8765](http://127.0.0.1:8765). See [realm-studio README](examples/web/realm-studio/README.md).
+Open [http://127.0.0.1:8765](http://127.0.0.1:8765).
 
 ## Library API
 
@@ -49,7 +52,7 @@ See [documentation](docs/README.md) and [minimal-server](examples/minimal-server
 
 Copy [`.env.example`](.env.example) to `.env` and set `OPENROUTER_API_KEY` for LLM turns. Optional `OPENROUTER_MODEL` (default `deepseek/deepseek-v4-flash`). Manual commands work without a key.
 
-realm-studio **Settings** (gear icon) can set API key and model **in memory for the current server process only** — nothing is written to disk.
+Realm-Studio **Settings** (gear icon) can set API key and model **in memory for the current server process only** — nothing is written to disk.
 
 ## V0.7.2 highlights
 
@@ -71,7 +74,7 @@ realm-studio **Settings** (gear icon) can set API key and model **in memory for 
 ## V0.6.1 highlights
 
 - **Pluggable handlers** — `register_interaction_handler()`; `ObjectAction.handler_id` + `handler_params`
-- **Reference handlers** — `delete_self`, `random_move_self`, `move_area` in `examples/reference_handlers/` (CLI + realm-studio register at startup)
+- **Reference handlers** — `delete_self`, `random_move_self`, `move_area` in `examples/reference_handlers/` (CLI + Realm-Studio register at startup)
 - **Interacts + triggers** — same handler surface for LLM interacts and path-step triggers
 - **Saves** — `snapshot_version: 4` (v1–v3 import supported; `effects` migrates to handlers)
 - **Breaking** — CLI `effect` → `handler`; `effects` command → `handlers` (alias kept)
@@ -84,7 +87,7 @@ realm-studio **Settings** (gear icon) can set API key and model **in memory for 
 - **Multi-tile objects** — `width` / `height` footprints; range uses nearest footprint tile
 - **Hidden objects + triggers** — GM-only placements; engine-fired triggers on path steps (`Session.emit_area_event`)
 - **Saves** — `snapshot_version: 3` (v1–v2 import still supported)
-- **realm-studio** — footprint overlay, hidden-trigger wizard, collapsible create/edit modals, `private_data` for custom apps
+- **Realm-Studio** — footprint overlay, hidden-trigger wizard, collapsible create/edit modals, `private_data` for custom apps
 
 ## Custom memory modules (V0.4.6)
 
@@ -98,7 +101,7 @@ Saves store `module_id` + state only (no bundled source). Import **fails** if a 
 
 ## Lorebooks (V0.5.0)
 
-Load SillyTavern-style `.json` lorebooks into the session (CLI `load-lorebook` or realm-studio **Lorebooks** tab). Add a `lorebook` prompt block (per book) in Prompt layout to inject matched world info. Not included in the default prompt layout.
+Load SillyTavern-style `.json` lorebooks into the session (CLI `load-lorebook` or Realm-Studio **Lorebooks** tab). Add a `lorebook` prompt block (per book) in Prompt layout to inject matched world info. Not included in the default prompt layout.
 
 ## CLI reference
 
@@ -109,11 +112,9 @@ Full command list, world editing, blocking, hidden objects, triggers, and compou
 ```powershell
 # Engine (repo root)
 uv run pytest
-
-# realm-studio
-cd examples\web\realm-studio
-uv run pytest
 ```
+
+Realm-Studio API tests live in the [Realm-Studio](https://github.com/DaveH-Ghost/Realm-Studio) repo.
 
 No API key or network required — LLM calls are mocked in tests.
 
@@ -129,7 +130,7 @@ Start at **[docs/README.md](docs/README.md)** — guides, API overview, and chan
 | [V0.7.1 changelog](docs/changelog/v0.7.1-changelog.md) | Movement fix, targeted events, PyPI version |
 | [V0.7.0 changelog](docs/changelog/v0.7.0-changelog.md) | Platform SDK, minimal-server |
 | [Roadmap](docs/ROADMAP.md) | Version plans |
-| [realm-studio](examples/web/realm-studio/README.md) | Full GM reference UI |
+| [Realm-Studio](https://github.com/DaveH-Ghost/Realm-Studio) | Full GM reference UI (GitHub) |
 | [Long-term goals](LONG_TERM_GOALS.md) | Aspirational features |
 
 Older version notes: [changelog index](docs/changelog/README.md).

@@ -1,6 +1,6 @@
 # Realm-Fabric documentation
 
-**Realm-Fabric** is a grid-based LLM agent simulation engine with a stable **`realm_fabric`** library API, a `realm` CLI for debugging, and reference applications ([realm-studio](../examples/web/realm-studio/), [minimal-server](../examples/minimal-server/)).
+**Realm-Fabric** is a grid-based LLM agent simulation engine with a stable **`realm_fabric`** library API, a `realm` CLI for debugging, and reference applications ([Realm-Studio](https://github.com/DaveH-Ghost/Realm-Studio), [minimal-server](../examples/minimal-server/)).
 
 **Current release:** **0.7.2** — see [changelog/v0.7.2-changelog.md](changelog/v0.7.2-changelog.md).
 
@@ -45,7 +45,7 @@
 | Example | Role |
 |---------|------|
 | [minimal-server](../examples/minimal-server/) | Thin FastAPI — start here for HTTP apps |
-| [realm-studio](../examples/web/realm-studio/) | Full GM grid UI (reference only) |
+| [Realm-Studio](https://github.com/DaveH-Ghost/Realm-Studio) | Full GM grid UI (reference only; GitHub repo) |
 | [reference_handlers](../examples/reference_handlers/) | Copy-paste interaction handler pattern |
 | [custom_memory](../examples/custom_memory/) | Custom memory module sample |
 
