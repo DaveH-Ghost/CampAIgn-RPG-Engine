@@ -163,6 +163,9 @@ def build_session_snapshot(
         area = session.get_area_for_agent(agent)
         snap["passive_vision"] = build_passive_vision(agent, area)
 
+    if include_private:
+        snap["extensions"] = dict(session.extensions)
+
     return snap
 
 

@@ -7,6 +7,7 @@ from campaign_rpg_engine.turn_record import StepKind, TurnStep
 STEP_SALIENCE: dict[StepKind, int] = {
     "speak": 10,
     "emote": 10,
+    "verb": 8,
     "interact": 7,
     "look": 3,
     "move": 1,

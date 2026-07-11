@@ -1,6 +1,6 @@
 # API reference
 
-Stable **`campaign_rpg_engine`** surface (**1.0.0**). Import from this package in application code.
+Stable **`campaign_rpg_engine`** surface (**1.2.0**). Import from this package in application code.
 
 ```python
 import campaign_rpg_engine
@@ -83,6 +83,19 @@ All return **`WorldMutationResult`** or **`AreaMutationResult`** with `ok` and `
 | `run_interaction_handler(...)` | Direct invoke (advanced) |
 | `register_memory_module_from_path(path)` | Load custom memory module |
 | `MemoryModule` | Protocol type |
+
+### Plugin primitives (1.2.0)
+
+| Export | Description |
+|--------|-------------|
+| `register_turn_verb(id, fn, ...)` | Compound `action: "verb"` |
+| `list_registered_turn_verbs()`, `run_turn_verb(...)` | Turn verb introspection / dispatch |
+| `register_prompt_slot(name, renderer, ...)` | Named prompt layout slot |
+| `register_event_listener(event, fn, *, plugin_id=...)` | Session event hook |
+| `unregister_event_listeners(plugin_id)` | Remove listeners for a plugin |
+| `emit_session_event(session, event, **payload)` | App-emitted events (e.g. `session_loaded`) |
+
+`Session.get_extension` / `Session.set_extension` store plugin state in `session.extensions` (save round-trip). See [plugins.md](plugins.md).
 
 ---
 

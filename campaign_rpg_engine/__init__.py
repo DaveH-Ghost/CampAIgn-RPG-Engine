@@ -1,5 +1,5 @@
 """
-campaign_rpg_engine — public engine API for CampAIgn-RPG-Engine (1.0.0).
+campaign_rpg_engine — public engine API for CampAIgn-RPG-Engine (1.2.0).
 
 Import from this package in application code.
 """
@@ -96,6 +96,27 @@ from campaign_rpg_engine.interaction_handlers import (
     register_interaction_handler,
     run_interaction_handler,
 )
+from campaign_rpg_engine.events import (
+    clear_event_listeners_for_tests,
+    emit_session_event,
+    list_registered_events,
+    register_event_listener,
+    unregister_event_listeners,
+)
+from campaign_rpg_engine.turn_verbs import (
+    clear_turn_verbs_for_tests,
+    format_turn_verbs_list,
+    list_registered_turn_verbs,
+    register_turn_verb,
+    run_turn_verb,
+)
+from campaign_rpg_engine.prompt_slots import (
+    clear_prompt_slots_for_tests,
+    is_prompt_slot_registered,
+    list_registered_prompt_slots,
+    register_prompt_slot,
+    render_registered_prompt_slot,
+)
 from campaign_rpg_engine.snapshot import DEFAULT_AREA_ID, build_area_snapshot, build_session_snapshot
 from campaign_rpg_engine.world_edit_api import WorldMutationResult
 
@@ -147,6 +168,9 @@ __all__ = [
     "build_scan_corpus",
     "build_session_snapshot",
     "clear_custom_memory_registrations",
+    "clear_event_listeners_for_tests",
+    "clear_prompt_slots_for_tests",
+    "clear_turn_verbs_for_tests",
     "create_area",
     "create_empty_lorebook",
     "create_initial_area",
@@ -156,6 +180,7 @@ __all__ = [
     "delete_area_by_id",
     "derive_lorebook_id_from_filename",
     "describe_scan_sources",
+    "emit_session_event",
     "enrich_blocks_with_previews",
     "estimate_prompt_tokens",
     "format_agents_list",
@@ -163,12 +188,17 @@ __all__ = [
     "format_handlers_list",
     "format_memory_modules_list",
     "format_objects_list",
+    "format_turn_verbs_list",
     "get_compound_turn",
     "get_custom_module_metadata",
     "get_handler_registration",
     "interact_template_var_help",
     "is_handler_registered",
+    "is_prompt_slot_registered",
+    "list_registered_events",
     "list_registered_handlers",
+    "list_registered_prompt_slots",
+    "list_registered_turn_verbs",
     "load_lorebook_from_dict",
     "load_lorebook_from_path",
     "load_profile",
@@ -182,11 +212,17 @@ __all__ = [
     "prompt_blocks_from_dicts",
     "prompt_slot_catalog",
     "register_interaction_handler",
+    "register_event_listener",
     "register_memory_module_from_path",
     "register_memory_module_from_source",
+    "register_prompt_slot",
+    "register_turn_verb",
+    "render_registered_prompt_slot",
     "render_lorebook",
     "run_compound_turn",
     "run_interaction_handler",
+    "run_turn_verb",
+    "unregister_event_listeners",
     "validate_prompt_blocks",
     "with_st_entry_defaults",
 ]

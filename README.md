@@ -4,7 +4,7 @@ Grid-based LLM agent simulation engine: multi-area worlds, compound turns (move 
 
 **License:** [MIT](LICENSE) — open source.
 
-**Current version:** **1.0.0** — library-first package (`campaign_rpg_engine` only; no CLI). See [Migration from 0.7](docs/MIGRATION-0.7-to-1.0.md) and the [changelog index](docs/changelog/README.md).
+**Current version:** **1.2.0** — plugin primitives (extensions, events, turn verbs, prompt slots). See [Plugin primitives](docs/guides/plugins.md) and the [changelog index](docs/changelog/README.md).
 
 ## Quick start
 
@@ -75,6 +75,7 @@ Start at **[docs/README.md](docs/README.md)** — guides, API overview, and chan
 | Doc | Topic |
 |-----|--------|
 | [Building on CampAIgn-RPG-Engine](docs/guides/building-on-campaign-rpg-engine.md) | App integration (typed API, hosting) |
+| [Plugin primitives](docs/guides/plugins.md) | Extensions, events, turn verbs, prompt slots (1.2.0) |
 | [API reference](docs/guides/api-reference.md) | `campaign_rpg_engine` exports and Session methods |
 | [Migration realm-fabric → campaign-rpg-engine](docs/MIGRATION-realm-fabric-to-campaign-rpg-engine.md) | Rename from Realm-Fabric / `realm_fabric` |
 | [CampAIgn-RPG-Studio](https://github.com/DaveH-Ghost/CampAIgn-RPG-Studio) | Full GM reference UI (GitHub) |

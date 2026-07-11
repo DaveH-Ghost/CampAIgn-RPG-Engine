@@ -268,6 +268,7 @@ def build_save_snapshot(session: object) -> dict[str, Any]:
             for area in session.areas.values()
             for agent in area.agents
         ],
+        "extensions": dict(session.extensions),
     }
 
 
@@ -351,5 +352,9 @@ def load_session_from_snapshot(data: dict[str, Any]):
         if err:
             raise ValueError(f"Invalid prompt_blocks in snapshot: {err}")
         session.set_prompt_blocks(blocks)
+
+    extensions = data.get("extensions")
+    if isinstance(extensions, dict):
+        session.extensions = dict(extensions)
 
     return session

@@ -10,7 +10,7 @@ from campaign_rpg_engine.memory_modules.base import WitnessedEvent
 from campaign_rpg_engine.perception import get_visible_look_target_ids
 from campaign_rpg_engine.turn_record import TurnStep
 
-_PRIMARY_WITNESS_KINDS = frozenset({"move", "speak", "emote", "interact"})
+_PRIMARY_WITNESS_KINDS = frozenset({"move", "speak", "emote", "interact", "verb"})
 
 
 def observable_witness_steps(steps: list[TurnStep]) -> list[TurnStep]:

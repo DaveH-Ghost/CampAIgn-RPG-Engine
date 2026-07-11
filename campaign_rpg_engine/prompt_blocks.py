@@ -26,6 +26,13 @@ from campaign_rpg_engine.coordinate_mode import (
     COORDINATE_MODE_RELATIVE,
     normalize_coordinate_mode,
 )
+
+
+def _is_registered_plugin_slot(name: str) -> bool:
+    from campaign_rpg_engine.prompt_slots.registry import is_prompt_slot_registered
+
+    return is_prompt_slot_registered(name)
+
 from campaign_rpg_engine.agent import Agent
 from campaign_rpg_engine.area import Area
 from campaign_rpg_engine.lorebook.matcher import build_scan_corpus, render_lorebook
@@ -33,7 +40,7 @@ from campaign_rpg_engine.lorebook.models import DEFAULT_LOREBOOK_CHAR_BUDGET, Lo
 from campaign_rpg_engine.lorebook.scan_config import LorebookScanConfig
 from campaign_rpg_engine.prompt_template import prompt_context_slots
 
-BlockType = Literal["slot", "text", "section"]
+BlockType = Literal["slot", "plugin_slot", "text", "section"]
 
 EDITABLE_SECTION_NAMES = frozenset({"compound_rules", "output_format"})
 
@@ -52,6 +59,17 @@ SLOT_DESCRIPTIONS: dict[str, str] = {
 }
 
 KNOWN_SLOT_NAMES = frozenset(SLOT_DESCRIPTIONS)
+
+
+def list_registered_plugin_slot_names() -> list[str]:
+    from campaign_rpg_engine.prompt_slots.registry import list_registered_prompt_slots
+
+    return [
+        name
+        for name in list_registered_prompt_slots()
+        if name not in KNOWN_SLOT_NAMES
+    ]
+
 
 SLOT_SETTINGS: dict[str, dict[str, Any]] = {
     "character": {
@@ -105,7 +123,7 @@ class PromptBlock:
 
     def to_dict(self) -> dict[str, Any]:
         data: dict[str, Any] = {"type": self.type}
-        if self.type == "slot":
+        if self.type in ("slot", "plugin_slot"):
             assert self.name is not None
             data["name"] = self.name
             if self.options:
@@ -194,7 +212,9 @@ def validate_prompt_blocks(blocks: list[PromptBlock]) -> str | None:
         if block.type == "slot":
             if not block.name:
                 return f"{prefix}: slot block requires name."
-            if block.name not in KNOWN_SLOT_NAMES:
+            if block.name not in KNOWN_SLOT_NAMES and not _is_registered_plugin_slot(
+                block.name
+            ):
                 known = ", ".join(sorted(KNOWN_SLOT_NAMES))
                 return f"{prefix}: unknown slot {block.name!r}. Known: {known}."
             if block.content is not None:
@@ -207,6 +227,20 @@ def validate_prompt_blocks(blocks: list[PromptBlock]) -> str | None:
                 opt_err = None
             if opt_err:
                 return f"{prefix}: {opt_err}"
+        elif block.type == "plugin_slot":
+            if not block.name:
+                return f"{prefix}: plugin slot block requires name."
+            if block.name in KNOWN_SLOT_NAMES:
+                return (
+                    f"{prefix}: {block.name!r} is an engine slot; use type 'slot' instead."
+                )
+            if not _is_registered_plugin_slot(block.name):
+                known = ", ".join(list_registered_plugin_slot_names()) or "(none)"
+                return f"{prefix}: unknown plugin slot {block.name!r}. Known: {known}."
+            if block.content is not None:
+                return f"{prefix}: plugin slot block must not include content."
+            if block.options:
+                return f"{prefix}: plugin slot blocks do not support options."
         elif block.type == "text":
             if block.content is None:
                 return f"{prefix}: text block requires content."
@@ -233,8 +267,8 @@ def prompt_blocks_from_dicts(items: list[dict[str, Any]]) -> tuple[list[PromptBl
         if not isinstance(raw, dict):
             return [], f"{prefix}: expected an object."
         block_type = raw.get("type")
-        if block_type not in ("slot", "text", "section"):
-            return [], f"{prefix}: type must be slot, text, or section."
+        if block_type not in ("slot", "plugin_slot", "text", "section"):
+            return [], f"{prefix}: type must be slot, plugin_slot, text, or section."
         name = raw.get("name")
         content = raw.get("content")
         if name is not None:
@@ -274,6 +308,7 @@ def render_slot_block(
     *,
     agent: Agent | None = None,
     area: Area | None = None,
+    session: object | None = None,
     vision_units: str = "",
     units_per_tile: int | None = None,
     coordinate_mode: str = "full",
@@ -338,6 +373,22 @@ def render_slot_block(
             vision_units=vision_units,
             units_per_tile=units_per_tile,
         )
+    if _is_registered_plugin_slot(block.name):
+        if session is None or agent is None or area is None:
+            return ""
+        from campaign_rpg_engine.prompt_slots.registry import render_registered_prompt_slot
+        from campaign_rpg_engine.session import Session
+
+        if not isinstance(session, Session):
+            return ""
+        return render_registered_prompt_slot(
+            block.name,
+            session=session,
+            agent=agent,
+            area=area,
+            ctx=ctx,
+            options=block.options,
+        )
     return prompt_context_slots(ctx).get(block.name, "")
 
 
@@ -347,6 +398,7 @@ def render_prompt_blocks(
     *,
     agent: Agent | None = None,
     area: Area | None = None,
+    session: object | None = None,
     vision_units: str = "",
     units_per_tile: int | None = None,
     coordinate_mode: str = "full",
@@ -361,13 +413,14 @@ def render_prompt_blocks(
     for block in blocks:
         if block.type == "text":
             parts.append(block.content or "")
-        elif block.type == "slot":
+        elif block.type in ("slot", "plugin_slot"):
             parts.append(
                 render_slot_block(
                     block,
                     ctx,
                     agent=agent,
                     area=area,
+                    session=session,
                     vision_units=vision_units,
                     units_per_tile=units_per_tile,
                     coordinate_mode=coordinate_mode,
@@ -389,6 +442,7 @@ def enrich_blocks_with_previews(
     *,
     agent: Agent | None = None,
     area: Area | None = None,
+    session: object | None = None,
     vision_units: str = "",
     units_per_tile: int | None = None,
     coordinate_mode: str = "full",
@@ -402,12 +456,13 @@ def enrich_blocks_with_previews(
     enriched: list[dict[str, Any]] = []
     for block in blocks:
         data = block.to_dict()
-        if block.type == "slot":
+        if block.type in ("slot", "plugin_slot"):
             data["preview"] = render_slot_block(
                 block,
                 ctx,
                 agent=agent,
                 area=area,
+                session=session,
                 vision_units=vision_units,
                 units_per_tile=units_per_tile,
                 coordinate_mode=coordinate_mode,
@@ -466,6 +521,22 @@ def prompt_block_catalog() -> dict[str, Any]:
         }
         for name in sorted(EDITABLE_SECTION_NAMES)
     ]
+    from campaign_rpg_engine.prompt_slots.registry import (
+        get_prompt_slot_registration,
+        list_registered_prompt_slots,
+    )
+
+    plugin_slot_options = []
+    for name in list_registered_prompt_slots():
+        if name in KNOWN_SLOT_NAMES:
+            continue
+        reg = get_prompt_slot_registration(name)
+        plugin_slot_options.append(
+            {
+                "name": name,
+                "description": reg.description if reg else "",
+            }
+        )
     return {
         "block_types": [
             {
@@ -473,6 +544,12 @@ def prompt_block_catalog() -> dict[str, Any]:
                 "label": "Dynamic slot",
                 "description": "Engine-computed content inserted at render time.",
                 "options": slot_options,
+            },
+            {
+                "type": "plugin_slot",
+                "label": "Plugin slot",
+                "description": "Content from an enabled plugin prompt slot.",
+                "options": plugin_slot_options,
             },
             {
                 "type": "text",

@@ -35,6 +35,45 @@ def test_create_object_typed_adds_second_object(session: Session) -> None:
     assert "A" in objects and "B" in objects
 
 
+def test_create_object_with_explicit_id(session: Session) -> None:
+    result = session.create_object(
+        name="Relic",
+        position=(2, 2),
+        passive_description="An old relic.",
+        object_id="obj_relic_01",
+    )
+    assert result.ok
+    assert result.object is not None
+    assert result.object.id == "obj_relic_01"
+    assert session.area.get_object_by_id("obj_relic_01") is result.object
+
+
+def test_create_object_rejects_duplicate_explicit_id(session: Session) -> None:
+    first = session.create_object(
+        name="Relic",
+        position=(2, 2),
+        object_id="obj_relic_01",
+    )
+    assert first.ok
+    second = session.create_object(
+        name="Copy",
+        position=(3, 3),
+        object_id="obj_relic_01",
+    )
+    assert not second.ok
+    assert "already in use" in second.message.lower()
+
+
+def test_create_object_rejects_invalid_explicit_id(session: Session) -> None:
+    result = session.create_object(
+        name="Bad",
+        position=(2, 2),
+        object_id="not_an_object_id",
+    )
+    assert not result.ok
+    assert "obj_" in result.message
+
+
 def test_create_agent_registers_index(session: Session) -> None:
     result = session.create_agent(
         name="Scout",

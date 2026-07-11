@@ -17,6 +17,7 @@ from campaign_rpg_engine.agent import Agent
 from campaign_rpg_engine.llm.schemas import AgentCompoundTurn
 from campaign_rpg_engine.memory import Memory, StepKind, TurnRecord, TurnStep
 from campaign_rpg_engine.perception import perform_look as do_look
+from campaign_rpg_engine.turn_verbs.registry import run_turn_verb
 from campaign_rpg_engine.area import Area
 
 if TYPE_CHECKING:
@@ -73,6 +74,9 @@ def execute_nav_phase(
         session=session,
         trigger_fired=trigger_fired,
     )
+    if session is not None:
+        area_id = session.agent_area.get(agent.id)
+        session._emit_event("agent_moved", agent=agent, area_id=area_id)
     return [
         _make_step(
             "move",
@@ -161,13 +165,29 @@ def execute_action_phase(
                 content=turn.verb,
             )
         )
+    elif turn.action == "verb":
+        verb_result = run_turn_verb(session, agent, area, turn)
+        if isinstance(verb_result, str):
+            outcome = ActionOutcome(result=verb_result, passive_result="")
+        else:
+            outcome = verb_result
+        steps.append(
+            _make_step(
+                "verb",
+                turn.reasoning,
+                outcome,
+                target=turn.target,
+                content=turn.verb,
+            )
+        )
 
     return steps
 
 
 def _pick_passive_from_steps(steps: list[TurnStep]) -> str:
-    """Priority: interact > emote > speak > look > move."""
+    """Priority: interact > verb > emote > speak > look > move."""
     interact_passive = ""
+    verb_passive = ""
     emote_passive = ""
     speak_passive = ""
     look_passive = ""
@@ -178,6 +198,8 @@ def _pick_passive_from_steps(steps: list[TurnStep]) -> str:
             continue
         if step.kind == "interact":
             interact_passive = step.passive_result
+        elif step.kind == "verb":
+            verb_passive = step.passive_result
         elif step.kind == "emote":
             emote_passive = step.passive_result
         elif step.kind == "speak":
@@ -189,6 +211,7 @@ def _pick_passive_from_steps(steps: list[TurnStep]) -> str:
 
     return (
         interact_passive
+        or verb_passive
         or emote_passive
         or speak_passive
         or look_passive
@@ -219,6 +242,7 @@ def commit_turn_record(
     area: Area,
     *,
     session_turn: int | None = None,
+    session: Session | None = None,
 ) -> TurnRecord:
     """Apply passive_result, memory, and last_action side effects."""
     passive = _pick_passive_from_steps(record.steps)
@@ -238,6 +262,14 @@ def commit_turn_record(
     )
 
     agent.last_action = record.steps[-1].kind if record.steps else None
+    if session is not None:
+        session._emit_event(
+            "turn_committed",
+            agent=agent,
+            area=area,
+            record=record,
+            turn=turn,
+        )
     return record
 
 
@@ -280,7 +312,7 @@ def run_compound_turn(
 
     record = finalize_turn_record(turn, nav_steps, action_steps, turn_number)
     return commit_turn_record(
-        agent, record, turn, area, session_turn=session_turn
+        agent, record, turn, area, session_turn=session_turn, session=session
     )
 
 

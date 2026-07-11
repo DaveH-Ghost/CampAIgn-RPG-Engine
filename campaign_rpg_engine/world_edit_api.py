@@ -67,6 +67,8 @@ def create_object_in_area(
     movement_exceptions: list[str] | None = None,
     hidden: bool | None = None,
     actions: dict[str, ObjectAction] | None = None,
+    object_id: str | None = None,
+    session: Session | None = None,
 ) -> tuple[Object | None, str]:
     """Create an object with the same rules as ``create-object`` CLI."""
     if not name.strip():
@@ -97,7 +99,22 @@ def create_object_in_area(
     if dim_err:
         return None, dim_err
 
-    obj_id = generate_object_id(area, name)
+    if object_id is not None:
+        obj_id = object_id.strip()
+        if not obj_id:
+            return None, "Object id must not be empty."
+        if not obj_id.startswith("obj_"):
+            return (
+                None,
+                f"Object id must start with 'obj_' (e.g. obj_ball_01), not {obj_id!r}.",
+            )
+        if session is not None:
+            if find_object_in_session(session, obj_id) is not None:
+                return None, f"Object id {obj_id!r} is already in use."
+        elif area.get_object_by_id(obj_id) is not None:
+            return None, f"Object id {obj_id!r} is already in use."
+    else:
+        obj_id = generate_object_id(area, name)
     obj = Object(
         id=obj_id,
         name=name,

@@ -70,6 +70,7 @@ class GameProfile:
         lorebook_char_budget: int | None = None,
         lorebook_scan_config=None,
         passive_vision: str = "",
+        session: object | None = None,
     ) -> str:
         """Assemble the LLM prompt from engine-built context."""
         from campaign_rpg_engine.lorebook.models import DEFAULT_LOREBOOK_CHAR_BUDGET
@@ -94,6 +95,7 @@ class GameProfile:
                 ctx,
                 agent=agent,
                 area=area,
+                session=session,
                 vision_units=vision_units,
                 units_per_tile=units_per_tile,
                 coordinate_mode=coordinate_mode,

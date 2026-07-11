@@ -192,8 +192,21 @@ def _character_block(agent: Agent) -> str:
     return character_block(agent)
 
 
+def _turn_verbs_rules_line() -> str:
+    from campaign_rpg_engine.turn_verbs.registry import list_registered_turn_verbs
+
+    verbs = list_registered_turn_verbs()
+    if not verbs:
+        return "- verb: action \"verb\" + verb (registered id) + optional target."
+    listed = ", ".join(verbs)
+    return (
+        f"- verb: action \"verb\" + verb (one of: {listed}) + optional target."
+    )
+
+
 def _compound_turn_rules() -> str:
-    return """Compound turn order: move → look → speak → action.
+    verb_line = _turn_verbs_rules_line()
+    return f"""Compound turn order: move → look → speak → action.
 
 Rules:
 - Plan from current position and vision; move runs first, then look, speak, and action.
@@ -204,13 +217,15 @@ Rules:
 - speak: set say to dialogue or null.
 - interact: action "interact" + target + verb.
 - emote: action "emote" + target (id or text) + verb (past tense, e.g. pointed).
-- action "none": skip interact/emote after optional move/look/speak.
+{verb_line}
+- action "none": skip interact/emote/verb after optional move/look/speak.
 
 Reply with a single valid JSON object only."""
 
 
 def compound_turn_rules_relative() -> str:
-    return """Compound turn order: move → look → speak → action.
+    verb_line = _turn_verbs_rules_line()
+    return f"""Compound turn order: move → look → speak → action.
 
 Rules:
 - Plan from current position and vision; move runs first, then look, speak, and action.
@@ -221,7 +236,8 @@ Rules:
 - speak: set say to dialogue or null.
 - interact: action "interact" + target + verb.
 - emote: action "emote" + target (id or text) + verb (past tense, e.g. pointed).
-- action "none": skip interact/emote after optional move/look/speak.
+{verb_line}
+- action "none": skip interact/emote/verb after optional move/look/speak.
 
 Reply with a single valid JSON object only."""
 
@@ -263,9 +279,9 @@ def compound_output_format() -> str:
         '  "move": "2,3" | "obj_ball_01" | null,\n'
         '  "look": "obj_ball_01" | null,\n'
         '  "say": "dialogue (~500 chars max) or null",\n'
-        '  "action": "interact" | "emote" | "none",\n'
+        '  "action": "interact" | "emote" | "verb" | "none",\n'
         '  "target": "obj_* | agent_* | text or null",\n'
-        '  "verb": "eat | pointed | null"\n'
+        '  "verb": "eat | pointed | registered_verb_id | null"\n'
         "}"
     )
 
@@ -278,9 +294,9 @@ def compound_output_format_relative() -> str:
         '  "move": "obj_ball_01" | null,\n'
         '  "look": "obj_ball_01" | null,\n'
         '  "say": "dialogue (~500 chars max) or null",\n'
-        '  "action": "interact" | "emote" | "none",\n'
+        '  "action": "interact" | "emote" | "verb" | "none",\n'
         '  "target": "obj_* | agent_* | text or null",\n'
-        '  "verb": "eat | pointed | null"\n'
+        '  "verb": "eat | pointed | registered_verb_id | null"\n'
         "}"
     )
 

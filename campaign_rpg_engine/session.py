@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 
 from campaign_rpg_engine.agent import Agent
 from campaign_rpg_engine.game_profile import GameProfile, default_compound_profile
@@ -143,6 +143,23 @@ class Session:
         from campaign_rpg_engine.lorebook.scan_config import LorebookScanConfig
 
         self.lorebook_scan_config = LorebookScanConfig()
+        self.extensions: dict[str, Any] = {}
+
+    def get_extension(self, plugin_id: str) -> Any:
+        """Return plugin-owned session extension data (default ``None``)."""
+        return self.extensions.get(plugin_id)
+
+    def set_extension(self, plugin_id: str, value: Any) -> None:
+        """Set plugin-owned session extension data."""
+        if value is None:
+            self.extensions.pop(plugin_id, None)
+        else:
+            self.extensions[plugin_id] = value
+
+    def _emit_event(self, event: str, **payload: Any) -> None:
+        from campaign_rpg_engine.events.registry import emit_session_event
+
+        emit_session_event(self, event, **payload)
 
     @property
     def area(self) -> Area:
@@ -467,6 +484,7 @@ class Session:
             blocks=self.get_prompt_blocks(),
             agent=agent,
             area=area,
+            session=self,
             vision_units=self.vision_units,
             units_per_tile=self.vision_units_per_tile,
             coordinate_mode=self.coordinate_mode,
@@ -786,6 +804,7 @@ class Session:
         movement_exceptions: list[str] | None = None,
         hidden: bool | None = None,
         actions: dict[str, ObjectAction] | None = None,
+        object_id: str | None = None,
     ) -> WorldMutationResult:
         area, err = self._resolve_edit_area(area_id)
         if area is None:
@@ -803,14 +822,19 @@ class Session:
             movement_exceptions=movement_exceptions,
             hidden=hidden,
             actions=actions,
+            object_id=object_id,
+            session=self,
         )
         resolved_area = area_id or self.active_area_id
-        return WorldMutationResult(
+        result = WorldMutationResult(
             ok=obj is not None,
             message=message,
             object=obj,
             area_id=resolved_area,
         )
+        if result.ok and obj is not None:
+            self._emit_event("object_created", object=obj, area_id=resolved_area)
+        return result
 
     def create_agent(
         self,
@@ -858,23 +882,32 @@ class Session:
         if agent is not None:
             self._register_agent(agent, area_id=area_id)
         resolved_area = area_id or self.active_area_id
-        return WorldMutationResult(
+        result = WorldMutationResult(
             ok=agent is not None,
             message=message,
             agent=agent,
             area_id=resolved_area,
         )
+        if result.ok and agent is not None:
+            self._emit_event("agent_created", agent=agent, area_id=resolved_area)
+        return result
 
     def delete_object(self, object_id: str) -> WorldMutationResult:
+        located = find_object_in_session(self, object_id.strip())
         ok, message = delete_object_in_session(self, object_id)
-        return WorldMutationResult(ok=ok, message=message)
+        result = WorldMutationResult(ok=ok, message=message)
+        if result.ok and located is not None:
+            area_id, _area, obj = located
+            self._emit_event("object_removed", object=obj, object_id=object_id, area_id=area_id)
+        return result
 
     def delete_agent(self, agent_id: str) -> WorldMutationResult:
-        result = delete_agent_by_id(self.area, agent_id.strip())
-        message = result.message
-        if result.ok and result.deleted_agent is not None:
-            self._unregister_agent(result.deleted_agent)
-            if self.active_agent_id == result.deleted_agent.id:
+        delete_result = delete_agent_by_id(self.area, agent_id.strip())
+        message = delete_result.message
+        deleted_agent = delete_result.deleted_agent
+        if delete_result.ok and deleted_agent is not None:
+            self._unregister_agent(deleted_agent)
+            if self.active_agent_id == deleted_agent.id:
                 fallback = self._first_agent_in_area(self.active_area_id)
                 if fallback is None:
                     for aid in self.areas:
@@ -892,11 +925,14 @@ class Session:
                     f"{message}\n"
                     f"Active agent: {active.name} ({active.id}) at {active.position}"
                 )
-        return WorldMutationResult(
-            ok=result.ok,
+        mutation = WorldMutationResult(
+            ok=delete_result.ok,
             message=message,
-            agent=result.deleted_agent,
+            agent=deleted_agent,
         )
+        if mutation.ok and deleted_agent is not None:
+            self._emit_event("agent_removed", agent=deleted_agent)
+        return mutation
 
     def add_object_action(
         self, object_id: str, action: ObjectAction
@@ -985,7 +1021,14 @@ class Session:
             fields["movement-exception"] = ",".join(movement_exceptions)
         if hidden is not None:
             fields["hidden"] = "true" if hidden else "false"
-        return edit_object_with_fields(self, object_id, fields)
+        result = edit_object_with_fields(self, object_id, fields)
+        if result.ok and result.object is not None:
+            self._emit_event(
+                "object_edited",
+                object=result.object,
+                area_id=result.area_id,
+            )
+        return result
 
     def create_area(
         self,
@@ -1159,9 +1202,13 @@ class Session:
         if "name" in changes:
             self._rename_agent_in_index(old_name_lower, agent)
 
-        return WorldMutationResult(
+        mutation = WorldMutationResult(
             ok=True,
             message=f"Updated agent {cleaned} ({', '.join(changes)}).",
             agent=agent,
             area_id=current_area_id,
         )
+        self._emit_event("agent_edited", agent=agent, area_id=current_area_id)
+        if position is not None or "pos" in fields or "area" in fields:
+            self._emit_event("agent_moved", agent=agent, area_id=current_area_id)
+        return mutation

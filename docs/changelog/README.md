@@ -2,7 +2,7 @@
 
 Release notes and historical implementation checklists for CampAIgn-RPG-Engine.
 
-**Current:** [v1.0.0-changelog.md](v1.0.0-changelog.md) — library-first 1.0; CLI and `run_command` removed.
+**Current:** [v1.2.0-changelog.md](v1.2.0-changelog.md) — plugin primitives (extensions, events, turn verbs, prompt slots).
 
 ---
 
@@ -10,6 +10,7 @@ Release notes and historical implementation checklists for CampAIgn-RPG-Engine.
 
 | Version | Summary |
 |---------|---------|
+| [1.2.0](v1.2.0-changelog.md) | Session extensions, event registry, turn verbs, prompt slots, `plugin_slot` blocks |
 | [1.0.0](v1.0.0-changelog.md) | Single `campaign_rpg_engine` package; no CLI; typed API only; Studio external |
 | [0.7.2](v0.7.2-changelog.md) | `from __future__ import annotations` across engine for Python 3.12 |
 | [0.7.1](v0.7.1-changelog.md) | Straight-line movement fix, targeted `emit_area_event`, PyPI version read |

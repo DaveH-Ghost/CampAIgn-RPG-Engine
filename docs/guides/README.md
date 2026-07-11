@@ -10,7 +10,8 @@ User-facing documentation for building on CampAIgn-RPG-Engine.
 | 4 | [Interaction handlers](handlers.md) | Object interacts and triggers |
 | 5 | [Persistence & snapshots](persistence.md) | Saves and HTTP state APIs |
 | 6 | [Memory & lorebooks](memory-and-lorebooks.md) | Agent memory and world info injection |
-| 7 | [API reference](api-reference.md) | `campaign_rpg_engine` surface |
+| 7 | [Plugins](plugins.md) | Session extensions, events, turn verbs, prompt slots (1.2.0) |
+| 8 | [API reference](api-reference.md) | `campaign_rpg_engine` surface |
 
 Runnable reference app: [CampAIgn-RPG-Studio](https://github.com/DaveH-Ghost/CampAIgn-RPG-Studio). Sample lorebook JSON: [examples/lorebook](../../examples/lorebook/).
 

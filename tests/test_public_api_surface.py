@@ -1,4 +1,4 @@
-"""Tests for the stable ``campaign_rpg_engine`` public export surface (1.0.0)."""
+"""Tests for the stable ``campaign_rpg_engine`` public export surface (1.2.0)."""
 
 from __future__ import annotations
 

@@ -2,7 +2,7 @@
 
 **CampAIgn-RPG-Engine** is a grid-based LLM agent simulation engine with a stable **`campaign_rpg_engine`** library API. The reference GM app is **[CampAIgn-RPG-Studio](https://github.com/DaveH-Ghost/CampAIgn-RPG-Studio)** (GitHub only).
 
-**Current release:** **1.0.0** — library-first; no bundled CLI or HTTP examples. See [MIGRATION-0.7-to-1.0.md](MIGRATION-0.7-to-1.0.md).
+**Current release:** **1.2.0** — plugin primitives for apps and Studio. See [plugins.md](guides/plugins.md). Library-first since 1.0; [Migration 0.7 → 1.0](MIGRATION-0.7-to-1.0.md) still applies for older upgrades.
 
 ---
 
@@ -24,6 +24,7 @@
 | [Interaction handlers](guides/handlers.md) | Pluggable object behavior |
 | [Persistence & snapshots](guides/persistence.md) | `to_save_dict()` vs `snapshot()` |
 | [Memory & lorebooks](guides/memory-and-lorebooks.md) | Modules, lore injection, prompt blocks |
+| [Plugins](guides/plugins.md) | Extensions, events, turn verbs, prompt slots (1.2.0) |
 | [API reference](guides/api-reference.md) | `campaign_rpg_engine` exports and Session methods |
 | [LLM turn schemas](schemas/README.md) | `AgentCompoundTurn` JSON shape |
 

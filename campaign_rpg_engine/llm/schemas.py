@@ -20,7 +20,7 @@ from campaign_rpg_engine.llm.text_truncation import (
 from campaign_rpg_engine.move_target import validate_move_target_syntax
 
 
-TurnActionType = Literal["interact", "emote", "none"]
+TurnActionType = Literal["interact", "emote", "verb", "none"]
 
 MAX_SPEAK_CHARACTERS = SPEAK_MAX_CHARS
 MAX_REASONING_CHARACTERS = REASONING_MAX_CHARS
@@ -80,15 +80,15 @@ class AgentCompoundTurn(BaseModel):
         description="Entity id to examine after moving, or null to skip look.",
     )
     action: TurnActionType = Field(
-        description='Turn-ending action: "interact", "emote", or "none".',
+        description='Turn-ending action: "interact", "emote", "verb", or "none".',
     )
     target: Optional[str] = Field(
         default=None,
-        description="Object or agent id (or free text) when action is interact or emote.",
+        description="Object or agent id (or free text) when action is interact or emote; optional for verb.",
     )
     verb: Optional[str] = Field(
         default=None,
-        description='Object action name (interact) or past-tense emote verb (emote).',
+        description='Object action name (interact), past-tense emote verb (emote), or registered verb id (verb).',
     )
     say: Optional[str] = Field(
         default=None,
@@ -141,6 +141,23 @@ class AgentCompoundTurn(BaseModel):
                 raise ValueError("ERR:INVALID_TARGET: emote requires target")
             if not self.verb or not str(self.verb).strip():
                 raise ValueError("ERR:INVALID_TARGET: emote requires verb")
+        elif self.action == "verb":
+            if not self.verb or not str(self.verb).strip():
+                raise ValueError("ERR:INVALID_TARGET: verb action requires verb id")
+            from campaign_rpg_engine.turn_verbs.registry import get_turn_verb_registration
+
+            reg = get_turn_verb_registration(str(self.verb).strip())
+            if reg is None:
+                from campaign_rpg_engine.turn_verbs.registry import list_registered_turn_verbs
+
+                known = ", ".join(list_registered_turn_verbs()) or "(none)"
+                raise ValueError(
+                    f"ERR:INVALID_TARGET: unknown turn verb {self.verb!r}. Known: {known}."
+                )
+            if reg.validate_turn is not None:
+                err = reg.validate_turn(self)
+                if err:
+                    raise ValueError(err)
         elif self.action == "none":
             if self.target or self.verb:
                 raise ValueError(

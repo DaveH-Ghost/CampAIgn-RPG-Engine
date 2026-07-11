@@ -274,7 +274,7 @@ def test_passive_vision_slot_options():
 def test_prompt_block_catalog_lists_all_types():
     catalog = prompt_block_catalog()
     types = {entry["type"] for entry in catalog["block_types"]}
-    assert types == {"slot", "text", "section"}
+    assert types == {"slot", "plugin_slot", "text", "section"}
     slot_entry = next(item for item in catalog["block_types"] if item["type"] == "slot")
     slot_names = {opt["name"] for opt in slot_entry["options"]}
     assert "passive_vision" in slot_names
