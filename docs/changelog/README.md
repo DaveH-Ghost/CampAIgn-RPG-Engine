@@ -2,7 +2,7 @@
 
 Release notes and historical implementation checklists for CampAIgn-RPG-Engine.
 
-**Current:** [v1.2.0-changelog.md](v1.2.0-changelog.md) — plugin primitives (extensions, events, turn verbs, prompt slots).
+**Current:** [v1.2.1-changelog.md](v1.2.1-changelog.md) — entity templates (export/spawn portable object and agent blueprints).
 
 ---
 
@@ -10,6 +10,7 @@ Release notes and historical implementation checklists for CampAIgn-RPG-Engine.
 
 | Version | Summary |
 |---------|---------|
+| [1.2.1](v1.2.1-changelog.md) | Entity templates — export/spawn objects and agents without ids or placement |
 | [1.2.0](v1.2.0-changelog.md) | Session extensions, event registry, turn verbs, prompt slots, `plugin_slot` blocks |
 | [1.0.0](v1.0.0-changelog.md) | Single `campaign_rpg_engine` package; no CLI; typed API only; Studio external |
 | [0.7.2](v0.7.2-changelog.md) | `from __future__ import annotations` across engine for Python 3.12 |

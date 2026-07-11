@@ -4,7 +4,7 @@ Grid-based LLM agent simulation engine: multi-area worlds, compound turns (move 
 
 **License:** [MIT](LICENSE) — open source.
 
-**Current version:** **1.2.0** — plugin primitives (extensions, events, turn verbs, prompt slots). See [Plugin primitives](docs/guides/plugins.md) and the [changelog index](docs/changelog/README.md).
+**Current version:** **1.2.1** — entity templates (save/spawn portable object and agent blueprints). See [changelog index](docs/changelog/README.md); plugin primitives in [Plugin primitives](docs/guides/plugins.md).
 
 ## Quick start
 

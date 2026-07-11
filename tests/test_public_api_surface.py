@@ -1,4 +1,4 @@
-"""Tests for the stable ``campaign_rpg_engine`` public export surface (1.2.0)."""
+"""Tests for the stable ``campaign_rpg_engine`` public export surface (1.2.1)."""
 
 from __future__ import annotations
 
@@ -47,7 +47,12 @@ def test_documented_public_surface_is_subset_of_all():
         "load_lorebook_from_path",
         "load_profile",
         "load_session_from_snapshot",
-        "register_interaction_handler",
+        "export_agent_template",
+        "export_object_template",
+        "spawn_agent_from_template",
+        "spawn_object_from_template",
+        "validate_template",
+        "TEMPLATE_VERSION",
         "register_memory_module_from_path",
         "run_compound_turn",
     }

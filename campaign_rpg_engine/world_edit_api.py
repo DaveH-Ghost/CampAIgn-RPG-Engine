@@ -168,13 +168,14 @@ def create_agent_in_area(
     movement_exceptions: list[str] | None = None,
     is_player: bool | None = None,
     memory: Memory | None = None,
+    allow_duplicate_name: bool = False,
 ) -> tuple[Agent | None, str]:
     """Create an agent with the same rules as ``create-agent`` CLI."""
     if not name.strip():
         return None, "Missing required field: name"
     if agent_name_conflicts_with_commands(name):
         return None, reserved_agent_name_message(name)
-    if agent_name_taken(area, name):
+    if agent_name_taken(area, name) and not allow_duplicate_name:
         return None, f"Agent name '{name}' is already in use."
     if not area.is_valid_position(position):
         return None, f"Invalid position {position}. {area.format_grid_bounds_message()}"

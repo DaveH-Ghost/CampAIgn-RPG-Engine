@@ -1,5 +1,5 @@
 """
-campaign_rpg_engine — public engine API for CampAIgn-RPG-Engine (1.2.0).
+campaign_rpg_engine — public engine API for CampAIgn-RPG-Engine (1.2.1).
 
 Import from this package in application code.
 """
@@ -118,6 +118,14 @@ from campaign_rpg_engine.prompt_slots import (
     render_registered_prompt_slot,
 )
 from campaign_rpg_engine.snapshot import DEFAULT_AREA_ID, build_area_snapshot, build_session_snapshot
+from campaign_rpg_engine.entity_templates import (
+    TEMPLATE_VERSION,
+    export_agent_template,
+    export_object_template,
+    spawn_agent_from_template,
+    spawn_object_from_template,
+    validate_template,
+)
 from campaign_rpg_engine.world_edit_api import WorldMutationResult
 
 __all__ = [
@@ -157,7 +165,10 @@ __all__ = [
     "RollingSummaryModule",
     "Session",
     "SessionResult",
+    "spawn_agent_from_template",
+    "spawn_object_from_template",
     "ST_ENTRY_DEFAULTS",
+    "TEMPLATE_VERSION",
     "TurnRecord",
     "TurnResult",
     "WorldMutationResult",
@@ -181,6 +192,8 @@ __all__ = [
     "derive_lorebook_id_from_filename",
     "describe_scan_sources",
     "emit_session_event",
+    "export_agent_template",
+    "export_object_template",
     "enrich_blocks_with_previews",
     "estimate_prompt_tokens",
     "format_agents_list",
@@ -224,6 +237,7 @@ __all__ = [
     "run_turn_verb",
     "unregister_event_listeners",
     "validate_prompt_blocks",
+    "validate_template",
     "with_st_entry_defaults",
 ]
 
