@@ -83,6 +83,8 @@ def broadcast_actor_turn(
         if not can_observe_agent(observer, actor, area):
             continue
         for step in witness_steps:
+            if observer.id in step.passive_witness_exclude_agent_ids:
+                continue
             text = _witness_text_for_step(actor, area, step, observer)
             if not text:
                 continue

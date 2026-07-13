@@ -18,6 +18,7 @@ TurnVerbExecutor = Callable[
     ActionOutcome | str | None,
 ]
 ValidateTurnVerb = Callable[["AgentCompoundTurn"], str | None]
+VerbPathTarget = Callable[["AgentCompoundTurn"], str | None]
 
 
 @dataclass(frozen=True)
@@ -25,6 +26,10 @@ class TurnVerbRegistration:
     executor: TurnVerbExecutor
     description: str = ""
     validate_turn: ValidateTurnVerb | None = None
+    path_range: int | None = None
+    """When set, path toward :attr:`path_target_from_turn` before running the verb."""
+    path_target_from_turn: VerbPathTarget | None = None
+    """Return an in-area ``agent_*`` id to approach, or None to skip pathing."""
 
 
 _REGISTRY: dict[str, TurnVerbRegistration] = {}
@@ -36,14 +41,24 @@ def register_turn_verb(
     *,
     description: str = "",
     validate_turn: ValidateTurnVerb | None = None,
+    path_range: int | None = None,
+    path_target_from_turn: VerbPathTarget | None = None,
 ) -> None:
     cleaned = verb_id.strip()
     if not cleaned:
         raise ValueError("verb_id must not be empty")
+    if (path_range is None) != (path_target_from_turn is None):
+        raise ValueError(
+            "path_range and path_target_from_turn must both be set or both omitted"
+        )
+    if path_range is not None and path_range < 0:
+        raise ValueError("path_range must be non-negative")
     _REGISTRY[cleaned] = TurnVerbRegistration(
         executor=executor,
         description=description,
         validate_turn=validate_turn,
+        path_range=path_range,
+        path_target_from_turn=path_target_from_turn,
     )
 
 

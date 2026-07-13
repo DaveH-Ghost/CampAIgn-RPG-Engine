@@ -108,6 +108,7 @@ result = session.run_compound_turn(compound_turn, agent_id=player.id)
 
 - **`move_speed`** on agents enables Chebyshev pathing toward the target tile or entity
 - **`interact`** action can path toward the object (replaces explicit move that turn)
+- Turn verbs may opt into the same pathing via `path_range` + `path_target_from_turn` on `register_turn_verb`
 - Objects **block movement** by default; exceptions via `movement_exceptions`
 
 Details: [v0.6.0 changelog](../changelog/v0.6.0-changelog.md).

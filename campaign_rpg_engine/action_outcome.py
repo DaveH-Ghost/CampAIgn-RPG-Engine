@@ -17,3 +17,6 @@ class ActionOutcome:
 
     Empty when the action did not succeed or has nothing observable.
     """
+
+    passive_witness_exclude_agent_ids: tuple[str, ...] = ()
+    """Observer agent ids that should not receive this step's passive witness."""

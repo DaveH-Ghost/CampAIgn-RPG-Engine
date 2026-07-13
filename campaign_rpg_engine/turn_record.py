@@ -17,6 +17,7 @@ class TurnStep:
     content: Optional[str]
     result: str
     passive_result: str = ""
+    passive_witness_exclude_agent_ids: tuple[str, ...] = ()
 
 
 @dataclass

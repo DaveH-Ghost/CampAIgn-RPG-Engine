@@ -26,6 +26,15 @@ def wave(session, agent, area, turn):
     return ActionOutcome(result="You wave.", passive_result=f"{agent.name} waves.")
 
 register_turn_verb("wave", wave, description="Wave hello")
+
+# Optional: path toward an agent before running (like interact pathing)
+register_turn_verb(
+    "handoff",
+    handoff,
+    description="Hand something to a nearby agent",
+    path_range=1,
+    path_target_from_turn=lambda turn: (turn.target or "").split()[0] or None,
+)
 ```
 
 The LLM uses `action: "verb"`, `verb: "wave"`, and optional `target`.

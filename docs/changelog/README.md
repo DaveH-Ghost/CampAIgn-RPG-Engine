@@ -2,7 +2,7 @@
 
 Release notes and historical implementation checklists for CampAIgn-RPG-Engine.
 
-**Current:** [v1.3.1-changelog.md](v1.3.1-changelog.md) — area templates (whole-area blueprints with decorations).
+**Current:** [v1.4.0-changelog.md](v1.4.0-changelog.md) — turn-verb pathing and passive witness exclusions.
 
 ---
 
@@ -10,6 +10,7 @@ Release notes and historical implementation checklists for CampAIgn-RPG-Engine.
 
 | Version | Summary |
 |---------|---------|
+| [1.4.0](v1.4.0-changelog.md) | Turn verb pathing (opt-in); `passive_witness_exclude_agent_ids` |
 | [1.3.1](v1.3.1-changelog.md) | Area templates — export/spawn whole areas (`kind: "area"`) |
 | [1.3.0](v1.3.0-changelog.md) | Scene decorations — background + sprite layers (`snapshot_version` 5) |
 | [1.2.1](v1.2.1-changelog.md) | Entity templates — export/spawn objects and agents without ids or placement |

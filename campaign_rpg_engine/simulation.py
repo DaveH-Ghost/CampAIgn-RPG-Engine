@@ -17,7 +17,7 @@ from campaign_rpg_engine.agent import Agent
 from campaign_rpg_engine.llm.schemas import AgentCompoundTurn
 from campaign_rpg_engine.memory import Memory, StepKind, TurnRecord, TurnStep
 from campaign_rpg_engine.perception import perform_look as do_look
-from campaign_rpg_engine.turn_verbs.registry import run_turn_verb
+from campaign_rpg_engine.turn_verbs.phases import run_turn_verb_phases, verb_turn_has_pathing
 from campaign_rpg_engine.area import Area
 
 if TYPE_CHECKING:
@@ -50,6 +50,7 @@ def _make_step(
         content=content,
         result=outcome.result,
         passive_result=outcome.passive_result,
+        passive_witness_exclude_agent_ids=outcome.passive_witness_exclude_agent_ids,
     )
 
 
@@ -62,7 +63,7 @@ def execute_nav_phase(
     trigger_fired: set[tuple[str, str, str]] | None = None,
 ) -> list[TurnStep]:
     """Run optional move from compound turn. Commits position changes."""
-    if turn.action == "interact":
+    if turn.action == "interact" or verb_turn_has_pathing(turn):
         return []
     if not turn.move:
         return []
@@ -166,7 +167,23 @@ def execute_action_phase(
             )
         )
     elif turn.action == "verb":
-        verb_result = run_turn_verb(session, agent, area, turn)
+        phases = run_turn_verb_phases(
+            session,
+            agent,
+            area,
+            turn,
+            trigger_fired=trigger_fired,
+        )
+        if phases.path_move is not None:
+            steps.append(
+                _make_step(
+                    "move",
+                    turn.reasoning,
+                    phases.path_move,
+                    target=turn.target,
+                )
+            )
+        verb_result = phases.outcome
         if isinstance(verb_result, str):
             outcome = ActionOutcome(result=verb_result, passive_result="")
         else:

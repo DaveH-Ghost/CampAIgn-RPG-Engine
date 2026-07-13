@@ -4,7 +4,7 @@ Grid-based LLM agent simulation engine: multi-area worlds, compound turns (move 
 
 **License:** [MIT](LICENSE) — open source.
 
-**Current version:** **1.3.1** — area templates (save/load whole areas with decorations, objects, and agents). See [changelog index](docs/changelog/README.md).
+**Current version:** **1.4.0** — turn-verb pathing and witness exclusions for plugins. See [changelog index](docs/changelog/README.md).
 
 ## Quick start
 

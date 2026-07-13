@@ -19,10 +19,15 @@ def serialize_turn_step(step: TurnStep) -> dict[str, Any]:
         data["target"] = step.target
     if step.content is not None:
         data["content"] = step.content
+    if step.passive_witness_exclude_agent_ids:
+        data["passive_witness_exclude_agent_ids"] = list(
+            step.passive_witness_exclude_agent_ids
+        )
     return data
 
 
 def deserialize_turn_step(data: dict[str, Any]) -> TurnStep:
+    exclude_raw = data.get("passive_witness_exclude_agent_ids") or []
     return TurnStep(
         kind=data["kind"],
         reasoning=data.get("reasoning", ""),
@@ -30,6 +35,7 @@ def deserialize_turn_step(data: dict[str, Any]) -> TurnStep:
         content=data.get("content"),
         result=data.get("result", ""),
         passive_result=data.get("passive_result", ""),
+        passive_witness_exclude_agent_ids=tuple(str(x) for x in exclude_raw),
     )
 
 

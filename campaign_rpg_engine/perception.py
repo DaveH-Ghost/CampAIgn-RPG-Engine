@@ -225,6 +225,29 @@ def nearest_standable_in_interact_range(
     return best
 
 
+def nearest_standable_in_chebyshev_range(
+    agent: Agent,
+    area: Area,
+    target_pos: tuple[int, int],
+    action_range: int,
+) -> tuple[int, int] | None:
+    """Return the closest enterable tile within Chebyshev *action_range* of *target_pos*."""
+    best: tuple[int, int] | None = None
+    best_dist = 10**9
+    for x in range(area.min_x, area.max_x + 1):
+        for y in range(area.min_y, area.max_y + 1):
+            pos = (x, y)
+            if chebyshev_distance(pos, target_pos) > action_range:
+                continue
+            if not is_tile_enterable(area, pos, agent.id):
+                continue
+            dist = chebyshev_distance(agent.position, pos)
+            if dist < best_dist:
+                best_dist = dist
+                best = pos
+    return best
+
+
 def position_after_move_budget(
     start: tuple[int, int],
     goal: tuple[int, int],
