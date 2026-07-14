@@ -231,26 +231,47 @@ def format_full_list(area: Area, active_agent: Optional[Agent]) -> str:
     return f"{format_agents_list(area, active_agent)}\n\n{format_objects_list(area)}"
 
 
+# Object / action CLI fields that are never handler_params (plugin params are extras).
+_HANDLER_PARAM_EXCLUDED_FIELDS = frozenset(
+    {
+        "name",
+        "desc",
+        "pdesc",
+        "appearance",
+        "at",
+        "action",
+        "range",
+        "handler",
+        "effect",
+        "result",
+        "passive",
+        "blocks-movement",
+        "movement-exception",
+        "width",
+        "height",
+        "hidden",
+        "kind",
+        "halt-movement",
+        "delete-after-trigger",
+        "trigger-exception",
+    }
+)
+
+
 def parse_handler_from_fields(
     fields: dict[str, str],
 ) -> tuple[str | None, dict[str, str], Optional[str]]:
-    """Build handler id + params from optional handler / dest-area / dest-at fields."""
+    """Build handler id + params from optional handler and leftover field keys."""
     handler_id = fields.get("handler") or fields.get("effect")
+    params = {
+        key: value
+        for key, value in fields.items()
+        if key not in _HANDLER_PARAM_EXCLUDED_FIELDS
+    }
     if not handler_id:
-        if "dest-area" in fields or "dest-at" in fields:
-            return None, {}, "dest-area and dest-at require handler move_area."
+        if params:
+            return None, {}, "Handler params require a handler <id>."
         return None, {}, None
-
-    params: dict[str, str] = {}
-    if handler_id == "move_area":
-        if "dest-area" not in fields:
-            return None, {}, "move_area handler requires dest-area <area_id>."
-        if "dest-at" not in fields:
-            return None, {}, "move_area handler requires dest-at x,y."
-        params["dest-area"] = fields["dest-area"]
-        params["dest-at"] = fields["dest-at"]
-    elif "dest-area" in fields or "dest-at" in fields:
-        return None, {}, "dest-area and dest-at are only valid with handler move_area."
 
     err = validate_handler_params(handler_id, params)
     if err:
@@ -435,6 +456,7 @@ def create_object_from_args(area: Area, arg: str) -> tuple[Optional[Object], str
             "delete-after-trigger",
             "trigger-exception",
         },
+        allow_extra=True,
     )
     if err:
         return None, err
@@ -468,6 +490,7 @@ def _edit_object_add_action(obj: Object, tokens: list[str]) -> str:
             "delete-after-trigger",
             "trigger-exception",
         },
+        allow_extra=True,
     )
     if err:
         return err

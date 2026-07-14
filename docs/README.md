@@ -2,7 +2,7 @@
 
 **CampAIgn-RPG-Engine** is a grid-based LLM agent simulation engine with a stable **`campaign_rpg_engine`** library API. The reference GM app is **[CampAIgn-RPG-Studio](https://github.com/DaveH-Ghost/CampAIgn-RPG-Studio)** (GitHub only).
 
-**Current release:** **1.4.0** — turn-verb pathing and witness exclusions. See [changelog index](changelog/README.md). Library-first since 1.0; [Migration 0.7 → 1.0](MIGRATION-0.7-to-1.0.md) still applies for older upgrades.
+**Current release:** **1.4.2** — ``run_named_handler`` for plugin follow-ups. See [changelog index](changelog/README.md). Library-first since 1.0; [Migration 0.7 → 1.0](MIGRATION-0.7-to-1.0.md) still applies for older upgrades.
 
 ---
 

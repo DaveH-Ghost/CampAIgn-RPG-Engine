@@ -33,4 +33,20 @@ def register_reference_handlers() -> None:
         move_area,
         description="Transfer the interacting agent to another area at dest-at (requires dest-area, dest-at)",
         validate_params=validate_move_area_params,
+        param_fields=[
+            {
+                "name": "dest-area",
+                "label": "Destination area",
+                "type": "area_id",
+                "required": True,
+            },
+            {
+                "name": "dest-at",
+                "label": "Destination tile",
+                "type": "coord",
+                "required": True,
+                "default": "0,0",
+            },
+        ],
+        summary_template="move_area → {dest-area} ({dest-at})",
     )

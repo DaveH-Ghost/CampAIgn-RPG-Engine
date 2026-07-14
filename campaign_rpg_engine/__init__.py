@@ -1,5 +1,5 @@
 """
-campaign_rpg_engine — public engine API for CampAIgn-RPG-Engine (1.4.0).
+campaign_rpg_engine — public engine API for CampAIgn-RPG-Engine (1.4.2).
 
 Import from this package in application code.
 """
@@ -89,12 +89,15 @@ from campaign_rpg_engine.session_area_edit import (
 from campaign_rpg_engine.simulation import run_compound_turn
 from campaign_rpg_engine.session_persistence import build_save_snapshot, load_session_from_snapshot
 from campaign_rpg_engine.interaction_handlers import (
+    collect_prefixed_params,
     format_handlers_list,
     get_handler_registration,
+    handler_catalog_entry,
     is_handler_registered,
     list_registered_handlers,
     register_interaction_handler,
     run_interaction_handler,
+    run_named_handler,
 )
 from campaign_rpg_engine.events import (
     clear_event_listeners_for_tests,
@@ -195,6 +198,7 @@ __all__ = [
     "clear_event_listeners_for_tests",
     "clear_prompt_slots_for_tests",
     "clear_turn_verbs_for_tests",
+    "collect_prefixed_params",
     "create_area",
     "create_empty_lorebook",
     "create_initial_area",
@@ -220,6 +224,7 @@ __all__ = [
     "get_compound_turn",
     "get_custom_module_metadata",
     "get_handler_registration",
+    "handler_catalog_entry",
     "interact_template_var_help",
     "is_handler_registered",
     "is_prompt_slot_registered",
@@ -249,6 +254,7 @@ __all__ = [
     "render_lorebook",
     "run_compound_turn",
     "run_interaction_handler",
+    "run_named_handler",
     "run_turn_verb",
     "unregister_event_listeners",
     "validate_area_template",

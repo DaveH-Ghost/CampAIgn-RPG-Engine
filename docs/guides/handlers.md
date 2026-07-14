@@ -22,6 +22,10 @@ Each **`ObjectAction`** on an object has:
 
 Handlers are **process-wide**. Register at startup before loading saves that reference them.
 
+Plugins that need to call another handler after branching (e.g. skills pass/fail) should use
+``run_named_handler(...)`` and optionally ``collect_prefixed_params`` (1.4.2) — do not add
+pass/fail fields to ``ObjectAction``.
+
 ---
 
 ## Register a handler
@@ -37,7 +41,21 @@ def eat_food(session: Session, agent, obj, action) -> str | None:
 register_interaction_handler("eat_food", eat_food, label="Consume object")
 ```
 
-Return **`None`** on success, or an **error message string** to abort the action.
+Return **`None`** on success (interact uses action templates), an **error message string** to abort with actor-only text, or an **`ActionOutcome`** (1.4.1) as the final interact outcome (custom fail `result` / `passive_result`).
+
+```python
+from campaign_rpg_engine import register_interaction_handler, ActionOutcome
+
+def maybe_fail(session, area, agent, obj, action):
+    if True:  # check failed
+        return ActionOutcome(
+            result="You can't force it.",
+            passive_result=f"{agent.name} fails to force {obj.name}.",
+        )
+    return None  # use action.result / action.passive_result
+
+register_interaction_handler("maybe_fail", maybe_fail)
+```
 
 Reference handlers: [CampAIgn-RPG-Studio/reference_handlers](https://github.com/DaveH-Ghost/CampAIgn-RPG-Studio/tree/main/reference_handlers) (`delete_self`, `random_move_self`, `move_area`).
 

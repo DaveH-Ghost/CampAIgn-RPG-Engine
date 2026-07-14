@@ -2,7 +2,7 @@
 
 Release notes and historical implementation checklists for CampAIgn-RPG-Engine.
 
-**Current:** [v1.4.0-changelog.md](v1.4.0-changelog.md) — turn-verb pathing and passive witness exclusions.
+**Current:** [v1.4.2-changelog.md](v1.4.2-changelog.md) — ``run_named_handler`` for plugin follow-up handlers.
 
 ---
 
@@ -10,6 +10,8 @@ Release notes and historical implementation checklists for CampAIgn-RPG-Engine.
 
 | Version | Summary |
 |---------|---------|
+| [1.4.2](v1.4.2-changelog.md) | ``run_named_handler`` / ``collect_prefixed_params`` (plugin follow-ups) |
+| [1.4.1](v1.4.1-changelog.md) | Interaction handlers may return ``ActionOutcome`` (fail templates) |
 | [1.4.0](v1.4.0-changelog.md) | Turn verb pathing (opt-in); `passive_witness_exclude_agent_ids` |
 | [1.3.1](v1.3.1-changelog.md) | Area templates — export/spawn whole areas (`kind: "area"`) |
 | [1.3.0](v1.3.0-changelog.md) | Scene decorations — background + sprite layers (`snapshot_version` 5) |

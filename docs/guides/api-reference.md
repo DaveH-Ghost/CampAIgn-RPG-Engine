@@ -1,6 +1,6 @@
 # API reference
 
-Stable **`campaign_rpg_engine`** surface (**1.4.0**). Import from this package in application code.
+Stable **`campaign_rpg_engine`** surface (**1.4.2**). Import from this package in application code.
 
 ```python
 import campaign_rpg_engine
@@ -95,7 +95,10 @@ Returns **`AreaTemplateMutationResult`** from `spawn_area_from_template`.
 |--------|-------------|
 | `register_interaction_handler(id, fn, ...)` | Process-wide handler |
 | `list_registered_handlers()`, `is_handler_registered()` | Introspection |
-| `run_interaction_handler(...)` | Direct invoke (advanced) |
+| `run_interaction_handler(...)` | Direct invoke; may return ``ActionOutcome`` (1.4.1) |
+| `run_named_handler(...)` | Invoke any registered handler by id with explicit params (1.4.2) |
+| `collect_prefixed_params(...)` | Strip a branch prefix from nested handler params (1.4.2) |
+| `handler_catalog_entry(id)` | Catalog dict with description, ``param_fields``, ``summary_template`` (1.4.2) |
 | `register_memory_module_from_path(path)` | Load custom memory module |
 | `MemoryModule` | Protocol type |
 

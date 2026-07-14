@@ -383,13 +383,13 @@ def _execute_interact_action(
 
 
     if action.handler_id:
-        handler_err = run_interaction_handler(
+        handler_result = run_interaction_handler(
             session, area, agent, obj, action
         )
-        if handler_err:
-            return ActionOutcome(result=handler_err)
-
-
+        if isinstance(handler_result, ActionOutcome):
+            return handler_result
+        if handler_result:
+            return ActionOutcome(result=handler_result)
 
     template_ctx = InteractTemplateContext(
 
