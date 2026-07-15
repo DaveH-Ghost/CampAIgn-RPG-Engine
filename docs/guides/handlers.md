@@ -86,7 +86,7 @@ Or at create time via `actions={...}` on `create_object`.
 
 ## Save / load requirement
 
-Saves store `handler_id` + `handler_params`. On **`Session.from_snapshot()`**, every referenced handler must already be registered — same rule as custom memory modules.
+Saves store `handler_id` + `handler_params`. On **`Session.from_snapshot()`**, every referenced handler must already be registered.
 
 ---
 

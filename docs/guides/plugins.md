@@ -75,7 +75,8 @@ Use `unregister_event_listeners(plugin_id)` when disabling a plugin.
 
 - **Code** (handlers, turn verbs, prompt slots) must be registered at process startup.
 - **State** lives in `session.extensions` and is stored in the save file.
-- Same contract as custom memory modules: the save stores data, not Python source.
+- Saves store plugin data, not Python source. Memory modules are built-in only
+  (``recent_turns``, ``salient_turns``, ``rolling_summary``, ``affinity``).
 
 ## Studio
 

@@ -28,6 +28,8 @@ class MemoryRecordContext:
     agent_id: str
     turn_number: int
     agent_name: str = ""
+    """Other agents in the same area at record time: (id, name)."""
+    nearby_agents: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)

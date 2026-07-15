@@ -217,18 +217,14 @@ class RollingSummaryModule:
         self._last_summarized_turn_number = snapshot.turn_number
 
         tail_numbers = self._tail_turn_numbers_from_batch(snapshot.turns)
-        if not tail_numbers:
-            self._turns.clear()
-            self._witnessed_before.clear()
-        else:
-            kept_turns: list[TurnRecord] = []
-            kept_witnessed: list[list[WitnessedEvent]] = []
-            for turn, events in zip(self._turns, self._witnessed_before):
-                if turn.turn_number in tail_numbers:
-                    kept_turns.append(turn)
-                    kept_witnessed.append(events)
-            self._turns = kept_turns
-            self._witnessed_before = kept_witnessed
+        kept_turns: list[TurnRecord] = []
+        kept_witnessed: list[list[WitnessedEvent]] = []
+        for turn, events in zip(self._turns, self._witnessed_before):
+            if turn.turn_number in tail_numbers or turn.turn_number > snapshot.turn_number:
+                kept_turns.append(turn)
+                kept_witnessed.append(events)
+        self._turns = kept_turns
+        self._witnessed_before = kept_witnessed
 
     def _run_summary_for_snapshot(self, snapshot: ConsolidationSnapshot) -> str:
         batch_text = format_turns_batch_for_summary(

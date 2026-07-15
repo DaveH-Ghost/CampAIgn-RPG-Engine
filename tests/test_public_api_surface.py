@@ -56,7 +56,6 @@ def test_documented_public_surface_is_subset_of_all():
         "validate_area_template",
         "validate_template",
         "TEMPLATE_VERSION",
-        "register_memory_module_from_path",
         "run_compound_turn",
     }
     missing = documented - set(campaign_rpg_engine.__all__)

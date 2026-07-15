@@ -20,7 +20,6 @@ _RESERVED_COMMAND_NAMES: frozenset[str] = frozenset(
         "handlers",
         "effects",
         "memory-modules",
-        "add-memory-module",
         "load-lorebook",
         "lorebooks",
         "agents",

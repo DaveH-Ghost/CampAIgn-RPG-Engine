@@ -1,5 +1,5 @@
 """
-campaign_rpg_engine — public engine API for CampAIgn-RPG-Engine (1.4.2).
+campaign_rpg_engine — public engine API for CampAIgn-RPG-Engine (1.5.0).
 
 Import from this package in application code.
 """
@@ -46,13 +46,15 @@ from campaign_rpg_engine.memory import TurnRecord
 from campaign_rpg_engine.memory_modules.base import MemoryModule
 from campaign_rpg_engine.memory_modules.recent_turns import DEFAULT_WINDOW, MAX_WINDOW, MIN_WINDOW
 from campaign_rpg_engine.memory_modules.registry import (
-    clear_custom_memory_registrations,
     default_module_id,
     format_memory_modules_list,
-    get_custom_module_metadata,
     loaded_module_ids,
-    register_memory_module_from_path,
-    register_memory_module_from_source,
+)
+from campaign_rpg_engine.memory_modules.affinity import AffinityModule
+from campaign_rpg_engine.memory_modules.affinity_ladder import (
+    AFFINITY_MAX,
+    AFFINITY_MIN,
+    DEFAULT_RELATIONSHIP_SUMMARY_MAX_CHARS,
 )
 from campaign_rpg_engine.memory_modules.rolling_summary import (
     DEFAULT_MAX_SUMMARY_CHARS,
@@ -177,6 +179,10 @@ __all__ = [
     "ObjectAction",
     "PromptBlock",
     "PromptContext",
+    "AFFINITY_MAX",
+    "AFFINITY_MIN",
+    "AffinityModule",
+    "DEFAULT_RELATIONSHIP_SUMMARY_MAX_CHARS",
     "RollingSummaryModule",
     "Session",
     "SessionResult",
@@ -194,7 +200,6 @@ __all__ = [
     "build_save_snapshot",
     "build_scan_corpus",
     "build_session_snapshot",
-    "clear_custom_memory_registrations",
     "clear_event_listeners_for_tests",
     "clear_prompt_slots_for_tests",
     "clear_turn_verbs_for_tests",
@@ -222,7 +227,6 @@ __all__ = [
     "format_objects_list",
     "format_turn_verbs_list",
     "get_compound_turn",
-    "get_custom_module_metadata",
     "get_handler_registration",
     "handler_catalog_entry",
     "interact_template_var_help",
@@ -246,8 +250,6 @@ __all__ = [
     "prompt_slot_catalog",
     "register_interaction_handler",
     "register_event_listener",
-    "register_memory_module_from_path",
-    "register_memory_module_from_source",
     "register_prompt_slot",
     "register_turn_verb",
     "render_registered_prompt_slot",

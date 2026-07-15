@@ -244,7 +244,7 @@ def test_create_agent_unknown_memory_module_rejected():
         'name "Scribe" personality "Quiet." memory summarizing at 2,2',
     )
     assert agent is None
-    assert "not loaded" in msg.lower()
+    assert "unsupported" in msg.lower() or "unknown" in msg.lower()
     assert "summarizing" in msg
 
 

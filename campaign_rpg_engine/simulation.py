@@ -266,13 +266,28 @@ def commit_turn_record(
     if passive:
         agent.passive_result = passive
 
-    agent.memory.record_turn(record, agent_id=agent.id, agent_name=agent.name)
+    # Prefer the agent's current area: transfer_agent / move_area may have moved
+    # them mid-turn, leaving the turn-start ``area`` stale for nearby/witnesses.
+    commit_area = area
+    if session is not None:
+        commit_area = session.get_area_for_agent(agent)
+
+    agent.memory.record_turn(
+        record,
+        agent_id=agent.id,
+        agent_name=agent.name,
+        nearby_agents=tuple(
+            (other.id, other.name)
+            for other in commit_area.agents
+            if other.id != agent.id
+        ),
+    )
 
     witness_session = session_turn if session_turn is not None else record.turn_number
     from campaign_rpg_engine.observations import broadcast_actor_turn
 
     broadcast_actor_turn(
-        area,
+        commit_area,
         agent,
         session_turn=witness_session,
         steps=record.steps,
@@ -283,7 +298,7 @@ def commit_turn_record(
         session._emit_event(
             "turn_committed",
             agent=agent,
-            area=area,
+            area=commit_area,
             record=record,
             turn=turn,
         )

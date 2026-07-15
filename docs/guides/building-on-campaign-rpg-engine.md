@@ -100,18 +100,17 @@ Full signatures: [API reference](api-reference.md).
 
 ---
 
-## Register handlers and memory at startup
+## Register handlers at startup
 
 Process-wide — register before `Session.from_snapshot()` if the save references them:
 
 ```python
-from campaign_rpg_engine import register_interaction_handler, register_memory_module_from_path
+from campaign_rpg_engine import register_interaction_handler
 
 register_interaction_handler("my_effect", my_handler_fn, label="My effect")
-register_memory_module_from_path("path/to/my_memory_module.py")
 ```
 
-Details: [Handlers](handlers.md), [Memory & lorebooks](memory-and-lorebooks.md).
+Details: [Handlers](handlers.md). Memory modules are built-in only ([Memory & lorebooks](memory-and-lorebooks.md)).
 
 ---
 
@@ -119,7 +118,7 @@ Details: [Handlers](handlers.md), [Memory & lorebooks](memory-and-lorebooks.md).
 
 - **One `Session` per match / lobby / campaign**
 - **Singleton** (like CampAIgn-RPG-Studio) is fine for local demos
-- **Handlers / memory modules**: process start; shared across sessions in that process
+- **Handlers**: process start; shared across sessions in that process
 - **Persistence**: [Persistence guide](persistence.md)
 
 ---

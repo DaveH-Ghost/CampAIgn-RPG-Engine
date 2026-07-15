@@ -13,6 +13,7 @@ Each agent has a **`Memory`** instance backed by a pluggable module:
 | `recent_turns` | Sliding window of recent turns (default) |
 | `salient_turns` | Char-budget retention with salience |
 | `rolling_summary` | Periodic LLM consolidation into summary + detail tail |
+| `affinity` | Relationships (-10…+10) + rolling summary; parallel Call A (chronicle) / Call B (affinity deltas) each interval |
 
 ### Create agent with module
 
@@ -26,20 +27,8 @@ session.create_agent(
 )
 ```
 
-### Custom modules
-
-```python
-from campaign_rpg_engine import register_memory_module_from_path
-
-register_memory_module_from_path("path/to/my_module.py")
-```
-
-Module must expose `create_module(**config) -> MemoryModule`.  
-Example: [CampAIgn-RPG-Studio fixtures/custom_memory](https://github.com/DaveH-Ghost/CampAIgn-RPG-Studio/tree/main/fixtures/custom_memory) (upload via Settings in the GM app).
-
-Saves store **`module_id` + state** — not source code. Import fails if the module is not registered.
-
-See [v0.4.6 changelog](../changelog/v0.4.6-changelog.md).
+Memory modules are **built-in only** (`recent_turns`, `salient_turns`, `rolling_summary`, `affinity`).  
+Saves that reference an unknown `module_id` fail to load.
 
 ---
 

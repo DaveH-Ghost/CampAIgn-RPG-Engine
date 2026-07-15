@@ -2,7 +2,7 @@
 
 Release notes and historical implementation checklists for CampAIgn-RPG-Engine.
 
-**Current:** [v1.4.2-changelog.md](v1.4.2-changelog.md) — ``run_named_handler`` for plugin follow-up handlers.
+**Current:** [v1.5.0-changelog.md](v1.5.0-changelog.md) — affinity memory module (relationships + rolling summary).
 
 ---
 
@@ -10,6 +10,7 @@ Release notes and historical implementation checklists for CampAIgn-RPG-Engine.
 
 | Version | Summary |
 |---------|---------|
+| [1.5.0](v1.5.0-changelog.md) | Affinity memory — relationships (-10…+10) + rolling summary |
 | [1.4.2](v1.4.2-changelog.md) | ``run_named_handler`` / ``collect_prefixed_params`` (plugin follow-ups) |
 | [1.4.1](v1.4.1-changelog.md) | Interaction handlers may return ``ActionOutcome`` (fail templates) |
 | [1.4.0](v1.4.0-changelog.md) | Turn verb pathing (opt-in); `passive_witness_exclude_agent_ids` |

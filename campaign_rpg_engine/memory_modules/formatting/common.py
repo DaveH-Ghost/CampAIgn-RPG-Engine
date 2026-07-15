@@ -91,3 +91,47 @@ def format_stored_turns_block(
 
 def join_lines(lines: list[str]) -> str:
     return "\n".join(lines).rstrip()
+
+
+# Display names that collide with memory batch headings / second-person results
+# ("Turn 3:", "Reasoning:", "You said:…"). Skip these for mention matching.
+RESERVED_MENTION_NAMES = frozenset(
+    {"you", "turn", "before", "reasoning", "result", "observed", "since"}
+)
+
+
+def is_reserved_mention_name(name: str) -> bool:
+    """True when ``name`` should never count as an in-window name mention."""
+    return name.strip().lower() in RESERVED_MENTION_NAMES
+
+
+def corpus_for_name_matching(
+    turns: list[TurnRecord],
+    witnessed_before: list[list[WitnessedEvent]],
+    *,
+    pending: list[WitnessedEvent] | None = None,
+) -> str:
+    """
+    Text where agent name mentions are searched.
+
+    Uses turn bodies and witness event text only — not render headings like
+    ``Turn N:`` / ``Reasoning:`` / ``Before turn…`` that would false-match.
+    """
+    parts: list[str] = []
+    for index, turn in enumerate(turns):
+        witnessed = witnessed_before[index] if index < len(witnessed_before) else []
+        for event in witnessed:
+            if event.text.strip():
+                parts.append(event.text)
+        if turn.reasoning.strip():
+            parts.append(turn.reasoning)
+        if turn.result.strip():
+            parts.append(turn.result)
+        for step in turn.steps:
+            for value in (step.target, step.content, step.result, step.passive_result):
+                if value and str(value).strip():
+                    parts.append(str(value))
+    for event in pending or ():
+        if event.text.strip():
+            parts.append(event.text)
+    return "\n".join(parts)

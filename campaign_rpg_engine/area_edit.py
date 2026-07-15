@@ -24,6 +24,7 @@ from campaign_rpg_engine.memory_modules.registry import (
     format_memory_module_label,
     is_builtin_module_id,
     is_module_loaded,
+    unknown_memory_module_message,
 )
 from campaign_rpg_engine.object import Object, object_footprint_fits_bounds
 from campaign_rpg_engine.object_action import ObjectAction
@@ -781,12 +782,12 @@ def _build_agent_memory(fields: dict[str, str]) -> tuple[Optional[Memory], Optio
         or summary_max_raw is not None
         or summary_tail_raw is not None
     ):
-        if memory_module_id not in (None, "rolling_summary"):
+        if memory_module_id not in (None, "rolling_summary", "affinity"):
             if memory_module_id is None or is_builtin_module_id(memory_module_id):
                 return (
                     None,
                     "memory-summary-interval, memory-summary-max, and memory-summary-tail "
-                    "are only valid with memory rolling_summary.",
+                    "are only valid with memory rolling_summary or affinity.",
                 )
 
     module_config: dict[str, int] = {}
@@ -839,10 +840,7 @@ def _build_agent_memory(fields: dict[str, str]) -> tuple[Optional[Memory], Optio
         else:
             resolved_id = "recent_turns"
     if not is_module_loaded(resolved_id):
-        return None, (
-            f"Memory module {resolved_id!r} is not loaded. "
-            "Use add-memory-module or load the module before create-agent."
-        )
+        return None, unknown_memory_module_message(resolved_id)
     try:
         return Memory(module_id=resolved_id, **module_config), None
     except ValueError as exc:

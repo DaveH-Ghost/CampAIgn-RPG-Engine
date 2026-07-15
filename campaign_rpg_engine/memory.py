@@ -85,13 +85,21 @@ class Memory:
             return "No memories yet."
         return body.strip()
 
-    def record_turn(self, record: TurnRecord, *, agent_id: str, agent_name: str = "") -> None:
+    def record_turn(
+        self,
+        record: TurnRecord,
+        *,
+        agent_id: str,
+        agent_name: str = "",
+        nearby_agents: tuple[tuple[str, str], ...] = (),
+    ) -> None:
         self._module.record_turn(
             record,
             MemoryRecordContext(
                 agent_id=agent_id,
                 turn_number=record.turn_number,
                 agent_name=agent_name,
+                nearby_agents=nearby_agents,
             ),
         )
 

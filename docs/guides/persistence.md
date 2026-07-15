@@ -27,7 +27,7 @@ save_doc = session.to_save_dict()
 restored = Session.from_snapshot(save_doc)
 ```
 
-**Before import**, register the same **interaction handlers** and **memory modules** referenced in the save.
+**Before import**, register the same **interaction handlers** referenced in the save. Memory modules must be a built-in id (`recent_turns`, `salient_turns`, `rolling_summary`, `affinity`).
 
 HTTP: `GET /api/session/export`, `POST /api/session/import` on [CampAIgn-RPG-Studio](https://github.com/DaveH-Ghost/CampAIgn-RPG-Studio).
 

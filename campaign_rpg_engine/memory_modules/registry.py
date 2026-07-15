@@ -2,17 +2,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any, Callable
 
+from campaign_rpg_engine.memory_modules.affinity import AffinityModule
 from campaign_rpg_engine.memory_modules.base import MemoryModule
-from campaign_rpg_engine.memory_modules.loader import (
-    CustomModuleMetadata,
-    ModuleFactory,
-    parse_custom_memory_module,
-    write_module_source_to_cache,
+from campaign_rpg_engine.memory_modules.recent_turns import (
+    DEFAULT_WINDOW,
+    RecentTurnsModule,
+    validate_window,
 )
-from campaign_rpg_engine.memory_modules.recent_turns import DEFAULT_WINDOW, RecentTurnsModule, validate_window
 from campaign_rpg_engine.memory_modules.rolling_summary import (
     DEFAULT_MAX_SUMMARY_CHARS,
     DEFAULT_SUMMARY_INTERVAL,
@@ -30,6 +28,8 @@ from campaign_rpg_engine.memory_modules.salient_turns import (
 
 DEFAULT_MODULE_ID = "recent_turns"
 
+ModuleFactory = Callable[..., MemoryModule]
+
 _BUILTIN_REGISTRY: dict[str, ModuleFactory] = {
     "recent_turns": lambda **cfg: RecentTurnsModule(window=cfg.get("window", DEFAULT_WINDOW)),
     "salient_turns": lambda **cfg: SalientTurnsModule(
@@ -42,16 +42,12 @@ _BUILTIN_REGISTRY: dict[str, ModuleFactory] = {
         max_summary_chars=int(cfg.get("max_summary_chars", DEFAULT_MAX_SUMMARY_CHARS)),
         summary_tail=int(cfg.get("summary_tail", DEFAULT_SUMMARY_TAIL)),
     ),
+    "affinity": lambda **cfg: AffinityModule(
+        summary_interval=int(cfg.get("summary_interval", DEFAULT_SUMMARY_INTERVAL)),
+        max_summary_chars=int(cfg.get("max_summary_chars", DEFAULT_MAX_SUMMARY_CHARS)),
+        summary_tail=int(cfg.get("summary_tail", DEFAULT_SUMMARY_TAIL)),
+    ),
 }
-
-_CUSTOM_REGISTRY: dict[str, ModuleFactory] = {}
-_CUSTOM_METADATA: dict[str, CustomModuleMetadata] = {}
-
-
-def clear_custom_memory_registrations() -> None:
-    """Remove all custom (uploaded) memory modules from the process registry."""
-    _CUSTOM_REGISTRY.clear()
-    _CUSTOM_METADATA.clear()
 
 
 def default_module_id() -> str:
@@ -67,71 +63,20 @@ def is_builtin_module_id(module_id: str) -> bool:
 
 
 def loaded_module_ids() -> list[str]:
-    """Built-in ids (always) plus runtime-registered custom modules."""
-    return sorted(set(_BUILTIN_REGISTRY) | set(_CUSTOM_REGISTRY))
+    """Built-in memory module ids."""
+    return builtin_module_ids()
 
 
 def is_module_loaded(module_id: str) -> bool:
-    return module_id in _BUILTIN_REGISTRY or module_id in _CUSTOM_REGISTRY
+    return is_builtin_module_id(module_id)
 
 
-def get_custom_module_metadata(module_id: str) -> CustomModuleMetadata | None:
-    return _CUSTOM_METADATA.get(module_id)
-
-
-def list_custom_module_metadata() -> list[CustomModuleMetadata]:
-    return [_CUSTOM_METADATA[mid] for mid in sorted(_CUSTOM_METADATA)]
-
-
-def _register_custom_module(
-    module_id: str,
-    factory: ModuleFactory,
-    metadata: CustomModuleMetadata,
-) -> str:
-    if is_builtin_module_id(module_id):
-        raise ValueError(
-            f"Memory module id {module_id!r} conflicts with a built-in module."
-        )
-    _CUSTOM_REGISTRY[module_id] = factory
-    _CUSTOM_METADATA[module_id] = metadata
-    return module_id
-
-
-def register_memory_module_from_path(path: str | Path) -> str:
-    """Load a custom memory module from a .py path (overwrites same custom id)."""
-    resolved = Path(path).expanduser().resolve()
-    module_id, factory, metadata = parse_custom_memory_module(resolved)
-    return _register_custom_module(module_id, factory, metadata)
-
-
-def register_memory_module_from_source(
-    source: str,
-    *,
-    filename: str,
-    cache_dir: Path,
-) -> str:
-    """Write uploaded source to cache, load, and register (overwrites same custom id)."""
-    staging = cache_dir / "_staging_upload.py"
-    staging.parent.mkdir(parents=True, exist_ok=True)
-    staging.write_text(source, encoding="utf-8")
-    module_id, factory, meta_staging = parse_custom_memory_module(staging)
-    dest = write_module_source_to_cache(
-        source,
-        module_id=module_id,
-        filename=filename,
-        cache_dir=cache_dir,
+def unknown_memory_module_message(module_id: str) -> str:
+    known = ", ".join(builtin_module_ids())
+    return (
+        f"Unknown or unsupported memory module {module_id!r}. "
+        f"Built-in modules: {known}."
     )
-    staging.unlink(missing_ok=True)
-    _, factory_final, metadata = parse_custom_memory_module(dest)
-    metadata = CustomModuleMetadata(
-        module_id=metadata.module_id,
-        label=metadata.label,
-        description=metadata.description,
-        create_agent_options=metadata.create_agent_options,
-        source_path=dest,
-        filename=filename or dest.name,
-    )
-    return _register_custom_module(module_id, factory_final, metadata)
 
 
 def _validate_builtin_module_config(module_id: str, config: dict[str, Any]) -> None:
@@ -151,16 +96,18 @@ def _validate_builtin_module_config(module_id: str, config: dict[str, Any]) -> N
     if module_id == "salient_turns" and "char_budget" in config:
         validate_char_budget(int(config["char_budget"]))
 
-    if module_id != "rolling_summary" and (
+    _SUMMARY_FLAG_MODULES = frozenset({"rolling_summary", "affinity"})
+    if module_id not in _SUMMARY_FLAG_MODULES and (
         "summary_interval" in config
         or "max_summary_chars" in config
         or "summary_tail" in config
     ):
         raise ValueError(
             "memory-summary-interval, memory-summary-max, and memory-summary-tail "
-            f"are only valid with memory rolling_summary (got memory {module_id!r})."
+            "are only valid with memory rolling_summary or affinity "
+            f"(got memory {module_id!r})."
         )
-    if module_id == "rolling_summary":
+    if module_id in _SUMMARY_FLAG_MODULES:
         if "summary_interval" in config:
             validate_summary_interval(int(config["summary_interval"]))
         if "max_summary_chars" in config:
@@ -172,14 +119,10 @@ def _validate_builtin_module_config(module_id: str, config: dict[str, Any]) -> N
 def create_module(module_id: str | None = None, **config: Any) -> MemoryModule:
     """Construct a memory module by id. Defaults to recent_turns."""
     resolved = module_id or DEFAULT_MODULE_ID
-    if resolved in _BUILTIN_REGISTRY:
-        _validate_builtin_module_config(resolved, config)
-        return _BUILTIN_REGISTRY[resolved](**config)
-    factory = _CUSTOM_REGISTRY.get(resolved)
-    if factory is None:
-        known = ", ".join(loaded_module_ids())
-        raise ValueError(f"Unknown memory module {resolved!r}. Loaded modules: {known}")
-    return factory(**config)
+    if resolved not in _BUILTIN_REGISTRY:
+        raise ValueError(unknown_memory_module_message(resolved))
+    _validate_builtin_module_config(resolved, config)
+    return _BUILTIN_REGISTRY[resolved](**config)
 
 
 def export_module_state(module: MemoryModule) -> dict[str, Any]:
@@ -206,7 +149,7 @@ def create_module_from_state(module_id: str, state: dict[str, Any]) -> MemoryMod
 
 
 def known_module_ids() -> list[str]:
-    """Return loaded memory module ids (built-ins + registered customs)."""
+    """Return built-in memory module ids."""
     return loaded_module_ids()
 
 
@@ -228,7 +171,7 @@ def format_memory_module_label(module: MemoryModule) -> str:
 
 
 def format_memory_modules_list() -> str:
-    """Read-only listing of loaded memory modules."""
+    """Read-only listing of built-in memory modules."""
     lines = ["Registered memory modules:"]
     for module_id in loaded_module_ids():
         if module_id == "recent_turns":
@@ -249,19 +192,18 @@ def format_memory_modules_list() -> str:
             flags = (
                 "memory-summary-interval N, memory-summary-max N, memory-summary-tail N"
             )
-        elif module_id in _CUSTOM_METADATA:
-            meta = _CUSTOM_METADATA[module_id]
-            desc = meta.description or "(custom module)"
-            flags = ", ".join(
-                opt.get("flag", "") for opt in meta.create_agent_options if opt.get("flag")
-            ) or "(see module CREATE_AGENT_OPTIONS)"
-            lines.append(f"  - {module_id}: {desc} [custom]")
-            lines.append(f"      path: {meta.source_path}")
-            lines.append(f"      create-agent flags: {flags}")
-            continue
+        elif module_id == "affinity":
+            desc = (
+                f"Relationships (-10…+10) + rolling LLM summary every "
+                f"{DEFAULT_SUMMARY_INTERVAL} turns; consolidates affinity deltas from "
+                f"the same turn window"
+            )
+            flags = (
+                "memory-summary-interval N, memory-summary-max N, memory-summary-tail N"
+            )
         else:
-            desc = "(custom module)"
-            flags = "(unknown)"
+            desc = "(unknown)"
+            flags = "(none)"
         lines.append(f"  - {module_id}: {desc}")
         lines.append(f"      create-agent flags: {flags}")
     return "\n".join(lines)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass, field
-from typing import Callable, Literal
+from typing import Any, Callable, Literal
 
 from campaign_rpg_engine.llm.memory_summary import log_consolidation_error
 from campaign_rpg_engine.memory_modules.base import WitnessedEvent
@@ -12,8 +12,8 @@ from campaign_rpg_engine.turn_record import TurnRecord
 
 ConsolidationState = Literal["idle", "running", "failed"]
 
-ConsolidationRun = Callable[["ConsolidationSnapshot"], str]
-ConsolidationSuccess = Callable[[str, "ConsolidationSnapshot"], None]
+ConsolidationRun = Callable[["ConsolidationSnapshot"], Any]
+ConsolidationSuccess = Callable[[Any, "ConsolidationSnapshot"], None]
 
 
 class MemoryConsolidationError(RuntimeError):
@@ -44,6 +44,8 @@ class ConsolidationSnapshot:
     agent_name: str
     turn_number: int
     previous_summary: str
+    """Optional module-specific freeze data (e.g. affinity candidates)."""
+    extra: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass

@@ -241,3 +241,52 @@ def test_edit_agent_moves_between_areas_via_session():
     assert result.ok
     assert session.areas["room"].get_agent_by_id("agent_01") is None
     assert session.areas["hall"].get_agent_by_id("agent_01") is not None
+
+
+def test_commit_turn_nearby_uses_destination_after_transfer():
+    """Stale turn-start area must not hide destination co-presence."""
+    from campaign_rpg_engine.llm.schemas import AgentCompoundTurn
+    from campaign_rpg_engine.memory import Memory
+    from campaign_rpg_engine.memory_modules.affinity import AffinityModule
+    from campaign_rpg_engine.simulation import commit_turn_record
+    from campaign_rpg_engine.turn_record import TurnRecord, TurnStep
+
+    session = _two_area_session()
+    explorer = session.get_agent("agent_01")
+    assert explorer is not None
+    explorer.memory = Memory(
+        module=AffinityModule(
+            summary_interval=99,
+            background_consolidation=False,
+        )
+    )
+    source_area = session.areas["room"]
+    assert session.transfer_agent("agent_01", "hall", (2, 2)).ok
+
+    record = TurnRecord(
+        turn_number=1,
+        reasoning="Crossed into the hall.",
+        result="You moved to (2, 2).",
+        steps=[
+            TurnStep(
+                kind="move",
+                reasoning="Crossed into the hall.",
+                target="2,2",
+                content=None,
+                result="You moved to (2, 2).",
+            )
+        ],
+    )
+    commit_turn_record(
+        explorer,
+        record,
+        AgentCompoundTurn(reasoning="Crossed into the hall.", action="none"),
+        source_area,
+        session_turn=1,
+        session=session,
+    )
+    mod = explorer.memory.module
+    assert isinstance(mod, AffinityModule)
+    assert "agent_02" in mod._window_nearby_ids
+    # Source alone would have been empty after transfer.
+    assert {p.id for p in source_area.agents} == set()

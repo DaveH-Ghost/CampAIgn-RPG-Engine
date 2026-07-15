@@ -4,7 +4,7 @@ Grid-based LLM agent simulation engine: multi-area worlds, compound turns (move 
 
 **License:** [MIT](LICENSE) — open source.
 
-**Current version:** **1.4.2** — ``run_named_handler`` for plugin follow-ups; handlers may return ``ActionOutcome``. See [changelog index](docs/changelog/README.md).
+**Current version:** **1.5.0** — affinity memory module (relationships + rolling summary). See [changelog index](docs/changelog/README.md).
 
 ## Quick start
 
@@ -42,19 +42,6 @@ On Windows, if Smart App Control blocks `uv run campaign-rpg-studio`, use `uv ru
 Copy [`.env.example`](.env.example) to `.env` and set `OPENROUTER_API_KEY` for LLM turns. Optional `OPENROUTER_MODEL` (default `deepseek/deepseek-v4-flash`). Engine tests mock the LLM — no key required for `uv run pytest`.
 
 CampAIgn-RPG-Studio **Settings** (gear icon) can set API key and model **in memory for the current server process only** — nothing is written to disk.
-
-## Custom memory modules
-
-Register `.py` modules at process startup before creating agents or loading saves:
-
-```python
-from campaign_rpg_engine import register_memory_module_from_path
-
-register_memory_module_from_path("path/to/my_module.py")
-session.create_agent(..., memory_module="my_module_id")
-```
-
-Saves store `module_id` + state only (no bundled source). Import **fails** if a save references a module that is not loaded. Sample module and upload UI: [CampAIgn-RPG-Studio `fixtures/custom_memory/`](https://github.com/DaveH-Ghost/CampAIgn-RPG-Studio/tree/main/fixtures/custom_memory).
 
 ## Lorebooks
 

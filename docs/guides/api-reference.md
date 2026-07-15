@@ -1,6 +1,6 @@
 # API reference
 
-Stable **`campaign_rpg_engine`** surface (**1.4.2**). Import from this package in application code.
+Stable **`campaign_rpg_engine`** surface (**1.5.0**). Import from this package in application code.
 
 ```python
 import campaign_rpg_engine
@@ -89,7 +89,7 @@ Returns **`AreaTemplateMutationResult`** from `spawn_area_from_template`.
 
 ---
 
-## Handlers & memory registration
+## Handlers & memory
 
 | Export | Description |
 |--------|-------------|
@@ -99,8 +99,10 @@ Returns **`AreaTemplateMutationResult`** from `spawn_area_from_template`.
 | `run_named_handler(...)` | Invoke any registered handler by id with explicit params (1.4.2) |
 | `collect_prefixed_params(...)` | Strip a branch prefix from nested handler params (1.4.2) |
 | `handler_catalog_entry(id)` | Catalog dict with description, ``param_fields``, ``summary_template`` (1.4.2) |
-| `register_memory_module_from_path(path)` | Load custom memory module |
+| `loaded_module_ids()` | Built-in memory module ids (`recent_turns`, `salient_turns`, `rolling_summary`, `affinity`) |
 | `MemoryModule` | Protocol type |
+| `AffinityModule` | Relationships (-10…+10) + rolling summary (1.5.0) |
+| `AFFINITY_MIN` / `AFFINITY_MAX` / `DEFAULT_RELATIONSHIP_SUMMARY_MAX_CHARS` | Affinity constants (1.5.0) |
 
 ### Plugin primitives (1.2.0)
 

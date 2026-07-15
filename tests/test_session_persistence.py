@@ -216,42 +216,27 @@ def test_unknown_profile_raises():
         load_session_from_snapshot(data)
 
 
-def test_import_fails_when_custom_module_not_loaded():
-    from campaign_rpg_engine.memory_modules.registry import register_memory_module_from_path
-
-    example = (
-        Path(__file__).resolve().parent
-        / "fixtures"
-        / "custom_memory"
-        / "rolling_summary_custom.py"
-    )
+def test_import_fails_when_memory_module_unknown():
     session = Session.from_default()
-    register_memory_module_from_path(example)
-    session.create_agent(
-        name="Archivist",
-        position=(2, 2),
-        personality="x",
-        memory_module="rolling_summary_custom",
-    )
     data = build_save_snapshot(session)
-
-    from campaign_rpg_engine.memory_modules import registry
-
-    registry._CUSTOM_REGISTRY.clear()
-    registry._CUSTOM_METADATA.clear()
+    # Force an unknown module id onto an agent in the snapshot.
+    agents = data.get("agents") or []
+    assert agents
+    agents[0]["memory"] = {
+        "module_id": "rolling_summary_custom",
+        "module_state": {},
+        "looked_at": [],
+        "ever_looked": [],
+    }
 
     with pytest.raises(ValueError, match="rolling_summary_custom"):
         load_session_from_snapshot(data)
-
-    register_memory_module_from_path(example)
-    restored = load_session_from_snapshot(data)
-    assert restored.get_agent("Archivist") is not None
 
 
 def test_validate_snapshot_modules_helper():
     from campaign_rpg_engine.session_persistence import validate_snapshot_modules
 
-    with pytest.raises(ValueError, match="not found"):
+    with pytest.raises(ValueError, match="unsupported memory module"):
         validate_snapshot_modules(
             {
                 "agents": [

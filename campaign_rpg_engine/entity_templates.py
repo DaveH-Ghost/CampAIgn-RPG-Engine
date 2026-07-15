@@ -10,6 +10,7 @@ from campaign_rpg_engine.memory_modules.registry import (
     create_module_from_state,
     export_module_state,
     is_module_loaded,
+    unknown_memory_module_message,
 )
 from campaign_rpg_engine.object import Object
 from campaign_rpg_engine.object_action import ObjectAction
@@ -95,10 +96,7 @@ def validate_template(data: dict[str, Any]) -> str | None:
             memory = data["memory"]
             mid = memory.get("module_id")
             if mid and not is_module_loaded(mid):
-                return (
-                    f"Memory module {mid!r} is not loaded. "
-                    "Load the module before spawning this template."
-                )
+                return unknown_memory_module_message(mid)
     try:
         validate_template_handlers(data)
     except ValueError as exc:
@@ -140,10 +138,7 @@ def _memory_from_template_block(memory_data: dict[str, Any]) -> Memory:
     module_id = str(memory_data.get("module_id", ""))
     module_state = dict(memory_data.get("module_state", {}))
     if not is_module_loaded(module_id):
-        raise ValueError(
-            f"Memory module {module_id!r} is not loaded. "
-            "Load the module before spawning this template."
-        )
+        raise ValueError(unknown_memory_module_message(module_id))
     module = create_module_from_state(module_id, module_state)
     memory = Memory(module=module)
     memory.restore_look_state(

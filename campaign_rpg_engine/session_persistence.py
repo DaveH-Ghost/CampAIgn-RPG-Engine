@@ -24,6 +24,7 @@ from campaign_rpg_engine.memory_modules.registry import (
     create_module_from_state,
     export_module_state,
     is_module_loaded,
+    unknown_memory_module_message,
 )
 from campaign_rpg_engine.object import Object
 from campaign_rpg_engine.object_action import ObjectAction, migrate_legacy_effects_to_handler
@@ -57,10 +58,7 @@ def validate_snapshot_modules(data: dict[str, Any]) -> None:
         if not is_module_loaded(module_id):
             missing.append(module_id)
     for module_id in missing:
-        raise ValueError(
-            f"Memory module '{module_id}' is not found. "
-            "Load the module before loading this save."
-        )
+        raise ValueError(unknown_memory_module_message(module_id))
 
 
 def validate_snapshot_handlers(data: dict[str, Any]) -> None:
