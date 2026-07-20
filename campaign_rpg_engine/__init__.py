@@ -1,5 +1,5 @@
 """
-campaign_rpg_engine — public engine API for CampAIgn-RPG-Engine (1.6.1).
+campaign_rpg_engine — public engine API for CampAIgn-RPG-Engine (1.7.1).
 
 Import from this package in application code.
 """

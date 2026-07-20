@@ -232,3 +232,47 @@ def move(
             area=area,
         ),
     )
+
+
+def simulate_move_final_position(
+    agent: Agent,
+    area: Area,
+    target: str,
+) -> tuple[int, int] | None:
+    """
+    Predict where *agent* would end after ``move(target)``, without mutating state.
+
+    Returns ``None`` when the move cannot begin (bad target, unreachable standable).
+    """
+    try:
+        resolved = resolve_move_target(area, target)
+    except MoveTargetError:
+        return None
+
+    goal = resolved.position
+    if not area.is_valid_position(goal):
+        return None
+
+    standable_goal = resolve_standable_goal(area, goal, agent.id, from_pos=agent.position)
+    if standable_goal is None:
+        return None
+    if agent.position == standable_goal:
+        return agent.position
+
+    if agent.move_speed is None:
+        if not is_tile_enterable(area, standable_goal, agent.id):
+            return None
+        if not find_path(agent.position, standable_goal, area, agent.id):
+            return None
+        return standable_goal
+
+    if not find_path(agent.position, standable_goal, area, agent.id):
+        return None
+    final_pos, _reached, _path = walk_with_pathfinding(
+        agent.position,
+        standable_goal,
+        agent.move_speed,
+        area,
+        agent.id,
+    )
+    return final_pos

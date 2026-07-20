@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 from campaign_rpg_engine.action_outcome import ActionOutcome
 from campaign_rpg_engine.actions import do_emote, do_interact_phases, do_move, do_speak
+from campaign_rpg_engine.actions.interact import explicit_move_reaches_interact
 from campaign_rpg_engine.agent import Agent
 from campaign_rpg_engine.area import Area
 from campaign_rpg_engine.llm.schemas import AgentCompoundTurn
@@ -63,10 +64,26 @@ def execute_nav_phase(
     trigger_fired: set[tuple[str, str, str]] | None = None,
 ) -> list[TurnStep]:
     """Run optional move from compound turn. Commits position changes."""
-    if turn.action == "interact" or verb_turn_has_pathing(turn):
+    if verb_turn_has_pathing(turn):
         return []
     if not turn.move:
         return []
+    if turn.action == "interact":
+        # Auto-pathing inside interact usually owns movement. Honor an explicit
+        # move when it would already put the agent in interact range this turn
+        # (important for intentional positioning).
+        if (
+            not turn.target
+            or not turn.verb
+            or not explicit_move_reaches_interact(
+                agent,
+                area,
+                move=turn.move,
+                target_id=str(turn.target).strip(),
+                action_name=str(turn.verb).strip(),
+            )
+        ):
+            return []
 
     outcome = do_move(
         agent,

@@ -4,7 +4,7 @@ Grid-based LLM agent simulation engine: multi-area worlds, compound turns (move 
 
 **License:** [MIT](LICENSE) — open source.
 
-**Current version:** **1.6.1** — structure hardening, lint/CI, Mermaid UML. See [changelog index](docs/changelog/README.md).
+**Current version:** **1.7.1** — compound-turn parse repair and interact positioning. See [changelog index](docs/changelog/README.md).
 
 ## Quick start
 

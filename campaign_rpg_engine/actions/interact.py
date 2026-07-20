@@ -77,6 +77,34 @@ def _in_range(agent: Agent, obj: Object, action: ObjectAction) -> bool:
     return chebyshev_distance_to_object(agent.position, obj) <= action.range
 
 
+def explicit_move_reaches_interact(
+    agent: Agent,
+    area: Area,
+    *,
+    move: str,
+    target_id: str,
+    action_name: str,
+) -> bool:
+    """
+    True when the compound ``move`` would leave the agent in range to interact.
+
+    Used so nav honors an explicit move that already achieves interact range,
+    instead of replacing it with auto-pathing toward the object.
+    """
+    from campaign_rpg_engine.actions.move import simulate_move_final_position
+
+    obj = area.get_object_by_id(target_id)
+    if obj is None:
+        return False
+    action = obj.actions.get(action_name)
+    if action is None or action.kind == "trigger" or not action.enabled:
+        return False
+    final = simulate_move_final_position(agent, area, move)
+    if final is None:
+        return False
+    return chebyshev_distance_to_object(final, obj) <= action.range
+
+
 def _too_far_message(obj: Object, action: ObjectAction) -> ActionOutcome:
 
     return ActionOutcome(

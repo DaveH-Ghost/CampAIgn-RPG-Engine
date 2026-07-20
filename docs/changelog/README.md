@@ -2,7 +2,7 @@
 
 Release notes and historical implementation checklists for CampAIgn-RPG-Engine.
 
-**Current:** [v1.6.1-changelog.md](v1.6.1-changelog.md) — joint release with Studio 1.6.1 (engine = 1.6.0 content).
+**Current:** [v1.7.1-changelog.md](v1.7.1-changelog.md) — joint release with Studio 1.7.1 (parse repair + interact positioning).
 
 ---
 
@@ -10,6 +10,7 @@ Release notes and historical implementation checklists for CampAIgn-RPG-Engine.
 
 | Version | Summary |
 |---------|---------|
+| [1.7.1](v1.7.1-changelog.md) | Leading-dot JSON key repair; honor explicit move when it reaches interact range |
 | [1.6.1](v1.6.1-changelog.md) | PyPI/tag train with Studio 1.6.1 (no engine API delta vs 1.6.0) |
 | [1.6.0](v1.6.0-changelog.md) | Ruff/CI, edit+templates packages, Mermaid UML, GM-host docs |
 | [1.5.2](v1.5.2-changelog.md) | Featherless provider, token budget, missing-`{` JSON repair |

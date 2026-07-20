@@ -4,6 +4,7 @@ LLM structured output schemas — V0.2.5 single-call compound turns.
 One AgentCompoundTurn per agent turn: optional move, then optional look, then turn action.
 V0.4.1a: reasoning and speak content are truncated at sentence boundaries.
 V0.4.4c: compact JSON keys (move, look, say, action, verb); legacy 0.4.3 keys normalized.
+Leading-dot key repair (``.reasoning`` → ``reasoning``) for flaky structured outputs.
 """
 
 from __future__ import annotations
@@ -54,10 +55,21 @@ def _truncate_say(v: str | None) -> str | None:
 
 
 def normalize_compound_turn_payload(data: Any) -> Any:
-    """Map legacy 0.4.3 JSON keys to V0.4.4 compact keys."""
+    """Map legacy 0.4.3 JSON keys to V0.4.4 compact keys.
+
+    Also strips a leading ``.`` from keys (some models emit ``.reasoning`` etc.).
+    Non-dotted keys win when both forms are present.
+    """
     if not isinstance(data, dict):
         return data
-    out = dict(data)
+    out: dict[Any, Any] = {}
+    for key, value in data.items():
+        if isinstance(key, str) and key.startswith(".") and len(key) > 1:
+            clean = key[1:]
+            if clean not in out:
+                out[clean] = value
+            continue
+        out[key] = value
     for legacy, compact in _LEGACY_KEY_MAP.items():
         if legacy in out and compact not in out:
             out[compact] = out.pop(legacy)

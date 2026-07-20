@@ -39,10 +39,17 @@ _LEGACY_KEY_MAP = {
 
 
 def normalize_compound_turn_payload(data: Any) -> Any:
-    """Map legacy 0.4.3 JSON keys to compact keys (runtime: src/llm/schemas.py)."""
+    """Map legacy 0.4.3 JSON keys to compact keys; strip leading '.' on keys."""
     if not isinstance(data, dict):
         return data
-    out = dict(data)
+    out: dict[Any, Any] = {}
+    for key, value in data.items():
+        if isinstance(key, str) and key.startswith(".") and len(key) > 1:
+            clean = key[1:]
+            if clean not in out:
+                out[clean] = value
+            continue
+        out[key] = value
     for legacy, compact in _LEGACY_KEY_MAP.items():
         if legacy in out and compact not in out:
             out[compact] = out.pop(legacy)

@@ -110,6 +110,42 @@ def test_legacy_json_keys_normalized():
     assert turn.say == "Hi"
 
 
+def test_leading_dot_keys_normalized():
+    """Some models emit '.reasoning' / '.move' instead of bare field names."""
+    turn = AgentCompoundTurn.model_validate(
+        {
+            ".reasoning": "I see a ceramic ball at (2,2).",
+            ".move": "2,2",
+            ".look": "obj_ball_01",
+            ".say": None,
+            ".action": "none",
+            ".target": None,
+            ".verb": None,
+        }
+    )
+    assert turn.reasoning.startswith("I see a ceramic")
+    assert turn.move == "2,2"
+    assert turn.look == "obj_ball_01"
+    assert turn.action == "none"
+    assert turn.say is None
+
+
+def test_leading_dot_keys_defer_to_plain_keys():
+    turn = AgentCompoundTurn.model_validate(
+        {
+            ".reasoning": "dotted",
+            "reasoning": "plain",
+            ".action": "emote",
+            "action": "none",
+            ".verb": "nodded",
+            "verb": None,
+        }
+    )
+    assert turn.reasoning == "plain"
+    assert turn.action == "none"
+    assert turn.verb is None
+
+
 def test_count_speak_sentences_ellipsis():
     assert count_speak_sentences("Hi! Wait... really?") == 2
 
