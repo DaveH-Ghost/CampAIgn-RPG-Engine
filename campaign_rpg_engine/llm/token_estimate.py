@@ -5,8 +5,8 @@ from __future__ import annotations
 import os
 from typing import Any
 
-# Default demo session budget (V0.4.4). ~966 est. tokens pre-0.4.4; tightened after compaction.
-DEFAULT_PROMPT_TOKEN_BUDGET = 650
+# Default demo session budget. Tightened in V0.4.4; raised for [far]/emote/verb-line growth.
+DEFAULT_PROMPT_TOKEN_BUDGET = 750
 
 # Hard input cap for LLM calls (1.5.2). Matches common Featherless 32k context.
 DEFAULT_MAX_INPUT_TOKENS = 32768

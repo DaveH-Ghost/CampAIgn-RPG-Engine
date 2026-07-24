@@ -21,4 +21,4 @@ def test_compound_rules_section_budget():
     agent = session.get_active_agent()
     ctx = build_prompt_context(agent, session.get_area_for_agent(agent))
     rules_tokens = estimate_prompt_tokens(ctx.compound_rules)
-    assert rules_tokens <= 200, f"compound_rules est. {rules_tokens} tokens (max 200)"
+    assert rules_tokens <= 350, f"compound_rules est. {rules_tokens} tokens (max 350)"

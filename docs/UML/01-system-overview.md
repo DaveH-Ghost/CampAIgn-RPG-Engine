@@ -1,6 +1,6 @@
 # System overview
 
-CampAIgn splits into a **simulation library** and a **GM host**. Player clients attaching to Studio are planned later (not in 1.6.0).
+CampAIgn splits into a **simulation library** and a **GM host**. Studio ships a player join client (`/play/generic/`); broader multiplayer VTT clients remain future work.
 
 ```mermaid
 flowchart TB

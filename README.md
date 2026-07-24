@@ -1,10 +1,10 @@
 # CampAIgn RPG Engine
 
-Grid-based LLM agent simulation engine: multi-area worlds, compound turns (move → look → speak → interact/emote), pluggable memory modules, and a stable **`campaign_rpg_engine`** library API. Build on the engine in your own apps; use [CampAIgn-RPG-Studio](https://github.com/DaveH-Ghost/CampAIgn-RPG-Studio) as the **GM host** (world authoring and session authority). Player clients attaching to Studio are planned later.
+Grid-based LLM agent simulation engine: multi-area worlds, compound turns (move → look → speak → interact/emote), pluggable memory modules, and a stable **`campaign_rpg_engine`** library API. Build on the engine in your own apps; use [CampAIgn-RPG-Studio](https://github.com/DaveH-Ghost/CampAIgn-RPG-Studio) as the **GM host** (world authoring and session authority). Studio includes a player join client at `/play/generic/`.
 
 **License:** [MIT](LICENSE) — open source.
 
-**Current version:** **1.7.3** — Verb pathing parity with interact (`path_range_from_turn`, honor explicit move in range) and `area_event` session hook for plugins. See [changelog index](docs/changelog/README.md).
+**Current version:** **1.7.4** — Patch on 1.7.3 (verb pathing + `area_event`): prompt token budgets and test hardening. See [changelog index](docs/changelog/README.md).
 
 ## Quick start
 

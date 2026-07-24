@@ -1,8 +1,8 @@
 # CampAIgn-RPG-Engine documentation
 
-**CampAIgn-RPG-Engine** is a grid-based LLM agent simulation engine with a stable **`campaign_rpg_engine`** library API. The GM host is **[CampAIgn-RPG-Studio](https://github.com/DaveH-Ghost/CampAIgn-RPG-Studio)** (GitHub only) — it owns the world/session today; player clients attaching later are planned, not implemented.
+**CampAIgn-RPG-Engine** is a grid-based LLM agent simulation engine with a stable **`campaign_rpg_engine`** library API. The GM host is **[CampAIgn-RPG-Studio](https://github.com/DaveH-Ghost/CampAIgn-RPG-Studio)** (GitHub only) — it owns the world/session today and ships a player join client at `/play/generic/`.
 
-**Current release:** **1.7.3** — Verb pathing parity with interact (`path_range_from_turn`, honor explicit move in range) and `area_event` session hook for plugins. See [changelog index](changelog/README.md). Library-first since 1.0; [Migration 0.7 → 1.0](MIGRATION-0.7-to-1.0.md) still applies for older upgrades.
+**Current release:** **1.7.4** — Patch on 1.7.3 (verb pathing + `area_event`): prompt token budgets and test hardening. See [changelog index](changelog/README.md). Library-first since 1.0; [Migration 0.7 → 1.0](MIGRATION-0.7-to-1.0.md) still applies for older upgrades.
 
 ---
 

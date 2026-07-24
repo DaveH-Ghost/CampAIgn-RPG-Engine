@@ -2,7 +2,7 @@
 
 Release notes and historical implementation checklists for CampAIgn-RPG-Engine.
 
-**Current:** [v1.7.3-changelog.md](v1.7.3-changelog.md) — joint release with Studio 1.7.3 (verb pathing + `area_event` hook).
+**Current:** [v1.7.4-changelog.md](v1.7.4-changelog.md) — joint release with Studio 1.7.4 (token budget + test fix).
 
 ---
 
@@ -10,6 +10,7 @@ Release notes and historical implementation checklists for CampAIgn-RPG-Engine.
 
 | Version | Summary |
 |---------|---------|
+| [1.7.4](v1.7.4-changelog.md) | Raise default prompt token budgets; fix LLM-failure monkeypatch test |
 | [1.7.3](v1.7.3-changelog.md) | Explicit move for pathing verbs; `path_range_from_turn`; `area_event` session emit |
 | [1.7.2](v1.7.2-changelog.md) | Concurrent LLM policy; affinity JSON repair; identity preamble; consolidation failure hooks |
 | [1.7.1](v1.7.1-changelog.md) | Leading-dot JSON key repair; honor explicit move when it reaches interact range |

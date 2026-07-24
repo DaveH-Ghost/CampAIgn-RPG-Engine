@@ -4,7 +4,7 @@ test_multi_agent.py
 Tests for V0.1 Section 3 multi-agent support (updated for V0.2 compound turns).
 """
 
-import contextlib
+import pytest
 
 from campaign_rpg_engine.area import create_initial_area
 from campaign_rpg_engine.area_edit import create_agent_from_args, edit_object_from_args
@@ -322,7 +322,8 @@ def test_reserved_command_names_include_run_and_hyphenated():
 
 
 def test_llm_failure_does_not_increment_session_turn(monkeypatch):
-    from campaign_rpg_engine import Session, get_compound_turn, load_profile
+    import campaign_rpg_engine as cre
+    from campaign_rpg_engine import Session, load_profile
 
     session = Session.from_profile(load_profile("default_compound"))
     agent = session.get_active_agent()
@@ -332,9 +333,11 @@ def test_llm_failure_does_not_increment_session_turn(monkeypatch):
     def fail_llm(_prompt):
         raise RuntimeError("LLM unavailable")
 
-    monkeypatch.setattr("campaign_rpg_engine.llm.client.get_compound_turn", fail_llm)
-    with contextlib.suppress(RuntimeError):
-        get_compound_turn(session.build_prompt())
+    # Patch the package attribute; a local `from … import get_compound_turn`
+    # would keep the pre-patch function object.
+    monkeypatch.setattr(cre, "get_compound_turn", fail_llm)
+    with pytest.raises(RuntimeError, match="LLM unavailable"):
+        cre.get_compound_turn(session.build_prompt())
 
     assert session.session_turn == before_session
     assert agent.memory.turn_count == before_turns

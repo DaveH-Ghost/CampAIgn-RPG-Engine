@@ -17,7 +17,7 @@ Guide for application authors integrating **CampAIgn-RPG-Engine 1.0** as a libra
 | Memory & lore | [Memory & lorebooks](memory-and-lorebooks.md) |
 | Full export list | [API reference](api-reference.md) |
 
-GM host (HTTP + authoring UI): [CampAIgn-RPG-Studio](https://github.com/DaveH-Ghost/CampAIgn-RPG-Studio) (`backend/` shows typed `Session` usage). Player clients attaching to Studio are planned later.
+GM host (HTTP + authoring UI): [CampAIgn-RPG-Studio](https://github.com/DaveH-Ghost/CampAIgn-RPG-Studio) (`backend/` shows typed `Session` usage). Studio ships a player join client at `/play/generic/`.
 
 ---
 
